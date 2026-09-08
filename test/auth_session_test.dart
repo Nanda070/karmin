@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:karmin/api/neptun_auth.dart';
 import 'package:karmin/api/neptun_client.dart';
@@ -224,6 +226,41 @@ void main() {
     expect(controller.state.otpResendNonce, 1);
     expect(passwords, 2);
   });
+
+  test('hydrate leaves boot if Keystore never returns', () async {
+    final controller = AuthController(
+      store: _HangingStore(),
+      prefs: MemoryPrefsStore(),
+      authApi: DebugNeptunAuth(),
+      client: NeptunClient(),
+      localAuth: LocalAuthProbe(),
+      usingDebugAuth: true,
+      hydrateOnStart: false,
+      hydrateTimeout: const Duration(milliseconds: 40),
+    );
+
+    await controller.hydrate();
+    expect(controller.state.hydrated, isTrue);
+    expect(controller.state.hasCredentials, isFalse);
+    expect(controller.state.hasPin, isFalse);
+  });
+
+  test('hydrate leaves boot if Face ID probe never returns', () async {
+    final controller = AuthController(
+      store: MemorySecureStore(),
+      prefs: MemoryPrefsStore(),
+      authApi: DebugNeptunAuth(),
+      client: NeptunClient(),
+      localAuth: _HangingLocalAuth(),
+      usingDebugAuth: true,
+      hydrateOnStart: false,
+      hydrateTimeout: const Duration(milliseconds: 40),
+    );
+
+    await controller.hydrate();
+    expect(controller.state.hydrated, isTrue);
+    expect(controller.state.bioAvailable, isFalse);
+  });
 }
 
 class _CountingAuth implements NeptunAuthApi {
@@ -267,4 +304,23 @@ class _CountingAuth implements NeptunAuthApi {
       lcid: lcid,
     );
   }
+}
+
+class _HangingStore implements SecureStore {
+  @override
+  Future<void> write(String key, String? value) => Completer<void>().future;
+
+  @override
+  Future<String?> read(String key) => Completer<String?>().future;
+
+  @override
+  Future<void> delete(String key) => Completer<void>().future;
+
+  @override
+  Future<void> clearCredentials() => Completer<void>().future;
+}
+
+class _HangingLocalAuth extends LocalAuthProbe {
+  @override
+  Future<bool> isBiometricAvailable() => Completer<bool>().future;
 }

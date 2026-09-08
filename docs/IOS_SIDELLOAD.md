@@ -2,10 +2,12 @@
 
 **Bundle ID:** `online.cheterin.karmin`  
 **Display name:** Kármin (home screen) / Karmin (short name)  
-**Workspace:** `ios/Runner.xcworkspace` (open this, not the `.xcodeproj`)  
-**Paid Apple Developer Program / TestFlight:** not required. Optional later if you pay $99/year.
+**Paid Apple Developer Program / TestFlight:** not required.
 
-This Windows machine **cannot** compile an IPA. Apple’s toolchain only runs on macOS. Use **path A** (borrow/own a Mac + free Apple ID) or **path B** (GitHub Actions on `macos-latest` + Sideloadly on Windows).
+This Windows machine **cannot** compile an IPA. Apple’s toolchain only runs on macOS. The **primary** path is GitHub Actions (`macos-latest`) + **Sideloadly on Windows**. Borrowing a Mac + Xcode is optional.
+
+Unsigned IPA from Actions (after a successful run):  
+`C:\Users\adnan\Documents\Coding\karmin\dist\Karmin-unsigned.ipa`
 
 ---
 
@@ -15,18 +17,23 @@ This Windows machine **cannot** compile an IPA. Apple’s toolchain only runs on
 
 | You need | Why |
 |---|---|
-| Free Apple ID | Signs the app. Same ID you use on the iPhone is simplest. |
+| Free Apple ID | Sideloadly signs the app. Same ID you use on the iPhone is simplest. |
 | Physical iPhone (iOS 16+ recommended) | Simulator is not a live-Neptun test. |
 | USB cable | First install and Trust. |
-| This repo on GitHub | Needed for the free Actions build (path B). |
+| [Sideloadly](https://sideloadly.io/) on Windows | Resigns the unsigned IPA and installs over USB. |
+| This repo on GitHub | Actions builds the IPA on a Mac runner. |
 
-**7-day expiry:** a free “Personal Team” certificate dies after **7 days**. The icon stays; launch fails until you re-sign. This is Apple’s free-account limit, not a Karmin bug.
+**7-day expiry:** a free Apple ID certificate dies after **7 days**. The icon stays; launch fails until you re-sign with Sideloadly. This is Apple’s free-account limit, not a Karmin bug.
 
-**3-app limit:** a free Apple ID may only have **three** sideloaded apps at once. Remove unused ones in Settings → General → iPhone Storage, or in Xcode / Sideloadly.
+**3-app limit:** a free Apple ID may only have **three** sideloaded apps at once. Remove unused ones in Settings → General → iPhone Storage, or in Sideloadly.
 
-**2FA:** Apple will email or push a 6-digit code. Sideloadly / AltStore may also ask for an [app-specific password](https://appleid.apple.com/) (Apple ID → Sign-In and Security → App-Specific Passwords). Do **not** put Apple ID passwords in git or GitHub Actions secrets for this free path.
+**Developer Mode (iOS 16+):** Settings → Privacy & Security → Developer Mode → On, then restart if asked. Without this, the sideloaded app will not launch.
 
-**VPN:** try **without** a VPN first. Campus or aggressive VPNs often break Apple’s signing servers and 2FA. If the Apple ID region and the network disagree, 2FA SMS/email can stall.
+**Trust the certificate:** after install, Settings → General → VPN & Device Management → trust the developer cert for your Apple ID. Until you do, Kármin will not open.
+
+**2FA:** Apple will email or push a 6-digit code. Sideloadly may also ask for an [app-specific password](https://appleid.apple.com/) (Apple ID → Sign-In and Security → App-Specific Passwords). Do **not** put Apple ID passwords in git or GitHub Actions secrets.
+
+**VPN:** try **without** a VPN first. Campus or aggressive VPNs often break Apple’s signing servers and 2FA.
 
 ### Live Neptun vs debug mock
 
@@ -34,7 +41,7 @@ This Windows machine **cannot** compile an IPA. Apple’s toolchain only runs on
 |---|---|
 | `flutter run` **debug** (default) | Labeled **mock** (any non-empty login, any 6-digit OTP). |
 | Debug + `--dart-define=KARMIN_LIVE_AUTH=true` | Live `https://neptun.elte.hu/ujhallgato/api/` |
-| **Release** (Xcode Run in Release, or the Actions IPA) | Always live. |
+| **Release** (the Actions IPA) | Always live. |
 
 Chrome/web stays on the mock (CORS). iPhone does not. Release IPA = real ELTE account + real OTP. Never log password, OTP, or JWT.
 
@@ -45,66 +52,63 @@ Chrome/web stays on the mock (CORS). iPhone does not. Release IPA = real ELTE ac
 - `biometricOnly` does **not** fall back to the iPhone passcode (by design).
 - Keychain items belong to this bundle ID + the signing Team. Re-signing with the **same** free Apple ID usually keeps the vault. Switching Apple IDs wipes it (log in to Neptun again).
 - Free Personal Team does **not** get Push Notifications, Associated Domains, or App Groups. Karmin v1 does not need those.
-- Simulator Face ID is fake (`Features → Face ID`). Use a device for the real sheet.
 
 App Transport Security stays **on**. Neptun is HTTPS. Do not set `NSAllowsArbitraryLoads`.
 
 ---
 
-### Path A — Mac + free Apple ID (best if you can borrow a Mac)
+### Primary — Windows: GitHub Actions + Sideloadly
 
-No $99 program. Xcode **Automatic signing** with your Personal Team.
+The workflow is `.github/workflows/ios.yml` (**iOS unsigned IPA**). It produces artifact `karmin-ios-unsigned` → `Karmin-unsigned.ipa`. The IPA is **unsigned**; Sideloadly signs it with your Apple ID. The raw zip will not install via Finder.
 
-1. Install **Xcode** from the Mac App Store. Open it once, accept the license, wait until additional components finish.
-2. Install Flutter for macOS. In the repo: `flutter pub get`.
-3. Open **`ios/Runner.xcworkspace`** in Xcode (never `Runner.xcodeproj` alone).
-4. Select the **Runner** target → **Signing & Capabilities**:
-   - Team: your Apple ID → **Personal Team** (Add Account… if needed).
-   - Bundle Identifier: `online.cheterin.karmin` (already set).
-   - Automatically manage signing: **on**.
-5. Plug in the iPhone. Unlock it. On the phone: **Trust This Computer**.
-6. iOS 16+: **Settings → Privacy & Security → Developer Mode → On**, then restart if asked.
-7. In Xcode’s toolbar, pick the iPhone (not a simulator).
-8. Product → Run (or the Play button).
-   - Live Neptun from debug:  
-     `flutter run --dart-define=KARMIN_LIVE_AUTH=true` from Terminal, with the iPhone selected (`flutter devices`).
-   - Or run Release from Xcode (live Neptun by default).
-9. First launch: Settings → General → VPN & Device Management → trust the developer certificate.
+#### Sideloadly — 5 steps
 
-Re-sign before day 8: plug in, Run again (or `flutter run`). Same 7-day clock.
+1. **Get the IPA.** GitHub → **Actions** → **iOS unsigned IPA** → **Run workflow** (10–20 minutes). Download artifact `karmin-ios-unsigned`, or use `C:\Users\adnan\Documents\Coding\karmin\dist\Karmin-unsigned.ipa` if it was already copied there.
+2. **Install Sideloadly** from [sideloadly.io](https://sideloadly.io/). Plug in the iPhone with a USB cable. Unlock the phone → **Trust This Computer**.
+3. **Developer Mode.** iOS 16+: Settings → Privacy & Security → Developer Mode → On (restart if asked).
+4. **Sideload.** IPA = `Karmin-unsigned.ipa`. Apple ID = your free ID. Start the sideload. Complete Apple 2FA (or an app-specific password) when prompted. Use automatic provisioning if Sideloadly shows that option.
+5. **Trust the cert, then open Kármin.** Settings → General → VPN & Device Management → trust this Apple ID. Then tap **Kármin**. Re-sideload before day 8 (same 7-day clock). Remember the **3-app** free-account limit.
 
----
-
-### Path B — no Mac: GitHub Actions + Sideloadly (Windows)
-
-This is the free path that **actually produces an IPA** without owning a Mac. You still need an IPA; Actions builds it on `macos-latest`. Sideloadly (Windows) signs it with a free Apple ID and installs over USB.
-
-The workflow file is `.github/workflows/ios.yml`. **GitHub will not run it until that file is on the default branch.** This checkout leaves it in the working tree; push when you are ready (the agent does not commit unless you ask).
-
-1. Push `ios/` + `.github/workflows/ios.yml` to [github.com/Nanda070/karmin](https://github.com/Nanda070/karmin).
-2. GitHub → **Actions** → **iOS unsigned IPA** → **Run workflow**. Public repos can use `macos-latest` for free within GitHub’s fairness limits. Expect 10–20 minutes.
-3. Download the artifact `karmin-ios-unsigned` (`Karmin-unsigned.ipa`). Artifact retention is **7 days** (same order of magnitude as the signing clock).
-4. On Windows, install [Sideloadly](https://sideloadly.io/). Plug in the iPhone. Trust the computer. Enable Developer Mode (iOS 16+).
-5. Sideloadly: IPA = the artifact, Apple ID = free ID, start sideload. Use automatic provisioning if the extra options show it. Complete Apple 2FA when prompted.
-6. On the iPhone, trust the developer cert (VPN & Device Management), then open **Kármin**.
-
-The IPA is **unsigned**. Sideloadly (or AltStore / SideStore) signs it locally. Do not expect the raw zip to install via Finder.
+Public repos can use `macos-latest` within GitHub’s fairness limits. Artifact retention is **7 days** (same order of magnitude as the signing clock).
 
 #### AltStore / SideStore caveats
 
 | Tool | Needs a Mac? | Notes |
 |---|---|---|
-| **Sideloadly** | No (Windows OK) | Most practical no-Mac install. Third-party; you accept that risk. Still 7-day / 3-app. |
-| **AltStore** | AltServer on a PC or Mac | Refresh from the computer (or via AltStore’s own refresh). Same free-account limits. Still needs an IPA. |
-| **SideStore** | Computer once (pairing file) | Can refresh on-device with a VPN/pairing helper. More moving parts. Still 7-day signing unless you refresh. Still needs an IPA. |
+| **Sideloadly** | No (Windows OK) | Primary no-Mac install. Third-party; you accept that risk. Still 7-day / 3-app. |
+| **AltStore** | AltServer on a PC or Mac | Refresh from the computer. Same free-account limits. Still needs an IPA. |
+| **SideStore** | Computer once (pairing file) | Can refresh on-device with a VPN/pairing helper. More moving parts. Still 7-day unless you refresh. Still needs an IPA. |
 
 None of these bypass Apple’s free-account 7-day certificate. They only install the IPA.
 
 ---
 
+### Optional — Mac + free Apple ID (Xcode)
+
+No $99 program. Use this only if you have a Mac. On this repo, Xcode “eternal loading” is often the **Karmin boot screen** waiting on Keychain/Face ID, or Xcode using a Windows-generated Flutter config. Prefer Sideloadly unless you need a debug `flutter run`.
+
+**Workspace:** `ios/Runner.xcworkspace` (open this, not the `.xcodeproj`).
+
+1. Install **Xcode** from the Mac App Store. Open it once, accept the license, wait until additional components finish.
+2. Install Flutter for macOS. In the repo: `flutter pub get` **before** opening Xcode (regenerates `ios/Flutter/Generated.xcconfig`; a Windows checkout has the wrong `FLUTTER_ROOT`).
+3. Open **`ios/Runner.xcworkspace`** in Xcode.
+4. Select the **Runner** target → **Signing & Capabilities**:
+   - Team: your Apple ID → **Personal Team** (Add Account… if needed).
+   - Bundle Identifier: `online.cheterin.karmin` (already set).
+   - Automatically manage signing: **on**.
+5. Plug in the iPhone. Unlock it. **Trust This Computer**. iOS 16+: Developer Mode on.
+6. In Xcode’s toolbar, pick the iPhone (not a simulator). Product → Run.
+   - Live Neptun from debug: `flutter run --dart-define=KARMIN_LIVE_AUTH=true` with the iPhone selected.
+   - Or run Release from Xcode (live Neptun by default).
+7. First launch: Settings → General → VPN & Device Management → trust the developer certificate.
+
+Re-sign before day 8: plug in, Run again (or `flutter run`). Same 7-day / 3-app limits as Sideloadly.
+
+---
+
 ### Optional paid later (not required)
 
-Apple Developer Program ($99/year) unlocks **TestFlight** and 1-year certificates. Not the v1 testing path. Do not treat TestFlight as the only way onto an iPhone.
+Apple Developer Program ($99/year) unlocks **TestFlight** and 1-year certificates. Not the v1 testing path.
 
 ---
 
@@ -112,11 +116,9 @@ Apple Developer Program ($99/year) unlocks **TestFlight** and 1-year certificate
 
 - Compile `Runner.app` / IPA on Windows.
 - Run Xcode here.
-- Install onto your iPhone from this agent.
+- Install onto your iPhone from this agent (you install with Sideloadly).
 
-After you push the workflow, run it on GitHub, or borrow a Mac for path A.
-
-Smoke on device: [SMOKE.md](SMOKE.md). Prefer `KARMIN_LIVE_AUTH=true` or a release IPA.
+Smoke on device: [SMOKE.md](SMOKE.md). Prefer a release IPA.
 
 ---
 
@@ -124,24 +126,31 @@ Smoke on device: [SMOKE.md](SMOKE.md). Prefer `KARMIN_LIVE_AUTH=true` or a relea
 
 **Bundle ID:** `online.cheterin.karmin`  
 **Имя на Springboard:** Kármin  
-Windows **не умеет** собирать IPA. Нужен Mac (свой/чужой) или GitHub Actions (`macos-latest`).
+Windows **не умеет** собирать IPA. Основной путь: GitHub Actions (`macos-latest`) + **Sideloadly на Windows**. Mac + Xcode — по желанию.
+
+Готовый файл после успешного прогона:  
+`C:\Users\adnan\Documents\Coding\karmin\dist\Karmin-unsigned.ipa`
 
 ### Что нужно
 
-Бесплатный Apple ID, физический iPhone, кабель USB. Платный Developer Program **не** обязателен.
+Бесплатный Apple ID, физический iPhone, кабель USB, [Sideloadly](https://sideloadly.io/). Платный Developer Program **не** обязателен.
 
-**7 дней:** бесплатная подпись Personal Team истекает через неделю — приложение перестаёт открываться, пока не переподпишете.
+**7 дней:** бесплатная подпись истекает через неделю — приложение перестаёт открываться, пока не переподпишете в Sideloadly.
 
 **Лимит 3 приложения** на бесплатный Apple ID.
 
-**2FA:** код от Apple или [пароль приложения](https://appleid.apple.com/). Пароль Apple ID **не** класть в git и не в секреты Actions на этом бесплатном пути.
+**Режим разработчика** (iOS 16+): Настройки → Конфиденциальность и безопасность → Режим разработчика.
+
+**Доверие сертификату:** Настройки → Основные → VPN и управление устройством.
+
+**2FA:** код от Apple или [пароль приложения](https://appleid.apple.com/). Пароль Apple ID **не** класть в git и не в секреты Actions.
 
 **VPN:** сначала без VPN — иначе часто ломается подпись и 2FA.
 
 ### Live Neptun
 
 - Debug без флага → помеченный mock.
-- Debug с `--dart-define=KARMIN_LIVE_AUTH=true` или **Release** / IPA из Actions → живой `https://neptun.elte.hu/ujhallgato/api/`.
+- **Release** / IPA из Actions → живой `https://neptun.elte.hu/ujhallgato/api/`.
 - Нужны реальный Neptun-код, пароль и одноразовый код. Не логировать секреты.
 
 ### Face ID (`local_auth`)
@@ -150,24 +159,16 @@ Face ID открывает **локальный** сейф, не 2FA Neptun. Е�
 
 ATS включён (только HTTPS). `NSAllowsArbitraryLoads` не ставить.
 
-### Путь A — Mac + бесплатный Apple ID
+### Основной путь — Windows: Actions + Sideloadly (5 шагов)
 
-1. Xcode из App Store, лицензия, компоненты.
-2. Открыть **`ios/Runner.xcworkspace`**.
-3. Runner → Signing: Team = Personal Team, bundle `online.cheterin.karmin`, Automatically manage signing.
-4. Кабель → Trust → **Режим разработчика** (iOS 16+: Настройки → Конфиденциальность и безопасность).
-5. Run на iPhone. Для живого API из debug: `flutter run --dart-define=KARMIN_LIVE_AUTH=true`.
-6. Доверить сертификат: Настройки → Основные → VPN и управление устройством.
-7. На 8-й день — Run / sideload снова.
+1. GitHub → Actions → **iOS unsigned IPA** → Run workflow → скачать `Karmin-unsigned.ipa` (или взять файл из `dist\`).
+2. Установить Sideloadly, подключить iPhone по USB, Trust This Computer.
+3. Включить **Режим разработчика**.
+4. Sideloadly: IPA + Apple ID, пройти 2FA, начать установку.
+5. Доверить сертификат (VPN и управление устройством), открыть **Kármin**. На 8-й день — Sideloadly снова. Лимит **3 приложения**.
 
-### Путь B — без Mac: Actions + Sideloadly
+### По желанию — Mac + Xcode
 
-1. Запушить `ios/` и `.github/workflows/ios.yml` (пока файлы только в рабочей копии).
-2. GitHub → Actions → **iOS unsigned IPA** → Run workflow → скачать `Karmin-unsigned.ipa`.
-3. [Sideloadly](https://sideloadly.io/) на Windows: IPA + Apple ID + USB. AltStore / SideStore тоже могут поставить IPA, но им всё равно нужен файл и действуют те же 7 дней / 3 приложения.
+Сначала `flutter pub get` на маке, затем `ios/Runner.xcworkspace`, Personal Team, Developer Mode, Run. «Вечная загрузка» часто бывает экраном boot в приложении (Keychain / Face ID), а не самим Xcode.
 
-TestFlight — только если потом оплатите программу Apple. Для проверки на iPhone это не единственный и не обязательный путь.
-
-### Блокер этой среды
-
-Собрать IPA здесь нельзя. После пуша workflow — собрать на GitHub; либо взять Mac для пути A.
+TestFlight — только если потом оплатите программу Apple.

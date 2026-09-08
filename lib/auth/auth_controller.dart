@@ -25,6 +25,7 @@ class AuthController extends StateNotifier<AuthState> {
     required bool usingDebugAuth,
     bool hydrateOnStart = true,
     this.otpResendCooldown = const Duration(seconds: 30),
+    this.hydrateTimeout = const Duration(seconds: 5),
     DateTime Function()? clock,
   })  : _store = store,
         _prefs = prefs,
@@ -46,6 +47,7 @@ class AuthController extends StateNotifier<AuthState> {
   final LocalAuthProbe _localAuth;
   final DateTime Function() _now;
   final Duration otpResendCooldown;
+  final Duration hydrateTimeout;
 
   String? _pendingUser;
   String? _pendingPassword;
@@ -57,20 +59,30 @@ class AuthController extends StateNotifier<AuthState> {
   static const maxPinAttempts = 5;
 
   Future<void> hydrate() async {
-    final disclaimer = await _prefs.getDisclaimerAccepted();
-    final code = await _store.read(SecureStorageKeys.neptunCode);
-    final password = await _store.read(SecureStorageKeys.neptunPassword);
-    final pinHash = await _store.read(SecureStorageKeys.pinHash);
-    final bioFlag = await _store.read(SecureStorageKeys.bioEnabled);
-    var bioAvailable = false;
-    try {
-      bioAvailable = await _localAuth.isBiometricAvailable();
-    } catch (_) {
-      bioAvailable = false;
+    final deadline = DateTime.now().add(hydrateTimeout);
+
+    Future<T> timed<T>(Future<T> future, T fallback) async {
+      final remaining = deadline.difference(DateTime.now());
+      if (remaining <= Duration.zero) {
+        return fallback;
+      }
+      try {
+        return await future.timeout(remaining);
+      } catch (_) {
+        return fallback;
+      }
     }
 
-    final hasCredentials = (code?.isNotEmpty ?? false) &&
-        (password?.isNotEmpty ?? false);
+    final disclaimer = await timed(_prefs.getDisclaimerAccepted(), false);
+    final code = await timed(_store.read(SecureStorageKeys.neptunCode), null);
+    final password =
+        await timed(_store.read(SecureStorageKeys.neptunPassword), null);
+    final pinHash = await timed(_store.read(SecureStorageKeys.pinHash), null);
+    final bioFlag = await timed(_store.read(SecureStorageKeys.bioEnabled), null);
+    final bioAvailable = await timed(_localAuth.isBiometricAvailable(), false);
+
+    final hasCredentials =
+        (code?.isNotEmpty ?? false) && (password?.isNotEmpty ?? false);
     final hasPin = pinHash != null && pinHash.isNotEmpty;
 
     state = state.copyWith(

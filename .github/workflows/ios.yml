@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   ios:
@@ -24,6 +25,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.47.2'
           channel: stable
           cache: true
 
@@ -31,6 +33,9 @@ jobs:
         run: flutter pub get
 
       - name: Build iOS (unsigned)
+        env:
+          CODE_SIGNING_ALLOWED: NO
+          CODE_SIGNING_REQUIRED: NO
         run: >
           flutter build ios --release --no-codesign
           --dart-define=KARMIN_LIVE_AUTH=true
