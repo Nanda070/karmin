@@ -138,6 +138,61 @@ void main() {
     expect(store.data, isEmpty);
   });
 
+  test('sign out resets NeptunAuthApi 2FA session state', () async {
+    final auth = _ResetTrackingAuth();
+    final controller = AuthController(
+      store: MemorySecureStore(),
+      prefs: MemoryPrefsStore(),
+      authApi: auth,
+      client: NeptunClient(),
+      localAuth: LocalAuthProbe(),
+      usingDebugAuth: true,
+      hydrateOnStart: false,
+    );
+
+    await controller.login(userName: 'abc123', password: 'secret', lcid: 1033);
+    await controller.submitOtp(otp: '333333', lcid: 1033);
+    expect(auth.resetCalls, 0);
+    await controller.signOut();
+    expect(auth.resetCalls, 1);
+  });
+
+  test('401 re-login then OTP keeps pending credentials path', () async {
+    final store = MemorySecureStore();
+    final client = NeptunClient();
+    var passwords = 0;
+    var otps = 0;
+    final controller = AuthController(
+      store: store,
+      prefs: MemoryPrefsStore(),
+      authApi: _CountingAuth(
+        onPassword: () => passwords += 1,
+        onOtp: () => otps += 1,
+      ),
+      client: client,
+      localAuth: LocalAuthProbe(),
+      usingDebugAuth: true,
+      hydrateOnStart: false,
+    );
+
+    await controller.acceptDisclaimer();
+    await controller.login(userName: 'abc123', password: 'secret', lcid: 1033);
+    await controller.submitOtp(otp: '444444', lcid: 1033);
+    await controller.setPin('654321', enableBio: false);
+    expect(client.hasJwt, isTrue);
+
+    client.clearSession();
+    controller.onUnauthorized();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(controller.state.neptunStep, NeptunAuthStep.needsOtp);
+    expect(passwords, greaterThanOrEqualTo(2));
+
+    await controller.submitOtp(otp: '777777', lcid: 1033);
+    expect(otps, 2);
+    expect(client.hasJwt, isTrue);
+    expect(controller.state.neptunStep, NeptunAuthStep.authenticated);
+  });
+
   test('401 replay asks for OTP again', () async {
     final store = MemorySecureStore();
     final client = NeptunClient();
@@ -264,9 +319,10 @@ void main() {
 }
 
 class _CountingAuth implements NeptunAuthApi {
-  _CountingAuth({this.onPassword});
+  _CountingAuth({this.onPassword, this.onOtp});
 
   final void Function()? onPassword;
+  final void Function()? onOtp;
 
   @override
   Future<AuthTicket> submitPassword({
@@ -275,6 +331,50 @@ class _CountingAuth implements NeptunAuthApi {
     required int lcid,
   }) async {
     onPassword?.call();
+    return const AuthTicket(step: NeptunAuthStep.needsOtp);
+  }
+
+  @override
+  Future<AuthTicket> submitOtp({
+    required String userName,
+    required String password,
+    required int lcid,
+    required String otp,
+  }) async {
+    onOtp?.call();
+    return AuthTicket(
+      step: NeptunAuthStep.authenticated,
+      accessToken: 'debug-jwt',
+      neptunCode: userName.toUpperCase(),
+    );
+  }
+
+  @override
+  Future<AuthTicket> resendEmailCode({
+    required String userName,
+    required String password,
+    required int lcid,
+  }) {
+    return submitPassword(
+      userName: userName,
+      password: password,
+      lcid: lcid,
+    );
+  }
+
+  @override
+  void reset() {}
+}
+
+class _ResetTrackingAuth implements NeptunAuthApi {
+  var resetCalls = 0;
+
+  @override
+  Future<AuthTicket> submitPassword({
+    required String userName,
+    required String password,
+    required int lcid,
+  }) async {
     return const AuthTicket(step: NeptunAuthStep.needsOtp);
   }
 
@@ -303,6 +403,11 @@ class _CountingAuth implements NeptunAuthApi {
       password: password,
       lcid: lcid,
     );
+  }
+
+  @override
+  void reset() {
+    resetCalls += 1;
   }
 }
 

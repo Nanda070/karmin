@@ -10,8 +10,9 @@ JWT: RAM only, `Authorization: Bearer`. 401 on a non-auth path drops the JWT and
 
 | Dart method | Path | Stage | Write? | Notes |
 |---|---|---|---|---|
-| `submitPassword` | JSON `POST /Account/api/Account/Authenticate` `{ userName, password, captcha, captchaIdentifier, token:"", LCID }` then MVC `POST /Account/Login` | 1 | yes | HTTP 202 / `isTwoFactorRequired` → authenticator Verification. **No** auto `GetEmail` on password. Empty 400 is **not** invalid credentials. |
-| `submitOtp` | same Authenticate URL with `token=<bare 6 digits>` (or MVC `RequestTOTP`+`TOTPCode`) | 1 | yes | Never compose email prefix onto authenticator codes. Never silent. |
+| `submitPassword` | JSON `POST /Account/api/Account/Authenticate` `{ userName, password, captcha, captchaIdentifier, token:"", LCID }` then MVC `POST /Account/Login` | 1 | yes | HTTP 202 / `isTwoFactorRequired` → authenticator Verification; sets JSON 2FA pending (kept across re-login until JWT / MVC / `reset`). **No** auto `GetEmail` on password. Empty 400 is **not** invalid credentials. |
+| `submitOtp` | same Authenticate URL with `token=<bare 6 digits>` (or MVC `RequestTOTP`+`TOTPCode`) | 1 | yes | Prefer JSON while pending or no portal session. Never compose email prefix onto authenticator codes. Never silent. |
+| `reset` | clears JSON 2FA pending + portal cookies | — | — | Called from `AuthController.signOut`. |
 | `resendEmailCode` | **`POST /Account/Login2FA` + `GetEmail=true`** (or Login + GetEmail) | 1–2 | yes | Optional email path only. Visible error if no prefix. |
 | `getCalendarEvents` | `GET Calendar/GetCalendarEvents` | 2 | no | Query: `startDate` / `endDate` plus display flags. Parser best-effort. Live ELTE keys unconfirmed. |
 | `getDashboardAverages` | `GET Dashboard/GetAverages` | 2 | no | GPA chip; optional fields |

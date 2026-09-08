@@ -48,6 +48,9 @@ class _EmailOtpAuth implements NeptunAuthApi {
   }) {
     return submitPassword(userName: userName, password: password, lcid: lcid);
   }
+
+  @override
+  void reset() {}
 }
 
 void main() {

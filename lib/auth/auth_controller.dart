@@ -400,6 +400,7 @@ class AuthController extends StateNotifier<AuthState> {
   Future<void> signOut() async {
     await _store.clearCredentials();
     _client.clearSession();
+    _authApi.reset();
     _pendingUser = null;
     _pendingPassword = null;
     _pinLockouts = 0;

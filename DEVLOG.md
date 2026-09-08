@@ -32,12 +32,13 @@
 
 - Primary: JSON Authenticate (`/Account/api/…`) + authenticator `token` (как Neptun-Mobile-fork)
 - **Fix «Neptun rejected code» (6 causes):** (1) stale email `_otpPrefix` cleared when session is TOTP; (2) relative Authenticate auth/unavailable errors fall through to MVC portal before final OTP throw; (3) empty digits → immediate `NeptunOtpException`; (4) OTP field length limit always 8; (5) always GET Login2FA before verify POST (fresh antiforgery); (6) `_sessionSupportsTotp` also matches authcode / verificationcode / authenticator in HTML
+- **Fix JSON 2FA session state:** `_jsonTwoFactorPending` больше не сбрасывается в начале каждого `submitPassword` (unlock / 401 re-login / failed re-auth не убивают fork `token` path). Флаг = true после JSON 202; false после JWT / MVC takeover / `NeptunAuthApi.reset()`. `signOut` вызывает `reset()` (portal cookies + pending)
 - Authenticator OTP больше не склеивается с email-префиксом `732-`; JSON `token` = только 6 цифр
 - MVC fallback после пароля **не** шлёт `GetEmail` сам (fork); письмо только по «Send code again». TOTP игнорирует загрязнённый `RequestEmailCode` phase
 - Fallback MVC verify: `RequestTOTP` + `TOTPCode`; email только после явного `GetEmail=true` с `CodePrefix`
 - Пустой HTTP 400 на `ujhallgato` больше не считается «неверным паролем»
 - Authenticator снова включён (раньше был parked ради отладки email)
-- Живой ELTE 2FA на реальном аккаунте проверяется новой IPA после этого фикса
+- Живой ELTE 2FA на устройстве: новая IPA (`0.1.0+2`); если сайт Neptun на maintenance — проверка подождёт
 
 ### API
 

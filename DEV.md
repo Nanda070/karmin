@@ -110,13 +110,15 @@ PIN / biometrics are a **local vault** (`unlocked`, `hasPin`). They are **not** 
 
 | Type | Role |
 |---|---|
-| `NeptunAuthApi` | `submitPassword` / `submitOtp` / `resendEmailCode` |
+| `NeptunAuthApi` | `submitPassword` / `submitOtp` / `resendEmailCode` / `reset` |
 | `DebugNeptunAuth` | Any non-empty code+password → `needsOtp`; 6–16 digit OTP → fake JWT `debug-jwt` |
-| `LiveNeptunAuth` | JSON Authenticate, then MVC portal |
+| `LiveNeptunAuth` | JSON Authenticate, then MVC portal; `_jsonTwoFactorPending` until JWT / MVC / `reset` |
 | `EltePortalLogin` | Cookie jar + HTML form scrape + Login2FA |
-| `AuthController` | Hydrate, login, OTP, resend, PIN, bio, 401, lifecycle lock |
+| `AuthController` | Hydrate, login, OTP, resend, PIN, bio, 401, lifecycle lock; `signOut` → `reset()` |
 
 **2FA every fresh Neptun session.** Stored password never finishes login alone.
+
+**JSON pending flag:** set on HTTP 202 / `needsOtp` from fork Authenticate; **not** cleared at the start of `submitPassword` (so unlock / 401 re-login / failed re-auth still POSTs `token` with userName+password). Cleared on JWT, successful MVC takeover, or `reset()` / `clear()` (sign-out).
 
 **Resend** = optional Login2FA `GetEmail=true` POST (or Login + GetEmail if the 2FA session died). Hidden when the channel is authenticator. 30s cooldown.
 

@@ -371,4 +371,165 @@ void main() {
     expect(jar['.Potlap.Session'], 'folded');
     expect(jar.containsKey('.AspNetCore.Mvc.CookieTempDataProvider'), isFalse);
   });
+
+  test('JSON 202 sets pending; failed re-login keeps pending for token OTP',
+      () async {
+    var passwordAttempts = 0;
+    var otpTokenPosts = 0;
+    final adapter = ScriptedAdapter((options) {
+      final url = options.uri.toString();
+      if (options.method == 'POST' && url.contains('Account/Authenticate')) {
+        final data = options.data;
+        final map = data is Map
+            ? data.map((k, v) => MapEntry('$k', v))
+            : <String, dynamic>{};
+        final token = '${map['token'] ?? ''}';
+        if (token.isNotEmpty) {
+          otpTokenPosts += 1;
+          expect(token, '123456');
+          return jsonBody(200, {
+            'data': {'accessToken': 'jwt-after-relogin'},
+          });
+        }
+        passwordAttempts += 1;
+        if (passwordAttempts == 1) {
+          return jsonBody(202, {'isTwoFactorRequired': true});
+        }
+        // Unlock / 401 re-login dies before a new 202.
+        throw DioException(
+          requestOptions: options,
+          type: DioExceptionType.connectionTimeout,
+        );
+      }
+      if (url.contains('Account/Login')) {
+        throw DioException(
+          requestOptions: options,
+          type: DioExceptionType.connectionTimeout,
+        );
+      }
+      fail('unexpected ${options.method} $url');
+    });
+
+    final auth = LiveNeptunAuth(clientWith(adapter));
+    final first = await auth.submitPassword(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+    );
+    expect(first.step, NeptunAuthStep.needsOtp);
+    expect(auth.jsonTwoFactorPending, isTrue);
+
+    await expectLater(
+      auth.submitPassword(
+        userName: 'abc123',
+        password: 'secret',
+        lcid: 1033,
+      ),
+      throwsA(isA<NeptunException>()),
+    );
+    // Must not clear pending when re-login dies after portal.clear().
+    expect(auth.jsonTwoFactorPending, isTrue);
+
+    final done = await auth.submitOtp(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+      otp: '123456',
+    );
+    expect(otpTokenPosts, 1);
+    expect(done.accessToken, 'jwt-after-relogin');
+    expect(auth.jsonTwoFactorPending, isFalse);
+  });
+
+  test('JSON 202 then re-login 202 keeps pending; reset clears it', () async {
+    final adapter = ScriptedAdapter((options) {
+      final url = options.uri.toString();
+      if (options.method == 'POST' && url.contains('Account/Authenticate')) {
+        final data = options.data;
+        final map = data is Map
+            ? data.map((k, v) => MapEntry('$k', v))
+            : <String, dynamic>{};
+        if ('${map['token'] ?? ''}'.isNotEmpty) {
+          return jsonBody(200, {
+            'data': {'accessToken': 'jwt'},
+          });
+        }
+        return jsonBody(202, {'isTwoFactorRequired': true});
+      }
+      return eltePortalScript()(options);
+    });
+
+    final auth = LiveNeptunAuth(clientWith(adapter));
+    await auth.submitPassword(
+      userName: 'abc',
+      password: 'secret',
+      lcid: 1033,
+    );
+    expect(auth.jsonTwoFactorPending, isTrue);
+
+    await auth.submitPassword(
+      userName: 'abc',
+      password: 'secret',
+      lcid: 1033,
+    );
+    expect(auth.jsonTwoFactorPending, isTrue);
+
+    auth.reset();
+    expect(auth.jsonTwoFactorPending, isFalse);
+
+    auth.clear();
+    expect(auth.jsonTwoFactorPending, isFalse);
+  });
+
+  test('JWT password clears pending flag', () async {
+    var phase = 0;
+    final adapter = ScriptedAdapter((options) {
+      if (!options.uri.toString().contains('Account/Authenticate')) {
+        fail('unexpected ${options.uri}');
+      }
+      phase += 1;
+      if (phase == 1) {
+        return jsonBody(202, {'isTwoFactorRequired': true});
+      }
+      return jsonBody(200, {
+        'data': {'accessToken': 'direct-jwt'},
+      });
+    });
+    final auth = LiveNeptunAuth(clientWith(adapter));
+    await auth.submitPassword(userName: 'a', password: 'b', lcid: 1033);
+    expect(auth.jsonTwoFactorPending, isTrue);
+
+    final ticket = await auth.submitPassword(
+      userName: 'a',
+      password: 'b',
+      lcid: 1033,
+    );
+    expect(ticket.hasJwt, isTrue);
+    expect(auth.jsonTwoFactorPending, isFalse);
+  });
+
+  test('MVC fallback clears JSON pending after portal owns 2FA', () async {
+    var jsonCalls = 0;
+    final adapter = ScriptedAdapter((options) {
+      if (options.uri.toString().contains('Account/Authenticate')) {
+        jsonCalls += 1;
+        if (jsonCalls == 1) {
+          return jsonBody(202, {'isTwoFactorRequired': true});
+        }
+        return jsonBody(400, {});
+      }
+      return eltePortalScript()(options);
+    });
+    final auth = LiveNeptunAuth(clientWith(adapter));
+    await auth.submitPassword(userName: 'a', password: 'b', lcid: 1033);
+    expect(auth.jsonTwoFactorPending, isTrue);
+
+    final mvc = await auth.submitPassword(
+      userName: 'a',
+      password: 'b',
+      lcid: 1033,
+    );
+    expect(mvc.step, NeptunAuthStep.needsOtp);
+    expect(auth.jsonTwoFactorPending, isFalse);
+  });
 }

@@ -28,6 +28,9 @@ abstract interface class NeptunAuthApi {
     required String password,
     required int lcid,
   });
+
+  /// Drops JSON 2FA pending + portal cookies. Call on sign-out / account switch.
+  void reset();
 }
 
 bool useDebugAuth({
@@ -301,6 +304,9 @@ class DebugNeptunAuth implements NeptunAuthApi {
       lcid: lcid,
     );
   }
+
+  @override
+  void reset() {}
 }
 
 /// Live login aligned with [zoligamer/Neptun-Mobile-fork]:
@@ -313,6 +319,8 @@ class LiveNeptunAuth implements NeptunAuthApi {
   final EltePortalLogin _portal;
 
   /// Set when password 2FA came from JSON Authenticate (fork path).
+  /// Cleared on JWT success, MVC takeover, or [reset] / [clear] — not at the
+  /// start of every [submitPassword] (unlock / 401 re-login must keep context).
   var _jsonTwoFactorPending = false;
 
   /// Fork ELTE institute URL → Authenticate under `/Account/api/…`.
@@ -326,6 +334,18 @@ class LiveNeptunAuth implements NeptunAuthApi {
     'Referer': '${EltePortalLogin.origin}/Account/Login',
   };
 
+  @visibleForTesting
+  bool get jsonTwoFactorPending => _jsonTwoFactorPending;
+
+  /// Alias for [reset].
+  void clear() => reset();
+
+  @override
+  void reset() {
+    _jsonTwoFactorPending = false;
+    _portal.clear();
+  }
+
   @override
   Future<AuthTicket> submitPassword({
     required String userName,
@@ -333,8 +353,10 @@ class LiveNeptunAuth implements NeptunAuthApi {
     required int lcid,
   }) async {
     final code = normalizeNeptunCode(userName);
+    // Fresh password attempt: drop MVC cookies. Do **not** clear
+    // `_jsonTwoFactorPending` here — a failed / in-flight re-login during OTP
+    // must not make [submitOtp] abandon the fork Authenticate `token` path.
     _portal.clear();
-    _jsonTwoFactorPending = false;
 
     // 1) Fork modern JSON (primary).
     try {
@@ -347,6 +369,7 @@ class LiveNeptunAuth implements NeptunAuthApi {
         ),
       );
       if (ticket.step == NeptunAuthStep.authenticated) {
+        _jsonTwoFactorPending = false;
         return ticket;
       }
       if (ticket.step == NeptunAuthStep.needsOtp) {
@@ -378,6 +401,7 @@ class LiveNeptunAuth implements NeptunAuthApi {
         ),
       );
       if (ticket.step == NeptunAuthStep.authenticated) {
+        _jsonTwoFactorPending = false;
         return ticket;
       }
       if (ticket.step == NeptunAuthStep.needsOtp) {
@@ -399,11 +423,15 @@ class LiveNeptunAuth implements NeptunAuthApi {
     }
 
     // 3) ASP.NET MVC Login2FA — prefer authenticator; email is optional (resend).
-    return _portal.submitPassword(
+    // Only clear JSON pending after MVC owns the 2FA session (preserve flag if
+    // portal throws so OTP can still retry fork Authenticate).
+    final portalTicket = await _portal.submitPassword(
       userName: code,
       password: password,
       lcid: lcid,
     );
+    _jsonTwoFactorPending = false;
+    return portalTicket;
   }
 
   @override
@@ -433,6 +461,7 @@ class LiveNeptunAuth implements NeptunAuthApi {
             await _authenticateAbsolute(forkAuthenticateUrl, payload);
         if (ticket.step == NeptunAuthStep.authenticated) {
           _jsonTwoFactorPending = false;
+          _portal.clear();
         }
         return ticket;
       } on NeptunOtpException {
@@ -449,6 +478,7 @@ class LiveNeptunAuth implements NeptunAuthApi {
         final ticket = await _authenticateRelative(payload);
         if (ticket.step == NeptunAuthStep.authenticated) {
           _jsonTwoFactorPending = false;
+          _portal.clear();
         }
         return ticket;
       } on NeptunAuthException {

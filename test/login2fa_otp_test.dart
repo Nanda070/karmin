@@ -521,4 +521,7 @@ class _CapturingAuth implements NeptunAuthApi {
   }) {
     return submitPassword(userName: userName, password: password, lcid: lcid);
   }
+
+  @override
+  void reset() {}
 }
