@@ -119,7 +119,7 @@ Web is UI preview only. **iOS on a physical iPhone is the primary test target** 
         │  Authorization: Bearer <jwt in RAM>
         │  401 → stored password + interactive OTP (never silent)
         ▼
-https://neptun.elte.hu/ujhallgato/api/
+https://neptun.elte.hu/Account/api/
 ```
 
 ### 3.1 Rules
