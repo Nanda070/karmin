@@ -48,13 +48,16 @@ flutter pub get
 flutter run
 ```
 
-Targets: Android, iOS, and web (web is for UI preview; v1 distribution is mobile sideload / TestFlight).
+**iOS on a physical iPhone is the primary test target.** Android on this Windows machine is emulator / CI only. Web is UI preview (Chrome CORS blocks live Neptun). You cannot compile an IPA on Windows — see [docs/IOS_SIDELLOAD.md](docs/IOS_SIDELLOAD.md) (free Apple ID + Xcode Personal Team, or GitHub Actions unsigned IPA + Sideloadly). Bundle ID: `online.cheterin.karmin`.
+
+Live ELTE on a device: `flutter run --dart-define=KARMIN_LIVE_AUTH=true` (or install the release IPA from Actions). Debug without that flag stays on the labeled mock.
 
 ### Docs
 
 | Doc | Purpose |
 |---|---|
 | [docs/PLAN.md](docs/PLAN.md) | Full product & stage plan |
+| [docs/IOS_SIDELLOAD.md](docs/IOS_SIDELLOAD.md) | Free iPhone install (no $99 account) |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers and cache |
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model, keystore |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | On-device processing |
@@ -114,6 +117,8 @@ Flutter / Dart · `dio` · Riverpod · go_router · secure storage · local_auth
 flutter pub get
 flutter run
 ```
+
+**Основной тест — iPhone**, не Android. На Windows IPA не собирается. Бесплатная установка: [docs/IOS_SIDELLOAD.md](docs/IOS_SIDELLOAD.md) (`online.cheterin.karmin`). Android здесь — эмулятор / CI. Live Neptun: `--dart-define=KARMIN_LIVE_AUTH=true` или release IPA.
 
 ### Лицензия и правовые тексты
 

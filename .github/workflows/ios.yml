@@ -1,0 +1,55 @@
+# Free public-repo path to an unsigned iOS IPA.
+# This Windows checkout cannot compile iOS. After this file is on GitHub:
+# Actions → “iOS unsigned IPA” → Run workflow → download artifact.
+# Install with Sideloadly / AltStore / SideStore (see docs/IOS_SIDELLOAD.md).
+# Release builds always talk to live Neptun; no secrets in this workflow.
+
+name: iOS unsigned IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    name: Build unsigned iOS IPA
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS (unsigned)
+        run: >
+          flutter build ios --release --no-codesign
+          --dart-define=KARMIN_LIVE_AUTH=true
+
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          APP="build/ios/iphoneos/Runner.app"
+          test -d "$APP"
+          rm -rf Payload Karmin-unsigned.ipa
+          mkdir Payload
+          cp -R "$APP" Payload/Runner.app
+          zip -qry Karmin-unsigned.ipa Payload
+          ls -lh Karmin-unsigned.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: karmin-ios-unsigned
+          path: Karmin-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 7

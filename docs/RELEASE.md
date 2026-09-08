@@ -1,8 +1,10 @@
 # Release (stub — Stage 0)
 
-- Version: `pubspec` `0.1.0+1` — bump build number every APK.
-- Distribution v1: invite-only Android sideload + TestFlight internal. No public stores.
-- Signing: personal keystore **not in git**. `android/key.properties` is gitignored.
-- No auto-update server. Testers install a new build.
+- Version: `pubspec` `0.1.0+1` — bump build number every IPA / APK.
+- **Primary tester device: iPhone.** iOS bundle ID: `online.cheterin.karmin`. Display name: Kármin.
+- Free v1 path (no $99 Apple program): Mac + Xcode Personal Team, **or** GitHub Actions unsigned IPA + Sideloadly / AltStore / SideStore. Step-by-step: [IOS_SIDELLOAD.md](IOS_SIDELLOAD.md). Re-sign every **7 days** on a free Apple ID.
+- Windows cannot compile an IPA. Android on this machine is emulator / CI.
+- TestFlight is **optional later** (paid Apple Developer Program). It is not required to test on a physical iPhone. No public App Store / Play Store in v1.
+- Signing secrets **not in git**. No auto-update server. Testers install a new build.
 
-Smoke checklist lives in [PLAN.md](PLAN.md) §13 (Stage 4).
+Smoke checklist: [SMOKE.md](SMOKE.md) and [PLAN.md](PLAN.md) §13 (Stage 4).

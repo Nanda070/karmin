@@ -24,8 +24,9 @@ PIN plaintext is never stored. JWT is never persisted. TOTP secrets and email OT
 ## Platform
 
 - Android: `android:allowBackup="false"`.
-- iOS: Keychain `first_unlock_this_device`, `synchronizable: false`.
+- iOS: Keychain `first_unlock_this_device`, `synchronizable: false`. Bundle ID `online.cheterin.karmin`. Face ID usage string in Info.plist (`local_auth`). ATS stays on (Neptun is HTTPS).
 - FLAG_SECURE on Login / Verification / PIN / Unlock (best-effort MethodChannel; no-ops on web).
+- Free iOS install / 7-day Personal Team: [IOS_SIDELLOAD.md](IOS_SIDELLOAD.md).
 
 ## Reporting
 

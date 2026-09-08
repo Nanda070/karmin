@@ -6,7 +6,8 @@
 - Accessibility: Semantics on tabs, PIN keypad, OTP, password visibility; 48pt icon tap targets; contrast-aware carmine text
 - Full light theme pass: `KarminPalette` — cream paper `#F4EFE6`, not Material white. Settings System / Dark / Light restyles all screens. Dark remains default
 - Privacy / Disclaimer wording frozen; `docs/SMOKE.md` manual checklist
-- Figma light frames, Android Gradle, local notifications, TestFlight APK: **not** in this slice
+- iOS Xcode project repaired (`ios/`, bundle `online.cheterin.karmin`); free sideload guide + GitHub Actions unsigned IPA (`docs/IOS_SIDELLOAD.md`)
+- Figma light frames, Android-on-Windows APK, local notifications, paid TestFlight: **not** in this slice
 
 ## Unreleased — Stage 3 Study + Inbox
 

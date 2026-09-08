@@ -1,6 +1,6 @@
 # Live smoke (manual)
 
-Run on a **device** with `KARMIN_LIVE_AUTH=true` (Chrome/web stays on the labeled debug mock because of CORS). Do not log passwords, OTP, or JWT.
+Run on a **physical iPhone** (primary). Debug: `KARMIN_LIVE_AUTH=true`. Release IPA is always live. Chrome/web stays on the labeled debug mock (CORS). Do not log passwords, OTP, or JWT. Free install: [IOS_SIDELLOAD.md](IOS_SIDELLOAD.md).
 
 1. Disclaimer → Login → 2FA → PIN → Today  
 2. Kill app → biometric or PIN → 2FA → Today from cache  
