@@ -135,12 +135,18 @@ Lifecycle: pause/hidden records a timestamp; resume always `lockLocally()` if a 
 - Base URL: `https://neptun.elte.hu/ujhallgato/api/`
 - Connect 15s, receive 30s (JSON Authenticate overrides to 8s).
 - `validateStatus`: 2xx only on the default client; auth/MVC use `< 500` and parse bodies.
+- **Do not** default `Content-Type: application/json`. Dio 5 GET `/Account/Login` with a null content-type header throws `ArgumentError`; login used to map that crash to “Can't reach Neptun.” JSON POSTs still get `application/json` from Map bodies. `applyEltePortalBrowserHeaders` strips Content-Type on portal GETs.
 - **onRequest:** if RAM token set, `Authorization: Bearer <token>`.
 - **onError:** HTTP 401 and path does not contain `Account/Authenticate` → `clearSession()` + `onUnauthorized`. No retry interceptor.
 - `getData` / `postData` unwrap `{ data: … }` envelopes.
 - `lcid`: UI `hu` → 1038; otherwise 1033. Russian UI has **no** Neptun `lcid` — keep 1033.
 
-Typed exceptions live in `lib/api/exceptions.dart` (`NeptunAuthException`, `NeptunNetworkException` “Can't reach Neptun.”, `NeptunUnavailableException`, `NeptunOtpException`, `NeptunSessionExpiredException`, …). Do not log request bodies.
+Typed exceptions live in `lib/api/exceptions.dart`. `mapDioException` / `isDioTransportFailure`:
+
+- **Can't reach Neptun** (`NeptunNetworkException`) = **no HTTP response** (timeout, DNS, TLS, connection reset). Never for an `ArgumentError` or any ELTE status.
+- HTTP from ELTE → credentials (`NeptunAuthException`), captcha, OTP (`NeptunOtpException`), lockout, or **Neptun request failed** (`NeptunApiException`). Empty 400 on JSON Authenticate is still `NeptunUnavailableException`, not wrong password.
+
+Do not log request bodies.
 
 MVC success currently sets RAM token to the placeholder `elte-portal-session` (cookie session, not a JSON JWT). Portal cookies stay inside `EltePortalLogin`, not on subsequent JSON GETs.
 

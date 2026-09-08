@@ -25,6 +25,7 @@
 - Debug — помеченный mock (любой логин и любой 6-значный код)
 - Live: `KARMIN_LIVE_AUTH` на устройстве; Chrome режет Neptun из‑за CORS
 - Если Keychain или Face ID зависают при старте — выходим из boot, а не крутим вечно
+- iOS логин больше не показывает «Can't reach Neptun» из‑за падения Dio на Content-Type; эта строка только timeout / DNS / TLS
 
 ### 2FA
 
@@ -40,7 +41,7 @@
 - JSON-кэш на устройстве (Isar отложен)
 - Запись на экзамен — двойное подтверждение; тело запроса на живом ELTE не проверено
 - Входящие только чтение + пометить прочитанным; профиль из `UserInfo`, иначе «Student» и код
-- «Can't reach Neptun» — сетевая ошибка в коде; до живого устройства это не закрыто
+- «Can't reach Neptun» — только если нет HTTP-ответа (timeout / DNS / TLS); ответы ELTE — credentials / captcha / OTP / request failed
 
 ### iOS
 

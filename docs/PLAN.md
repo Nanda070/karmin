@@ -209,7 +209,8 @@ Session API states (Stage 2 plugs live payloads into the same enum):
 | Condition | UX |
 |---|---|
 | Bad password | “Neptun rejected these credentials.” |
-| Network | “Can’t reach Neptun.” Cache still used after unlock if already logged in before. |
+| No HTTP (timeout / DNS / TLS) | “Can’t reach Neptun.” Never for ELTE HTTP or Dio header crashes (GET `/Account/Login` must not send JSON `Content-Type`). Cache still used after unlock if already logged in before. |
+| ELTE HTTP (other) | Credentials / captcha / OTP / “Neptun request failed.” — not the network string. |
 | HTTP 202 + captcha | “Neptun wants a captcha. Sign in once on the website, then retry.” Button: open `https://neptun.elte.hu/` |
 | HTTP 202 + 2FA | **Happy path**, not an error: Verification screen. Channel hint: email / authenticator / unknown. **Resend = re-POST `Account/Authenticate` with stored code+password** (no OTP `token`). Neptun’s email OTP often never arrives; a fresh login issues a new challenge / mail. There is no verified dedicated “resend OTP” endpoint. Show the control on Verification even when the channel is unknown (authenticator users can ignore it). Cooldown 30s. |
 | Bad OTP | “Neptun rejected this code.” Stay on Verification. |

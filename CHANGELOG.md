@@ -2,6 +2,7 @@
 
 ## Unreleased — Stage 4 harden (polish)
 
+- Login: “Can't reach Neptun.” only when there is no HTTP response (timeout / DNS / TLS). Dio GET `/Account/Login` must not send JSON `Content-Type` (Dio 5 `ArgumentError`). ELTE HTTP maps to credentials / captcha / OTP / request failed
 - Attribution: owner / founder **Nanda**, company **Cheterin Group**; contact Discord `nandak070`, Telegram `nanda070`, mail `turkapahf@gmail.com` (README, LICENSE, legal docs)
 - Shared empty / error / last-cached widgets on Today, Calendar, Study, Inbox, Auth (`KarminStatusBanner`, `KarminEmptyState`)
 - Accessibility: Semantics on tabs, PIN keypad, OTP, password visibility; 48pt icon tap targets; contrast-aware carmine text
