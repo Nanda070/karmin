@@ -9,9 +9,11 @@ import 'package:karmin/app/widgets/karmin_card.dart';
 import 'package:karmin/app/widgets/karmin_list_row.dart';
 import 'package:karmin/app/widgets/karmin_scaffold.dart';
 import 'package:karmin/auth/providers.dart';
+import 'package:karmin/data/providers.dart';
+import 'package:karmin/data/student_repository.dart';
 import 'package:karmin/l10n/app_localizations.dart';
 
-/// Settings shell with Stage 0 demo profile (matches Figma).
+/// Settings with profile from the student snapshot (debug fixtures or UserInfo).
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
@@ -28,7 +30,19 @@ class SettingsPage extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final auth = ref.watch(authControllerProvider);
     final themeMode = ref.watch(themeModeControllerProvider);
-    final code = auth.neptunCode ?? l10n.demoProfileCode;
+    final snapshot =
+        ref.watch(studentSnapshotProvider).valueOrNull ?? StudentSnapshot.empty();
+    final profile = snapshot.profile;
+    final code = profile.neptunCode ?? auth.neptunCode ?? l10n.demoProfileCode;
+    final name = (profile.displayName != null && profile.displayName!.isNotEmpty)
+        ? profile.displayName!
+        : l10n.profilePlaceholder;
+    final training = (profile.training != null && profile.training!.isNotEmpty)
+        ? profile.training!
+        : l10n.profileSubtitle;
+    final initial = profile.initial(
+      fallback: code.isNotEmpty ? code[0].toUpperCase() : 'K',
+    );
 
     return KarminScaffold(
       body: ListView(
@@ -89,7 +103,7 @@ class SettingsPage extends ConsumerWidget {
                           ),
                         ),
                         child: Text(
-                          'A',
+                          initial,
                           style: KarminTypography.title(fontSize: 20),
                         ),
                       ),
@@ -99,7 +113,7 @@ class SettingsPage extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              l10n.demoProfileName,
+                              name,
                               style: KarminTypography.title(fontSize: 16),
                             ),
                             const SizedBox(height: 4),
@@ -112,7 +126,7 @@ class SettingsPage extends ConsumerWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              l10n.demoProfileProgram,
+                              training,
                               style: KarminTypography.body(
                                 fontSize: 12,
                                 color: KarminColors.muted,

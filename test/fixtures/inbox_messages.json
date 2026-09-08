@@ -1,0 +1,25 @@
+{
+  "items": [
+    {
+      "messageId": "msg-1",
+      "senderName": "Registrar",
+      "subject": "Exam period schedule",
+      "sendDate": "2026-09-08T14:02:00",
+      "isNew": true
+    },
+    {
+      "id": "msg-2",
+      "fromName": "Neptun",
+      "title": "New grade: Analysis II",
+      "date": "/Date(1757246400000)/",
+      "unread": true
+    },
+    {
+      "messageId": "msg-3",
+      "sender": "Instructor · Kovacs",
+      "subject": "Consultation on Thursday",
+      "sendDate": "2026-09-07T10:00:00",
+      "isNew": false
+    }
+  ]
+}

@@ -14,8 +14,10 @@ import 'package:karmin/auth/set_pin_page.dart';
 import 'package:karmin/auth/unlock_page.dart';
 import 'package:karmin/features/calendar/calendar_page.dart';
 import 'package:karmin/features/inbox/inbox_page.dart';
+import 'package:karmin/features/inbox/inbox_thread_page.dart';
 import 'package:karmin/features/settings/settings_page.dart';
 import 'package:karmin/features/study/study_page.dart';
+import 'package:karmin/features/study/subject_page.dart';
 import 'package:karmin/features/today/today_page.dart';
 import 'package:karmin/l10n/app_localizations.dart';
 
@@ -90,6 +92,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: '/study',
                 name: 'study',
                 builder: (context, state) => const StudyPage(),
+                routes: [
+                  GoRoute(
+                    path: ':subjectId',
+                    name: 'subject',
+                    builder: (context, state) {
+                      final id = Uri.decodeComponent(
+                        state.pathParameters['subjectId'] ?? '',
+                      );
+                      return SubjectPage(subjectId: id);
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -99,6 +113,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: '/inbox',
                 name: 'inbox',
                 builder: (context, state) => const InboxPage(),
+                routes: [
+                  GoRoute(
+                    path: ':messageId',
+                    name: 'inboxThread',
+                    builder: (context, state) {
+                      final id = Uri.decodeComponent(
+                        state.pathParameters['messageId'] ?? '',
+                      );
+                      return InboxThreadPage(messageId: id);
+                    },
+                  ),
+                ],
               ),
             ],
           ),

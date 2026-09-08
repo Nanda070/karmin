@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import 'package:karmin/api/dtos/json_util.dart';
 import 'package:karmin/api/exceptions.dart';
 
 /// Thin Dio client for `https://neptun.elte.hu/ujhallgato/api/`.
@@ -88,6 +89,19 @@ class NeptunClient {
     }
   }
 
+  /// POST and unwrap `{ data: ... }`. Uses Neptun's text when present.
+  Future<dynamic> postData(
+    String path, {
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      final response = await _dio.post<dynamic>(path, data: data);
+      return unwrap(response.data);
+    } on DioException catch (error) {
+      throw mapDioException(error, preferApiMessage: true);
+    }
+  }
+
   static dynamic unwrap(dynamic raw) {
     if (raw is Map) {
       final nested = raw['data'];
@@ -112,6 +126,7 @@ class NeptunClient {
 NeptunException mapDioException(
   DioException error, {
   bool treatingAsOtp = false,
+  bool preferApiMessage = false,
 }) {
   final status = error.response?.statusCode;
   if (error.type == DioExceptionType.connectionTimeout ||
@@ -126,6 +141,12 @@ NeptunException mapDioException(
   if (status == 403) {
     return const NeptunForbiddenException();
   }
+  if (preferApiMessage) {
+    final extracted = extractNeptunMessage(error.response?.data);
+    if (extracted != null) {
+      return NeptunApiException(extracted, statusCode: status);
+    }
+  }
   if (status == 400) {
     return treatingAsOtp
         ? const NeptunOtpException()
@@ -136,6 +157,10 @@ NeptunException mapDioException(
       'Neptun asked us to slow down.',
       statusCode: 429,
     );
+  }
+  final extracted = extractNeptunMessage(error.response?.data);
+  if (extracted != null) {
+    return NeptunApiException(extracted, statusCode: status);
   }
   return NeptunApiException(
     'Neptun request failed.',

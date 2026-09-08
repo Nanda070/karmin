@@ -1,21 +1,22 @@
 # Changelog
 
-## Unreleased — Stage 2 cached reads (partial)
+## Unreleased — Stage 3 Study + Inbox
+
+- Study binds live/debug subjects, grades, GPA, credits; subject push page
+- Exam signup: confirm sheet + `POST ExamRegistration/SignUpForExam` `{ examId }` (payload unproven on ELTE; debug mock is labeled)
+- Inbox live/debug list + thread + mark-read; Today unread chip stays in sync
+- Settings profile from `UserInfo` / training, else “Student” + Neptun code
+- Empty / error / last-cached + pull-to-refresh on Study and Inbox
+
+## Unreleased — Stage 2 cached reads
 
 - Live student reads: calendar, dashboard averages, credit progress, unread count
 - Today + Calendar bind to the snapshot (debug fixtures on web; live on mobile / `KARMIN_LIVE_AUTH`)
 - JSON stale-while-revalidate cache (Isar deferred)
 - Verification: **Send code again** re-POSTs stored Neptun code+password (30s cooldown, snackbar). Neptun email OTP is unreliable; this is the resend mechanism
 - 401 interceptor: drop JWT, no retry until OTP
-- Study + Inbox lists still demo
 
 ## Unreleased — Stage 1 Auth
-
-- Auth gates: Disclaimer → Login → Verification (2FA) → Set PIN → Today
-- Returning: Unlock (PIN / biometrics) then 2FA unless a JWT is still in RAM
-- Debug/mock login is labeled; live `Account/Authenticate` behind `KARMIN_LIVE_AUTH`
-- Settings: Sign out, Face ID toggle, Change PIN, ThemeMode (System / Dark / Light)
-- Light theme tokens planned; full visual pass is Stage 4. Dark remains default
 
 - Auth gates: Disclaimer → Login → Verification (2FA) → Set PIN → Today
 - Returning: Unlock (PIN / biometrics) then 2FA unless a JWT is still in RAM

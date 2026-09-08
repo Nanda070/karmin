@@ -16,7 +16,7 @@
 | `lib/auth/` | Session, disclaimer, login, OTP, PIN, unlock, lifecycle lock |
 | `lib/api/` | Dio client, `NeptunAuthApi`, `NeptunStudentApi`, DTOs, typed exceptions |
 | `lib/data/` | JSON cache + `StudentRepository` (Isar deferred) |
-| `lib/features/` | Today, Calendar (live/debug snapshot); Study, Inbox still demo |
+| `lib/features/` | Today, Calendar, Study, Inbox, Settings bind `StudentSnapshot` (live or labeled debug) |
 
 ## Auth rules (v1)
 
@@ -30,6 +30,10 @@
 
 ## Cache
 
-SharedPreferences JSON key `karmin.cache.student.v1`. 5 minute stale window. Wipe on sign-out. Airplane mode can show last saved week once a live (or debug) fetch has succeeded.
+SharedPreferences JSON key `karmin.cache.student.v1`. 5 minute stale window. Wipe on sign-out. Airplane mode can show last saved week / subjects / inbox once a live (or debug) fetch has succeeded.
 
-See [PLAN.md](PLAN.md) §3–4.
+Stage 3 extras (subjects, messages, exams, profile) are fetched in the same refresh. If an extra call fails, last cached extras are kept; a hard failure of calendar/dashboard still falls back to the whole snapshot.
+
+Exam signup is a POST with `{ examId }` (unproven on ELTE). 401 still drops JWT and does not retry. Inbox mark-read updates the cached unread count so Today’s chip stays in sync.
+
+See [PLAN.md](PLAN.md) §3–4 and [API.md](API.md).

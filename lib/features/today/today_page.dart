@@ -31,7 +31,7 @@ class TodayPage extends ConsumerWidget {
     final code = auth.neptunCode ?? '';
     final initial = code.isNotEmpty ? code[0].toUpperCase() : 'K';
     final gpa = snapshot.dashboard.gpaLabel ?? '—';
-    final unread = snapshot.dashboard.unreadCount;
+    final unread = snapshot.unreadCount;
     final examLabel = exam == null
         ? '—'
         : DateFormat('E HH:mm').format(exam.start);

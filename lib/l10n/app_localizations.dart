@@ -831,6 +831,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unavailable'**
   String get settingsFaceIdUnavailable;
+
+  /// No description provided for @studyEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No subjects for this term yet.'**
+  String get studyEmpty;
+
+  /// No description provided for @inboxEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages.'**
+  String get inboxEmpty;
+
+  /// No description provided for @inboxYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get inboxYesterday;
+
+  /// No description provided for @studyConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get studyConfirm;
+
+  /// No description provided for @studyCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get studyCancel;
+
+  /// No description provided for @studyAlreadySigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Registered'**
+  String get studyAlreadySigned;
+
+  /// No description provided for @studySignUpUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign up in official Neptun — ELTE payload not confirmed yet.'**
+  String get studySignUpUnavailable;
+
+  /// No description provided for @studySignUpConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign up for {exam}?'**
+  String studySignUpConfirmTitle(String exam);
+
+  /// No description provided for @studySignUpConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This will register you in Neptun for this exam on {date}. You can still cancel.'**
+  String studySignUpConfirmBody(String date);
+
+  /// No description provided for @subjectCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get subjectCode;
+
+  /// No description provided for @subjectExams.
+  ///
+  /// In en, this message translates to:
+  /// **'Exams'**
+  String get subjectExams;
+
+  /// No description provided for @subjectEmptyExams.
+  ///
+  /// In en, this message translates to:
+  /// **'No exams listed for this subject.'**
+  String get subjectEmptyExams;
+
+  /// No description provided for @inboxThreadEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No posts in this thread.'**
+  String get inboxThreadEmpty;
 }
 
 class _AppLocalizationsDelegate

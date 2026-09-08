@@ -18,13 +18,14 @@ Last updated: 2026-09-08
 |---|---|
 | **Stage 0 — Foundation** | **Done** |
 | **Stage 1 — Auth** | **Done in code** — live `Authenticate` + debug mock; not claimed proven on a real ELTE account |
-| **Stage 2 — Cached reads** | **In progress (this pass)** — client + calendar/dashboard reads + OTP resend-via-relogin. Isar deferred (JSON cache). Local notifications deferred. |
+| **Stage 2 — Cached reads** | **Done in code** — calendar/dashboard/unread + OTP resend-via-relogin. Isar deferred (JSON cache). Local notifications still deferred. Live ELTE JSON unproven. |
+| **Stage 3 — Study + Inbox** | **Done in code** — subjects/grades/GPA/credits, inbox list + thread + mark-read, Settings from `UserInfo`, exam signup confirm + `SignUpForExam`. Live payloads best-effort / unproven. |
 | **UI visual system** | **Done** — Figma + Flutter widgets are the source of truth (not a future polish pass) |
 | Web platform (`web/`) | Added alongside iOS/Android (dev/preview; v1 ship target remains mobile) |
 | Platforms | Android, iOS, web scaffold. **Android Gradle tree is incomplete** in this checkout (blocker for on-device APK). |
 | Live Neptun auth | Implemented (`LiveNeptunAuth`) + labeled debug/mock. CORS blocks live from Chrome/web. Do not claim ELTE 2FA works until proven on a device with a real account. |
 | Light theme | **Planned, not shipped** — tokens locked; ThemeMode hook in Settings; full pass in Stage 4 |
-| **Next** | Prove Stage 1–2 on a real ELTE account (2FA every login, calendar JSON field names) |
+| **Next** | Prove Stage 1–3 on a real ELTE account (2FA, calendar/study/inbox JSON field names, exam POST body) |
 
 Stage 0 exit criteria met: English Today matching the locked dark visual contract, gear → Settings, l10n EN/HU/RU, `NeptunClient` skeleton, secure storage + PIN helpers, doc stubs, MIT license under Cheterin. Luxury UI redesign shipped in Figma (7 screens + Components) and Flutter (`flutter analyze` clean; tests pass).
 
@@ -444,7 +445,7 @@ Atmosphere: ink → navy page gradient. Cards (`KarminCard`): hairline borders, 
 | 07 Settings | Profile card, leading icons per row, theme control, Sign out |
 | Components | Shared icon set |
 
-Flutter **Today / Calendar / Study / Inbox / Settings** already follow that contract with **demo copy**. Data binding is Stages 2–3. Login, PIN, Disclaimer, and Verification ship in Stage 1.
+Flutter **Today / Calendar / Study / Inbox / Settings** follow that contract. Today/Calendar bind Stage 2 reads; Study/Inbox/Settings profile bind Stage 3 reads (debug fixtures on web). Login, PIN, Disclaimer, and Verification shipped in Stage 1.
 
 ### 8.3 App structure
 
@@ -572,30 +573,35 @@ Completed:
 
 **Debug / no-network (honest):** `kDebugMode` uses `DebugNeptunAuth` unless `--dart-define=KARMIN_LIVE_AUTH=true`. Mock: non-empty code+password → `needsOtp` (channel unknown); any 6-digit OTP → fake JWT in RAM. Login shows a development banner. Release builds always use the live client. Web/Chrome stays on the debug path (CORS).
 
-### Stage 2 — Cached reads (8–10 days) — **IN PROGRESS**
+### Stage 2 — Cached reads (8–10 days) — **DONE IN CODE / GATE: live ELTE JSON unproven**
 
-Shipped in this pass:
+Shipped:
 
 - Authenticated `NeptunClient` GET helper + 401 interceptor (drop JWT, no retry).
 - Live reads: `Calendar/GetCalendarEvents`, `Dashboard/GetAverages`, `dashboard/creditprogress`, `Message/GetUnreadedMessagesCount`.
 - Today + Calendar bind to that snapshot when the call succeeds; graceful empty / “last saved” on failure.
 - **OTP resend = re-login** (re-POST Authenticate with stored password). Debug mock also re-issues `needsOtp`.
 - Stale-while-revalidate JSON cache (`SharedPreferences`, 5 min). **Isar deferred** — codegen + incomplete Android tree. Hive/Isar still the planned durable store.
-- Study subjects/grades and Inbox threads remain **demo** (Stage 3). Today’s GPA / unread / next-class chips use Stage 2 reads (debug fixtures on web).
-- Local notifications from cache: **not in this pass** (platform setup; keep cache ready).
+- Local notifications from cache: **not shipped** (platform setup; keep cache ready). Stage 4/notifications.
 
 **Exit (not met):** airplane mode after one **live** fetch still shows the week — needs a real device + ELTE JSON confirmation.
 
 **Debug vs live:** same `KARMIN_LIVE_AUTH` / `kDebugMode` switch as auth. Debug student API returns the former demo week (Analysis II, etc.). Live student API is used on mobile / release / `KARMIN_LIVE_AUTH=true`.
 
-### Stage 3 — Study, exams, inbox, settings (8–10 days)
+### Stage 3 — Study, exams, inbox, settings (8–10 days) — **DONE IN CODE / GATE: live ELTE unproven**
 
-- Grades/subjects/subject page.
-- Exam signup confirm + live payload verification.
-- Inbox + thread.
-- Settings filled from `getUserInfo` / training if available; else “Student” + neptun code from auth.
+Shipped in this pass:
 
-**Exit:** sign up or fail with Neptun’s text on a dummy/real exam **you intend to take**.
+- Study: taken subjects + best-effort grades (current term; **no** N+1 `GetSubjectDetails`), GPA/credits from Stage 2 dashboard, subject push page, pull-to-refresh, empty/error/last-cached.
+- Exam card + double-confirm sheet. Live `POST ExamRegistration/SignUpForExam` `{ examId }` — **payload shape unproven**; UI shows Neptun’s text or a disabled “use official Neptun” hint when there is no `examId`. Debug mock is labeled, not a fake live signup.
+- Inbox list + thread + mark-read; unread count stays in sync with Today’s chip. Real timestamps (PLAN does not lock 04:04).
+- Settings profile from `UserInfo` / `MyTrainings`; else “Student” + Neptun code from auth. Debug keeps the previous demo-quality name.
+
+**Still demo / unproven:** live ELTE JSON field names; exam POST body; get-all-grades via per-subject details (skipped to avoid a request stampede). Unsubscribe-from-exam is not in the UI.
+
+**Exit (not met):** sign up or fail with Neptun’s text on a dummy/real exam **you intend to take** — needs a device + real account.
+
+**Debug vs live:** same switch as Stage 1–2. Chrome/web stays on labeled `DebugNeptunStudentApi` (CORS).
 
 ### Stage 4 — Harden + closed beta (4–6 days)
 
@@ -706,7 +712,7 @@ License decided: **MIT** under Cheterin.
 
 ## 17. Immediate next actions
 
-1. **Stage 2 live reads** on a device (`KARMIN_LIVE_AUTH=true`): confirm `GetCalendarEvents` field names; prove 2FA + resend-via-relogin (email OTP).  
+1. **Stage 1–3 live** on a device (`KARMIN_LIVE_AUTH=true`): confirm calendar/study/inbox JSON keys; prove 2FA + resend-via-relogin; capture `SignUpForExam` body before trusting signup.  
 2. Fill `docs/legal/SOURCES.md` after personally opening ELTE Neptun terms.  
 3. Treat Figma + Flutter widgets as the locked visual contract; English + Karmin + gear → Settings.  
 4. If ELTE or SDA asks to stop distribution — stop, note in CHANGELOG, contact via cheterin.online.

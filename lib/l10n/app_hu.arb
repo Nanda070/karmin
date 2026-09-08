@@ -149,5 +149,32 @@
   "settingsThemeSystem": "Rendszer",
   "settingsThemeHint": "A világos kinézet egy későbbi csiszoláskor jön.",
   "settingsOff": "Ki",
-  "settingsFaceIdUnavailable": "Nem elérhető"
+  "settingsFaceIdUnavailable": "Nem elérhető",
+  "studyEmpty": "Ehhez a félévhez még nincsenek tárgyak.",
+  "inboxEmpty": "Nincs üzenet.",
+  "inboxYesterday": "Tegnap",
+  "studyConfirm": "Megerősítés",
+  "studyCancel": "Mégse",
+  "studyAlreadySigned": "Jelentkezve",
+  "studySignUpUnavailable": "Jelentkezés a hivatalos Neptunban — az ELTE payload még nincs megerősítve.",
+  "studySignUpConfirmTitle": "Jelentkezés: {exam}?",
+  "@studySignUpConfirmTitle": {
+    "placeholders": {
+      "exam": {
+        "type": "String"
+      }
+    }
+  },
+  "studySignUpConfirmBody": "Ez a Neptunban jelentkeztet a vizsgára ekkor: {date}. Még visszavonhatod.",
+  "@studySignUpConfirmBody": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "subjectCode": "Kód",
+  "subjectExams": "Vizsgák",
+  "subjectEmptyExams": "Ehhez a tárgyhoz nincs listázott vizsga.",
+  "inboxThreadEmpty": "Nincs bejegyzés ebben a szálban."
 }

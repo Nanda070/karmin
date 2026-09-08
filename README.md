@@ -28,9 +28,9 @@ Karmin signs into the official ELTE Neptun student API with **your** Neptun code
 | Inbox | Read-only messages and threads |
 | Settings | Language, Face ID, PIN, notifications, privacy / disclaimer |
 
-**Status:** Stage 2 cached reads are in progress (calendar / dashboard / unread + OTP resend-via-relogin). Stage 1 auth is implemented in code. Debug builds use a labeled mock login (any non-empty credentials, then any 6-digit code) and demo calendar fixtures. Live ELTE: `flutter run --dart-define=KARMIN_LIVE_AUTH=true` on a **device** (Chrome CORS will block the API). Do not claim live 2FA is proven without a real account. Light theme is planned (Settings control exists); the look is still dark-first.
+**Status:** Stages 0–3 are implemented in code (auth, cached Today/Calendar, Study/Inbox, exam confirm). Debug builds use a labeled mock (any non-empty credentials, then any 6-digit code) plus demo-quality Study/Inbox fixtures. Live ELTE: `flutter run --dart-define=KARMIN_LIVE_AUTH=true` on a **device** (Chrome CORS will block the API). Do not claim live 2FA, JSON field names, or exam signup are proven without a real account. Light theme is planned (Settings control exists); the look is still dark-first. Stage 4 is harden + light pass + closed beta.
 
-Screenshots will land here once Stage 1–2 UI is stable. Until then, see the [Figma file](https://www.figma.com/design/Iuxf0sbisHaOwxn6Vkcgdg).
+Screenshots will land here once a live device pass exists. Until then, see the [Figma file](https://www.figma.com/design/Iuxf0sbisHaOwxn6Vkcgdg).
 
 ### Stack
 
@@ -100,9 +100,9 @@ If ELTE or SDA asks that distribution stop, we stop and record it in the changel
 | Входящие | Только чтение |
 | Настройки | Язык, биометрия, PIN, уведомления, privacy / disclaimer |
 
-**Статус:** Stage 2 (календарь / дашборд / «отправить ещё раз код» через повторный логин) в работе. Stage 1 auth есть в коде. Debug — помеченный mock. Живой ELTE 2FA не считаем доказанным без реального аккаунта. Светлая тема запланирована; по умолчанию тёмная.
+**Статус:** Stages 0–3 есть в коде (вход, Today/календарь, учёба/входящие, подтверждение записи на экзамен). Debug — помеченный mock. Живой ELTE 2FA / JSON / запись на экзамен не считаем доказанными без реального аккаунта. Светлая тема — Stage 4; по умолчанию тёмная.
 
-Скриншоты появятся после стабилизации Stage 1–2. Макеты: [Figma](https://www.figma.com/design/Iuxf0sbisHaOwxn6Vkcgdg).
+Скриншоты появятся после живого прогона на устройстве. Макеты: [Figma](https://www.figma.com/design/Iuxf0sbisHaOwxn6Vkcgdg).
 
 ### Стек
 

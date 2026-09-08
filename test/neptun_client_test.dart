@@ -152,4 +152,25 @@ void main() {
     expect(events, hasLength(1));
     expect(events.single.title, 'Analysis II');
   });
+
+  test('exam signup POST uses examId and surfaces Neptun text', () async {
+    final adapter = ScriptedAdapter((options) {
+      expect(options.path.contains('ExamRegistration/SignUpForExam'), isTrue);
+      expect(options.data, {'examId': 'ex-1'});
+      return jsonBody(400, {
+        'notification': {'message': 'Exam is full'},
+      });
+    });
+    final api = LiveNeptunStudentApi(clientWith(adapter));
+    await expectLater(
+      api.signUpForExam('ex-1'),
+      throwsA(
+        isA<NeptunApiException>().having(
+          (error) => error.message,
+          'message',
+          'Exam is full',
+        ),
+      ),
+    );
+  });
 }

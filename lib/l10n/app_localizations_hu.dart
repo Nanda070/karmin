@@ -393,4 +393,48 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get settingsFaceIdUnavailable => 'Nem elérhető';
+
+  @override
+  String get studyEmpty => 'Ehhez a félévhez még nincsenek tárgyak.';
+
+  @override
+  String get inboxEmpty => 'Nincs üzenet.';
+
+  @override
+  String get inboxYesterday => 'Tegnap';
+
+  @override
+  String get studyConfirm => 'Megerősítés';
+
+  @override
+  String get studyCancel => 'Mégse';
+
+  @override
+  String get studyAlreadySigned => 'Jelentkezve';
+
+  @override
+  String get studySignUpUnavailable =>
+      'Jelentkezés a hivatalos Neptunban — az ELTE payload még nincs megerősítve.';
+
+  @override
+  String studySignUpConfirmTitle(String exam) {
+    return 'Jelentkezés: $exam?';
+  }
+
+  @override
+  String studySignUpConfirmBody(String date) {
+    return 'Ez a Neptunban jelentkeztet a vizsgára ekkor: $date. Még visszavonhatod.';
+  }
+
+  @override
+  String get subjectCode => 'Kód';
+
+  @override
+  String get subjectExams => 'Vizsgák';
+
+  @override
+  String get subjectEmptyExams => 'Ehhez a tárgyhoz nincs listázott vizsga.';
+
+  @override
+  String get inboxThreadEmpty => 'Nincs bejegyzés ebben a szálban.';
 }

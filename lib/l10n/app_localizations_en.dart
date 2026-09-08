@@ -390,4 +390,48 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsFaceIdUnavailable => 'Unavailable';
+
+  @override
+  String get studyEmpty => 'No subjects for this term yet.';
+
+  @override
+  String get inboxEmpty => 'No messages.';
+
+  @override
+  String get inboxYesterday => 'Yesterday';
+
+  @override
+  String get studyConfirm => 'Confirm';
+
+  @override
+  String get studyCancel => 'Cancel';
+
+  @override
+  String get studyAlreadySigned => 'Registered';
+
+  @override
+  String get studySignUpUnavailable =>
+      'Sign up in official Neptun — ELTE payload not confirmed yet.';
+
+  @override
+  String studySignUpConfirmTitle(String exam) {
+    return 'Sign up for $exam?';
+  }
+
+  @override
+  String studySignUpConfirmBody(String date) {
+    return 'This will register you in Neptun for this exam on $date. You can still cancel.';
+  }
+
+  @override
+  String get subjectCode => 'Code';
+
+  @override
+  String get subjectExams => 'Exams';
+
+  @override
+  String get subjectEmptyExams => 'No exams listed for this subject.';
+
+  @override
+  String get inboxThreadEmpty => 'No posts in this thread.';
 }

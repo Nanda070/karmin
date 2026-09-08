@@ -389,4 +389,48 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get settingsFaceIdUnavailable => 'Недоступно';
+
+  @override
+  String get studyEmpty => 'Пока нет предметов в этом семестре.';
+
+  @override
+  String get inboxEmpty => 'Нет сообщений.';
+
+  @override
+  String get inboxYesterday => 'Вчера';
+
+  @override
+  String get studyConfirm => 'Подтвердить';
+
+  @override
+  String get studyCancel => 'Отмена';
+
+  @override
+  String get studyAlreadySigned => 'Записан';
+
+  @override
+  String get studySignUpUnavailable =>
+      'Запись в официальном Neptun — тело запроса ELTE ещё не подтверждено.';
+
+  @override
+  String studySignUpConfirmTitle(String exam) {
+    return 'Записаться на $exam?';
+  }
+
+  @override
+  String studySignUpConfirmBody(String date) {
+    return 'Это запишет вас в Neptun на экзамен $date. Ещё можно отменить.';
+  }
+
+  @override
+  String get subjectCode => 'Код';
+
+  @override
+  String get subjectExams => 'Экзамены';
+
+  @override
+  String get subjectEmptyExams => 'Для этого предмета нет экзаменов.';
+
+  @override
+  String get inboxThreadEmpty => 'В этой переписке нет сообщений.';
 }

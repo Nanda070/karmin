@@ -1,137 +1,267 @@
 import 'package:flutter/material.dart';
-import 'package:karmin/app/widgets/karmin_icons.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
+import 'package:karmin/api/exceptions.dart';
+import 'package:karmin/api/dtos/exam_offer.dart';
+import 'package:karmin/api/dtos/taken_subject.dart';
 import 'package:karmin/app/theme.dart';
 import 'package:karmin/app/widgets/karmin_card.dart';
+import 'package:karmin/app/widgets/karmin_icons.dart';
 import 'package:karmin/app/widgets/karmin_primary_button.dart';
 import 'package:karmin/app/widgets/karmin_scaffold.dart' show KarminPageHeader;
 import 'package:karmin/app/widgets/karmin_section_label.dart';
+import 'package:karmin/data/providers.dart';
+import 'package:karmin/data/student_repository.dart';
 import 'package:karmin/l10n/app_localizations.dart';
 
-class StudyPage extends StatelessWidget {
+class StudyPage extends ConsumerWidget {
   const StudyPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final async = ref.watch(studentSnapshotProvider);
+    final snapshot = async.valueOrNull ?? StudentSnapshot.empty();
+    final gpa = snapshot.dashboard.gpaLabel ?? '—';
+    final credits = snapshot.dashboard.creditsLabel ?? '—';
+    final exam = snapshot.signupExam;
+    final calendarExam = snapshot.nextExam(DateTime.now());
+    final examTitle = exam?.subjectName ?? calendarExam?.title;
+    final examWhen = exam?.start ?? calendarExam?.start;
+    final examLine = examTitle == null
+        ? '—'
+        : examWhen == null
+            ? examTitle
+            : '$examTitle · ${DateFormat('E HH:mm').format(examWhen)}';
+    final canSignUp = exam != null && exam.canSignUp && exam.id.isNotEmpty;
+    final alreadySigned = exam?.signedUp == true;
 
-    return ListView(
-      padding: const EdgeInsets.only(bottom: KarminSpacing.xxl),
-      children: [
-        KarminPageHeader(
-          title: l10n.tabStudy,
-          trailing: Icon(
-            KarminIcons.study,
-            size: 20,
-            color: KarminColors.muted,
+    return RefreshIndicator(
+      color: KarminColors.carmineBright,
+      backgroundColor: KarminColors.navy,
+      onRefresh: () => ref.read(studentSnapshotProvider.notifier).refresh(),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: KarminSpacing.xxl),
+        children: [
+          KarminPageHeader(
+            title: l10n.tabStudy,
+            trailing: Icon(
+              KarminIcons.study,
+              size: 20,
+              color: KarminColors.muted,
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: KarminSpacing.pageX),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatCard(
-                      icon: KarminIcons.trending,
-                      label: l10n.chipGpa,
-                      value: l10n.demoGpa,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: KarminSpacing.pageX),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (snapshot.errorMessage != null) ...[
+                  Text(
+                    snapshot.fromCache ? l10n.dataCached : l10n.dataError,
+                    style: KarminTypography.body(
+                      fontSize: 12,
+                      color: KarminColors.muted,
                     ),
                   ),
-                  const SizedBox(width: KarminSpacing.sm),
-                  Expanded(
-                    child: _StatCard(
-                      icon: KarminIcons.layers,
-                      label: l10n.studyCredits,
-                      value: l10n.demoCredits,
-                    ),
-                  ),
+                  const SizedBox(height: KarminSpacing.sm),
                 ],
-              ),
-              const SizedBox(height: KarminSpacing.xl),
-              KarminSectionLabel(l10n.studySubjects),
-              const SizedBox(height: KarminSpacing.sm),
-              _SubjectRow(
-                icon: KarminIcons.math,
-                title: l10n.demoSubjectAnalysis,
-                grade: '4',
-              ),
-              const SizedBox(height: KarminSpacing.sm),
-              _SubjectRow(
-                icon: KarminIcons.code,
-                title: l10n.demoSubjectProgramming,
-                grade: '5',
-              ),
-              const SizedBox(height: KarminSpacing.sm),
-              _SubjectRow(
-                icon: KarminIcons.language,
-                title: l10n.demoSubjectEnglish,
-                grade: '—',
-              ),
-              const SizedBox(height: KarminSpacing.lg),
-              KarminCard(
-                variant: KarminCardVariant.elevated,
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: KarminColors.carmine.withValues(alpha: 0.18),
-                            border: Border.all(
-                              color: KarminColors.carmine.withValues(alpha: 0.35),
-                            ),
-                          ),
-                          child: const Icon(
-                            KarminIcons.exam,
-                            size: 16,
-                            color: KarminColors.carmineBright,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                l10n.studyUpcomingExam,
-                                style: KarminTypography.label(fontSize: 11),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                l10n.demoExamLine,
-                                style: KarminTypography.body(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
+                    Expanded(
+                      child: _StatCard(
+                        icon: KarminIcons.trending,
+                        label: l10n.chipGpa,
+                        value: gpa,
+                      ),
+                    ),
+                    const SizedBox(width: KarminSpacing.sm),
+                    Expanded(
+                      child: _StatCard(
+                        icon: KarminIcons.layers,
+                        label: l10n.studyCredits,
+                        value: credits,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: KarminSpacing.xl),
+                KarminSectionLabel(l10n.studySubjects),
+                const SizedBox(height: KarminSpacing.sm),
+                if (snapshot.subjects.isEmpty)
+                  Text(
+                    l10n.studyEmpty,
+                    style: KarminTypography.body(
+                      fontSize: 13,
+                      color: KarminColors.muted,
+                    ),
+                  )
+                else
+                  for (var i = 0; i < snapshot.subjects.length; i++) ...[
+                    if (i > 0) const SizedBox(height: KarminSpacing.sm),
+                    _SubjectRow(
+                      subject: snapshot.subjects[i],
+                      onTap: () => context.push(
+                        '/study/${Uri.encodeComponent(snapshot.subjects[i].id)}',
+                      ),
+                    ),
+                  ],
+                const SizedBox(height: KarminSpacing.lg),
+                KarminCard(
+                  variant: KarminCardVariant.elevated,
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: KarminColors.carmine.withValues(alpha: 0.18),
+                              border: Border.all(
+                                color: KarminColors.carmine.withValues(
+                                  alpha: 0.35,
                                 ),
                               ),
-                            ],
+                            ),
+                            child: const Icon(
+                              KarminIcons.exam,
+                              size: 16,
+                              color: KarminColors.carmineBright,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  l10n.studyUpcomingExam,
+                                  style: KarminTypography.label(fontSize: 11),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  examLine,
+                                  style: KarminTypography.body(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      KarminPrimaryButton(
+                        label: alreadySigned
+                            ? l10n.studyAlreadySigned
+                            : l10n.studySignUp,
+                        icon: alreadySigned ? KarminIcons.verified : KarminIcons.edit,
+                        onPressed: canSignUp
+                            ? () => _confirmSignup(context, ref, l10n, exam)
+                            : null,
+                        height: 44,
+                      ),
+                      if (!canSignUp && !alreadySigned && examTitle != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.studySignUpUnavailable,
+                          style: KarminTypography.body(
+                            fontSize: 11,
+                            color: KarminColors.muted,
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 14),
-                    KarminPrimaryButton(
-                      label: l10n.studySignUp,
-                      icon: KarminIcons.edit,
-                      onPressed: () {},
-                      height: 44,
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmSignup(
+    BuildContext context,
+    WidgetRef ref,
+    AppLocalizations l10n,
+    ExamOffer exam,
+  ) async {
+    final date = exam.start == null
+        ? '—'
+        : DateFormat('EEE · MMM d · HH:mm').format(exam.start!);
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: KarminColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.studySignUpConfirmTitle(exam.subjectName),
+                style: KarminTypography.title(fontSize: 18),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                l10n.studySignUpConfirmBody(date),
+                style: KarminTypography.body(
+                  fontSize: 13,
+                  color: KarminColors.muted,
+                ),
+              ),
+              const SizedBox(height: 20),
+              KarminPrimaryButton(
+                label: l10n.studyConfirm,
+                onPressed: () => Navigator.of(sheetContext).pop(true),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.of(sheetContext).pop(false),
+                child: Text(
+                  l10n.studyCancel,
+                  style: KarminTypography.body(color: KarminColors.muted),
                 ),
               ),
             ],
           ),
-        ),
-      ],
+        );
+      },
     );
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+    try {
+      final result =
+          await ref.read(studentSnapshotProvider.notifier).signUpForExam(exam.id);
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.message)),
+      );
+    } on NeptunException catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
   }
 }
 
@@ -175,19 +305,19 @@ class _StatCard extends StatelessWidget {
 }
 
 class _SubjectRow extends StatelessWidget {
-  const _SubjectRow({
-    required this.icon,
-    required this.title,
-    required this.grade,
-  });
+  const _SubjectRow({required this.subject, required this.onTap});
 
-  final IconData icon;
-  final String title;
-  final String grade;
+  final TakenSubject subject;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return KarminCard(
+      onTap: onTap,
+      accentBar: true,
+      accentBarColor: subject.grade != null
+          ? KarminColors.steel
+          : KarminColors.carmineBright,
       radius: KarminRadii.md,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       child: Row(
@@ -200,13 +330,32 @@ class _SubjectRow extends StatelessWidget {
               color: KarminColors.navy,
               border: Border.all(color: KarminColors.hairline),
             ),
-            child: Icon(icon, size: 15, color: KarminColors.steel),
+            child: Icon(
+              _iconFor(subject.name),
+              size: 15,
+              color: KarminColors.steel,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              title,
-              style: KarminTypography.body(fontWeight: FontWeight.w500),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  subject.name,
+                  style: KarminTypography.body(fontWeight: FontWeight.w500),
+                ),
+                if (subject.code != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subject.code!,
+                    style: KarminTypography.body(
+                      fontSize: 11,
+                      color: KarminColors.muted,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           Container(
@@ -219,7 +368,7 @@ class _SubjectRow extends StatelessWidget {
               border: Border.all(color: KarminColors.hairline),
             ),
             child: Text(
-              grade,
+              subject.gradeLabel,
               style: KarminTypography.body(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -229,5 +378,23 @@ class _SubjectRow extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  IconData _iconFor(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('anal') ||
+        lower.contains('math') ||
+        lower.contains('disc')) {
+      return KarminIcons.math;
+    }
+    if (lower.contains('prog') || lower.contains('code')) {
+      return KarminIcons.code;
+    }
+    if (lower.contains('eng') ||
+        lower.contains('angol') ||
+        lower.contains('lang')) {
+      return KarminIcons.language;
+    }
+    return KarminIcons.book;
   }
 }

@@ -1,0 +1,23 @@
+{
+  "items": [
+    {
+      "subjectId": "sub-1",
+      "subjectName": "Analysis II",
+      "subjectCode": "IP-08bANAL2",
+      "subjectCredit": 6,
+      "subjectResult": { "resultValue": 4, "resultName": "Good" }
+    },
+    {
+      "subjectId": "sub-2",
+      "subjectName": "Programming",
+      "subjectCode": "IP-08bPROG",
+      "credit": 5,
+      "grade": 5
+    },
+    {
+      "id": "sub-3",
+      "name": "English practice",
+      "subjectCredit": 2
+    }
+  ]
+}

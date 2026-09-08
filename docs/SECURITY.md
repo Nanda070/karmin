@@ -32,3 +32,5 @@ PIN plaintext is never stored. JWT is never persisted. TOTP secrets and email OT
 If you find a vulnerability in Karmin, contact the maintainer privately (do not file a public issue with secrets). Email TBD.
 
 Do not log `Authorization`, `password`, OTP `token`, or JWTs.
+
+Exam signup (`POST ExamRegistration/SignUpForExam`) is a student-initiated write. The `{ examId }` body is best-effort until captured from a live ELTE session. Show Neptun’s error/notification text; never log the JWT or request bodies.

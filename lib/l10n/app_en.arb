@@ -152,5 +152,32 @@
   "settingsThemeSystem": "System",
   "settingsThemeHint": "Light look comes in a later polish pass.",
   "settingsOff": "Off",
-  "settingsFaceIdUnavailable": "Unavailable"
+  "settingsFaceIdUnavailable": "Unavailable",
+  "studyEmpty": "No subjects for this term yet.",
+  "inboxEmpty": "No messages.",
+  "inboxYesterday": "Yesterday",
+  "studyConfirm": "Confirm",
+  "studyCancel": "Cancel",
+  "studyAlreadySigned": "Registered",
+  "studySignUpUnavailable": "Sign up in official Neptun — ELTE payload not confirmed yet.",
+  "studySignUpConfirmTitle": "Sign up for {exam}?",
+  "@studySignUpConfirmTitle": {
+    "placeholders": {
+      "exam": {
+        "type": "String"
+      }
+    }
+  },
+  "studySignUpConfirmBody": "This will register you in Neptun for this exam on {date}. You can still cancel.",
+  "@studySignUpConfirmBody": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "subjectCode": "Code",
+  "subjectExams": "Exams",
+  "subjectEmptyExams": "No exams listed for this subject.",
+  "inboxThreadEmpty": "No posts in this thread."
 }

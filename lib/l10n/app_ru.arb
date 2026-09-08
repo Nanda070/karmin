@@ -149,5 +149,32 @@
   "settingsThemeSystem": "Системная",
   "settingsThemeHint": "Светлый вид появится в более поздней полировке.",
   "settingsOff": "Выкл",
-  "settingsFaceIdUnavailable": "Недоступно"
+  "settingsFaceIdUnavailable": "Недоступно",
+  "studyEmpty": "Пока нет предметов в этом семестре.",
+  "inboxEmpty": "Нет сообщений.",
+  "inboxYesterday": "Вчера",
+  "studyConfirm": "Подтвердить",
+  "studyCancel": "Отмена",
+  "studyAlreadySigned": "Записан",
+  "studySignUpUnavailable": "Запись в официальном Neptun — тело запроса ELTE ещё не подтверждено.",
+  "studySignUpConfirmTitle": "Записаться на {exam}?",
+  "@studySignUpConfirmTitle": {
+    "placeholders": {
+      "exam": {
+        "type": "String"
+      }
+    }
+  },
+  "studySignUpConfirmBody": "Это запишет вас в Neptun на экзамен {date}. Ещё можно отменить.",
+  "@studySignUpConfirmBody": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "subjectCode": "Код",
+  "subjectExams": "Экзамены",
+  "subjectEmptyExams": "Для этого предмета нет экзаменов.",
+  "inboxThreadEmpty": "В этой переписке нет сообщений."
 }

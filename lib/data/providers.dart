@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:karmin/api/dtos/exam_offer.dart';
+import 'package:karmin/api/dtos/inbox_message.dart';
 import 'package:karmin/api/neptun_student_api.dart';
 import 'package:karmin/auth/auth_models.dart';
 import 'package:karmin/auth/providers.dart';
@@ -55,5 +57,22 @@ class StudentSnapshotNotifier extends AsyncNotifier<StudentSnapshot> {
     state = AsyncData(
       await ref.read(studentRepositoryProvider).load(force: true),
     );
+  }
+
+  Future<List<InboxPost>> loadThread(String messageId) {
+    return ref.read(studentRepositoryProvider).loadMessagePosts(messageId);
+  }
+
+  Future<void> markMessageRead(String messageId) async {
+    final snapshot =
+        await ref.read(studentRepositoryProvider).markMessageRead(messageId);
+    state = AsyncData(snapshot);
+  }
+
+  Future<ExamSignupResult> signUpForExam(String examId) async {
+    final outcome =
+        await ref.read(studentRepositoryProvider).signUpForExam(examId);
+    state = AsyncData(outcome.snapshot);
+    return outcome.result;
   }
 }
