@@ -93,6 +93,8 @@
   "loginErrorBadCredentials": "Neptun rejected these credentials.",
   "loginErrorNetwork": "Can't reach Neptun.",
   "loginErrorCaptcha": "Neptun wants a captcha. Sign in once on the website, then retry.",
+  "loginErrorLockout": "Too many tries. Wait a moment, then sign in again.",
+  "loginErrorUnavailable": "Couldn't reach ELTE student login. Try again, or sign in on the website.",
   "loginOpenWebsite": "Open Neptun website",
   "otpTitle": "Verification",
   "otpSubtitleEmail": "Enter the one-time code from your email.",

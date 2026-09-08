@@ -268,6 +268,14 @@ class AppLocalizationsHu extends AppLocalizations {
       'A Neptun captchát kér. Lépj be egyszer a weben, majd próbáld újra.';
 
   @override
+  String get loginErrorLockout =>
+      'Túl sok próbálkozás. Várj egy kicsit, majd próbáld újra.';
+
+  @override
+  String get loginErrorUnavailable =>
+      'A hallgatói belépés nem elérhető. Próbáld újra, vagy lépj be a weben.';
+
+  @override
   String get loginOpenWebsite => 'Neptun weboldal megnyitása';
 
   @override

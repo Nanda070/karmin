@@ -18,8 +18,9 @@ class NeptunClient {
                 receiveTimeout: const Duration(seconds: 30),
                 headers: const {
                   'User-Agent': userAgent,
-                  'Accept': 'application/json',
+                  'Accept': 'application/json, text/plain, */*',
                   'Content-Type': 'application/json',
+                  'X-Requested-With': 'XMLHttpRequest',
                 },
                 validateStatus: (status) =>
                     status != null && status >= 200 && status < 300,
@@ -152,11 +153,11 @@ NeptunException mapDioException(
         ? const NeptunOtpException()
         : const NeptunAuthException();
   }
+  if (status == 404 || status == 405 || status == 409) {
+    return const NeptunUnavailableException();
+  }
   if (status == 429) {
-    return const NeptunApiException(
-      'Neptun asked us to slow down.',
-      statusCode: 429,
-    );
+    return const NeptunLockoutException();
   }
   final extracted = extractNeptunMessage(error.response?.data);
   if (extracted != null) {

@@ -266,6 +266,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Neptun wants a captcha. Sign in once on the website, then retry.';
 
   @override
+  String get loginErrorLockout =>
+      'Too many tries. Wait a moment, then sign in again.';
+
+  @override
+  String get loginErrorUnavailable =>
+      'Couldn\'t reach ELTE student login. Try again, or sign in on the website.';
+
+  @override
   String get loginOpenWebsite => 'Open Neptun website';
 
   @override

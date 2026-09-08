@@ -111,7 +111,7 @@ class AuthController extends StateNotifier<AuthState> {
     required String password,
     required int lcid,
   }) async {
-    final code = userName.trim();
+    final code = normalizeNeptunCode(userName);
     if (code.isEmpty || password.isEmpty) {
       state = state.copyWith(errorMessage: 'empty');
       return;

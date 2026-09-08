@@ -1,6 +1,26 @@
+import 'dart:convert';
+
 /// Shared best-effort JSON helpers. Unknown keys are ignored.
 Map<String, dynamic> stringKeyed(Map<dynamic, dynamic> map) {
   return map.map((key, value) => MapEntry(key.toString(), value));
+}
+
+/// Dio / JSON decode sometimes yields [Map<dynamic, dynamic>] or a JSON string.
+Map<String, dynamic> asJsonMap(dynamic raw) {
+  if (raw is Map) {
+    return stringKeyed(raw);
+  }
+  if (raw is String && raw.trim().isNotEmpty) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        return stringKeyed(decoded);
+      }
+    } on FormatException {
+      // HTML / plaintext — not JSON.
+    }
+  }
+  return const <String, dynamic>{};
 }
 
 List<dynamic> asItemList(dynamic raw) {
@@ -79,8 +99,12 @@ double? asDouble(Object? value) {
 }
 
 bool asBool(Object? value) {
-  if (value == true || value == 1 || value == 'true' || value == 'True') {
+  if (value == true || value == 1 || value == 1.0) {
     return true;
+  }
+  if (value is String) {
+    final text = value.trim().toLowerCase();
+    return text == 'true' || text == '1' || text == 'yes';
   }
   return false;
 }
@@ -156,7 +180,10 @@ String? extractNeptunMessage(dynamic raw) {
       }
     }
   }
-  final errors = map['errors'] ?? map['modelState'] ?? map['modelErrors'];
+  final errors = map['errors'] ??
+      map['modelState'] ??
+      map['modelErrors'] ??
+      map['modelStateErrors'];
   if (errors is Map) {
     for (final value in errors.values) {
       final parsed = extractNeptunMessage(value);

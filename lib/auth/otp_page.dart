@@ -94,6 +94,12 @@ class _OtpPageState extends ConsumerState<OtpPage> {
     if (error == const NeptunCaptchaException().message) {
       return l10n.loginErrorCaptcha;
     }
+    if (error == const NeptunLockoutException().message) {
+      return l10n.loginErrorLockout;
+    }
+    if (error == const NeptunUnavailableException().message) {
+      return l10n.loginErrorUnavailable;
+    }
     return error;
   }
 

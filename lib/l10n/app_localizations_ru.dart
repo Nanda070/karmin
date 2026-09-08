@@ -264,6 +264,14 @@ class AppLocalizationsRu extends AppLocalizations {
       'Neptun просит captcha. Войдите один раз на сайте и повторите.';
 
   @override
+  String get loginErrorLockout =>
+      'Слишком много попыток. Подождите и войдите снова.';
+
+  @override
+  String get loginErrorUnavailable =>
+      'Не удалось открыть вход ELTE. Повторите или войдите на сайте.';
+
+  @override
   String get loginOpenWebsite => 'Открыть сайт Neptun';
 
   @override

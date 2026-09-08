@@ -58,6 +58,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (error == const NeptunCaptchaException().message) {
       return l10n.loginErrorCaptcha;
     }
+    if (error == const NeptunLockoutException().message) {
+      return l10n.loginErrorLockout;
+    }
+    if (error == const NeptunUnavailableException().message) {
+      return l10n.loginErrorUnavailable;
+    }
     return error;
   }
 
@@ -67,7 +73,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final palette = KarminPalette.of(context);
     final auth = ref.watch(authControllerProvider);
     final error = _errorText(l10n, auth.errorMessage);
-    final captcha = auth.errorMessage == const NeptunCaptchaException().message;
+    final offerWebsite = auth.errorMessage ==
+            const NeptunCaptchaException().message ||
+        auth.errorMessage == const NeptunUnavailableException().message;
 
     return SecureAuthScaffold(
       body: Center(
@@ -128,7 +136,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   const SizedBox(height: 12),
                   KarminInlineError(error),
                 ],
-                if (captcha) ...[
+                if (offerWebsite) ...[
                   TextButton(
                     onPressed: () => launchUrl(
                       Uri.parse('https://neptun.elte.hu/'),

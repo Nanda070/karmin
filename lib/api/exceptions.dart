@@ -28,6 +28,21 @@ final class NeptunCaptchaException extends NeptunException {
   ]);
 }
 
+/// HTTP 429 / repeated failures — not invalid credentials.
+final class NeptunLockoutException extends NeptunException {
+  const NeptunLockoutException([
+    super.message = 'Too many tries. Wait a moment, then sign in again.',
+  ]);
+}
+
+/// Auth endpoint missing, empty 400, or HTML error page — not invalid credentials.
+final class NeptunUnavailableException extends NeptunException {
+  const NeptunUnavailableException([
+    super.message =
+        "Couldn't reach ELTE student login. Try again, or sign in on the website.",
+  ]);
+}
+
 /// Wrong or expired one-time code.
 final class NeptunOtpException extends NeptunException {
   const NeptunOtpException([

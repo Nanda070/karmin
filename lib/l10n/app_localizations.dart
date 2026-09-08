@@ -598,6 +598,18 @@ abstract class AppLocalizations {
   /// **'Neptun wants a captcha. Sign in once on the website, then retry.'**
   String get loginErrorCaptcha;
 
+  /// No description provided for @loginErrorLockout.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many tries. Wait a moment, then sign in again.'**
+  String get loginErrorLockout;
+
+  /// No description provided for @loginErrorUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn't reach ELTE student login. Try again, or sign in on the website.'**
+  String get loginErrorUnavailable;
+
   /// No description provided for @loginOpenWebsite.
   ///
   /// In en, this message translates to:
