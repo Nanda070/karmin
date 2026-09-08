@@ -39,7 +39,7 @@ class EltePortalLogin {
     final loginHtml = await _fetchPasswordLoginHtml();
     final fields = extractLoginFormFields(loginHtml);
     if ((fields['__RequestVerificationToken'] ?? '').isEmpty) {
-      throw const NeptunUnavailableException();
+      throw const NeptunApiException('Neptun request failed.');
     }
     fields['LoginName'] = code;
     fields['Password'] = password;
@@ -190,23 +190,28 @@ class EltePortalLogin {
     required String referer,
     String? contentType,
   }) {
+    final headers = <String, dynamic>{
+      'Accept':
+          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'hu-HU,hu;q=0.9,en-US;q=0.8,en;q=0.7',
+      'Origin': origin,
+      'Referer': referer,
+      'User-Agent': NeptunClient.portalUserAgent,
+      'X-Requested-With': null,
+      if (_cookies.isNotEmpty) 'Cookie': cookieHeader(_cookies),
+    };
+    // Never set content-type: null. Dio 5 treats that as conflicting with the
+    // JSON default and throws ArgumentError before the request is sent.
+    if (contentType != null) {
+      headers[Headers.contentTypeHeader] = contentType;
+    }
     return Options(
       followRedirects: false,
       maxRedirects: 0,
-      validateStatus: (status) => status != null && status < 500,
+      validateStatus: (status) => status != null,
       responseType: ResponseType.plain,
       contentType: contentType,
-      headers: <String, dynamic>{
-        'Accept':
-            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'hu-HU,hu;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Origin': origin,
-        'Referer': referer,
-        // NeptunClient defaults to XHR+JSON; that AJAX path does not mail OTP.
-        'X-Requested-With': null,
-        Headers.contentTypeHeader: contentType,
-        if (_cookies.isNotEmpty) 'Cookie': cookieHeader(_cookies),
-      },
+      headers: headers,
     );
   }
 
@@ -221,8 +226,14 @@ class EltePortalLogin {
     if (status == 429) {
       throw const NeptunLockoutException();
     }
-    if (status == 404 || status == 405) {
-      throw const NeptunUnavailableException();
+    if (status >= 500) {
+      throw NeptunApiException(
+        'Neptun request failed.',
+        statusCode: status,
+      );
+    }
+    if (html.toLowerCase().contains('captcha')) {
+      throw const NeptunCaptchaException();
     }
 
     if (status >= 300 &&
@@ -264,7 +275,7 @@ class EltePortalLogin {
       return _emailOtpTicket();
     }
 
-    throw const NeptunUnavailableException();
+    throw const NeptunApiException('Neptun request failed.');
   }
 
   bool _isOtpChallenge(int status, String location, String html) {
@@ -332,10 +343,7 @@ String cookieHeader(Map<String, String> cookies) {
 }
 
 void mergeSetCookie(Map<String, String> jar, List<String>? headers) {
-  if (headers == null) {
-    return;
-  }
-  for (final header in headers) {
+  for (final header in splitSetCookieHeaders(headers)) {
     final part = header.split(';').first;
     final eq = part.indexOf('=');
     if (eq <= 0) {
@@ -346,7 +354,28 @@ void mergeSetCookie(Map<String, String> jar, List<String>? headers) {
     if (name.isEmpty) {
       continue;
     }
+    if (value.isEmpty) {
+      jar.remove(name);
+      continue;
+    }
     jar[name] = value;
+  }
+}
+
+/// Dio/iOS sometimes folds several `Set-Cookie` lines into one comma-separated
+/// header. `expires=Thu, 01 Jan 1970` also contains commas.
+final _setCookieBoundary = RegExp(r',\s*(?=[^;,=\s]+=)');
+
+Iterable<String> splitSetCookieHeaders(List<String>? headers) sync* {
+  if (headers == null) {
+    return;
+  }
+  for (final header in headers) {
+    final trimmed = header.trim();
+    if (trimmed.isEmpty) {
+      continue;
+    }
+    yield* trimmed.split(_setCookieBoundary);
   }
 }
 

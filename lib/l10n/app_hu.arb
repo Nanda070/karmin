@@ -91,7 +91,7 @@
   "loginErrorNetwork": "A Neptun nem elérhető.",
   "loginErrorCaptcha": "A Neptun captchát kér. Lépj be egyszer a weben, majd próbáld újra.",
   "loginErrorLockout": "Túl sok próbálkozás. Várj egy kicsit, majd próbáld újra.",
-  "loginErrorUnavailable": "A hallgatói belépés nem elérhető. Próbáld újra, vagy lépj be a weben.",
+  "loginErrorUnavailable": "A hallgatói belépés hibát adott. Próbáld újra, vagy lépj be a weben.",
   "loginOpenWebsite": "Neptun weboldal megnyitása",
   "otpTitle": "Ellenőrzés",
   "otpSubtitleEmail": "Add meg az e-mailben kapott egyszeri kódot.",

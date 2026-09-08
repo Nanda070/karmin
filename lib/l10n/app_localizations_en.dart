@@ -271,7 +271,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loginErrorUnavailable =>
-      'Couldn\'t reach ELTE student login. Try again, or sign in on the website.';
+      'ELTE student login returned an error. Try again, or sign in on the website.';
 
   @override
   String get loginOpenWebsite => 'Open Neptun website';

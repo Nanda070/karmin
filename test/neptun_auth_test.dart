@@ -47,6 +47,7 @@ ResponseBody htmlBody(
   int status,
   String html, {
   String? location,
+  List<String>? setCookie,
 }) {
   return ResponseBody.fromString(
     html,
@@ -54,6 +55,7 @@ ResponseBody htmlBody(
     headers: {
       Headers.contentTypeHeader: ['text/html; charset=utf-8'],
       if (location != null) 'location': [location],
+      if (setCookie != null) 'set-cookie': setCookie,
     },
   );
 }
@@ -112,7 +114,14 @@ ResponseBody Function(RequestOptions options) eltePortalScript({
       return htmlBody(200, login2faHtml);
     }
     if (options.method == 'GET' && isPasswordLoginUrl(url)) {
-      return htmlBody(200, eltePasswordLoginHtml);
+      return htmlBody(
+        200,
+        eltePasswordLoginHtml,
+        setCookie: const [
+          '.Potlap.Antiforgery=af; path=/; samesite=strict; httponly',
+          '.Potlap.Session=sess; path=/; samesite=lax; httponly',
+        ],
+      );
     }
     if (options.method == 'POST' && isLogin2FaUrl(url)) {
       return htmlBody(302, '', location: '/');
@@ -334,5 +343,13 @@ void main() {
     final jar = <String, String>{};
     mergeSetCookie(jar, ['.Potlap.Session=xyz; path=/; httponly']);
     expect(cookieHeader(jar), '.Potlap.Session=xyz');
+    mergeSetCookie(jar, [
+      '.Potlap.Antiforgery=abc; path=/; httponly, '
+          '.AspNetCore.Mvc.CookieTempDataProvider=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/, '
+          '.Potlap.Session=folded; path=/',
+    ]);
+    expect(jar['.Potlap.Antiforgery'], 'abc');
+    expect(jar['.Potlap.Session'], 'folded');
+    expect(jar.containsKey('.AspNetCore.Mvc.CookieTempDataProvider'), isFalse);
   });
 }

@@ -169,7 +169,14 @@ void main() {
       }
       if (options.method == 'GET' && isPasswordLoginUrl(url)) {
         loginGets += 1;
-        return htmlBody(200, eltePasswordLoginHtml);
+        return htmlBody(
+          200,
+          eltePasswordLoginHtml,
+          setCookie: const [
+            '.Potlap.Antiforgery=af; path=/; httponly',
+            '.Potlap.Session=sess; path=/; httponly',
+          ],
+        );
       }
       if (options.method == 'POST' && isLogin2FaUrl(url)) {
         login2faPosts += 1;
@@ -184,6 +191,8 @@ void main() {
         expect(lastLoginBody, isNot(contains('culture=')));
         expect(lastLoginBody, isNot(contains('{LoginName:')));
         expect(options.headers['X-Requested-With'], isNull);
+        expect(options.headers['User-Agent'], contains('Safari'));
+        expect(options.headers['Cookie'], contains('.Potlap.Session=sess'));
         return htmlBody(302, '', location: '/Account/Login2FA');
       }
       fail('unexpected ${options.method} $url');

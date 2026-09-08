@@ -16,10 +16,13 @@ class NeptunClient {
                 baseUrl: baseUrl,
                 connectTimeout: const Duration(seconds: 15),
                 receiveTimeout: const Duration(seconds: 30),
+                // Do not default Content-Type: application/json. GET
+                // `/Account/Login` plus a null content-type header makes Dio 5
+                // throw ArgumentError, which the login UI mapped to "Can't reach
+                // Neptun." JSON POSTs still get application/json from Map bodies.
                 headers: const {
                   'User-Agent': userAgent,
                   'Accept': 'application/json, text/plain, */*',
-                  'Content-Type': 'application/json',
                   'X-Requested-With': 'XMLHttpRequest',
                 },
                 validateStatus: (status) =>
@@ -29,6 +32,7 @@ class NeptunClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
+          applyEltePortalBrowserHeaders(options);
           final token = _accessToken;
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
@@ -51,6 +55,11 @@ class NeptunClient {
   static const String baseUrl = 'https://neptun.elte.hu/ujhallgato/api/';
   static const String userAgent =
       'Karmin/0.1.0 (Flutter; ELTE student client)';
+
+  /// MVC `/Account/Login` is a browser form. A custom UA / XHR header 403s some
+  /// Potlap fronts; Safari-like headers match the official iPhone web login.
+  static const String portalUserAgent =
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 
   final Dio _dio;
 
@@ -123,19 +132,59 @@ class NeptunClient {
   }
 }
 
+/// True when there was no HTTP response (timeout, DNS, TLS, reset).
+bool isDioTransportFailure(DioException error) {
+  if (error.response != null) {
+    return false;
+  }
+  return switch (error.type) {
+    DioExceptionType.connectionTimeout ||
+    DioExceptionType.sendTimeout ||
+    DioExceptionType.receiveTimeout ||
+    DioExceptionType.transformTimeout ||
+    DioExceptionType.connectionError ||
+    DioExceptionType.badCertificate ||
+    DioExceptionType.unknown =>
+      true,
+    DioExceptionType.cancel ||
+    DioExceptionType.badResponse =>
+      false,
+  };
+}
+
+/// MVC login is `https://neptun.elte.hu/Account/Login`, not `/ujhallgato/api/`.
+bool isEltePortalUri(Uri uri) {
+  if (uri.host != 'neptun.elte.hu') {
+    return false;
+  }
+  return !uri.path.toLowerCase().contains('/ujhallgato/');
+}
+
+/// Safari-like GET/POST for the ASP.NET form. Call after Dio composes options
+/// so JSON `Content-Type` / XHR defaults are actually removed.
+void applyEltePortalBrowserHeaders(RequestOptions options) {
+  if (!isEltePortalUri(options.uri)) {
+    return;
+  }
+  options.headers['User-Agent'] = NeptunClient.portalUserAgent;
+  options.headers.remove('X-Requested-With');
+  if (options.method.toUpperCase() == 'GET') {
+    options.headers.remove(Headers.contentTypeHeader);
+  }
+}
+
 /// Typed mapping for Dio failures. Do not pass request bodies into logs.
+/// HTTP from ELTE (any status) is never [NeptunNetworkException].
 NeptunException mapDioException(
   DioException error, {
   bool treatingAsOtp = false,
   bool preferApiMessage = false,
 }) {
-  final status = error.response?.statusCode;
-  if (error.type == DioExceptionType.connectionTimeout ||
-      error.type == DioExceptionType.receiveTimeout ||
-      error.type == DioExceptionType.connectionError ||
-      error.type == DioExceptionType.sendTimeout) {
+  if (isDioTransportFailure(error)) {
     return const NeptunNetworkException();
   }
+
+  final status = error.response?.statusCode;
   if (status == 401) {
     return const NeptunSessionExpiredException();
   }
@@ -152,9 +201,6 @@ NeptunException mapDioException(
     return treatingAsOtp
         ? const NeptunOtpException()
         : const NeptunAuthException();
-  }
-  if (status == 404 || status == 405 || status == 409) {
-    return const NeptunUnavailableException();
   }
   if (status == 429) {
     return const NeptunLockoutException();

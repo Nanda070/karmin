@@ -35,11 +35,11 @@ final class NeptunLockoutException extends NeptunException {
   ]);
 }
 
-/// Auth endpoint missing, empty 400, or HTML error page — not invalid credentials.
+/// JSON student API missing/stub — not invalid credentials, not a transport failure.
 final class NeptunUnavailableException extends NeptunException {
   const NeptunUnavailableException([
     super.message =
-        "Couldn't reach ELTE student login. Try again, or sign in on the website.",
+        'ELTE student login returned an error. Try again, or sign in on the website.',
   ]);
 }
 

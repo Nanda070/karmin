@@ -607,7 +607,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginErrorUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t reach ELTE student login. Try again, or sign in on the website.'**
+  /// **'ELTE student login returned an error. Try again, or sign in on the website.'**
   String get loginErrorUnavailable;
 
   /// No description provided for @loginOpenWebsite.

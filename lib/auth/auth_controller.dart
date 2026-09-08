@@ -134,7 +134,7 @@ class AuthController extends StateNotifier<AuthState> {
     } catch (_) {
       state = state.copyWith(
         busy: false,
-        errorMessage: const NeptunNetworkException().message,
+        errorMessage: const NeptunApiException('Neptun request failed.').message,
       );
     }
   }
@@ -251,7 +251,7 @@ class AuthController extends StateNotifier<AuthState> {
       state = state.copyWith(
         busy: false,
         neptunStep: NeptunAuthStep.needsOtp,
-        errorMessage: const NeptunNetworkException().message,
+        errorMessage: const NeptunApiException('Neptun request failed.').message,
       );
     }
   }
@@ -347,7 +347,7 @@ class AuthController extends StateNotifier<AuthState> {
     } catch (_) {
       state = state.copyWith(
         busy: false,
-        errorMessage: const NeptunNetworkException().message,
+        errorMessage: const NeptunApiException('Neptun request failed.').message,
       );
     }
   }

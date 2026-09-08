@@ -269,7 +269,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get loginErrorUnavailable =>
-      'Не удалось открыть вход ELTE. Повторите или войдите на сайте.';
+      'Вход ELTE вернул ошибку. Повторите или войдите на сайте.';
 
   @override
   String get loginOpenWebsite => 'Открыть сайт Neptun';

@@ -91,7 +91,7 @@
   "loginErrorNetwork": "Не удаётся связаться с Neptun.",
   "loginErrorCaptcha": "Neptun просит captcha. Войдите один раз на сайте и повторите.",
   "loginErrorLockout": "Слишком много попыток. Подождите и войдите снова.",
-  "loginErrorUnavailable": "Не удалось открыть вход ELTE. Повторите или войдите на сайте.",
+  "loginErrorUnavailable": "Вход ELTE вернул ошибку. Повторите или войдите на сайте.",
   "loginOpenWebsite": "Открыть сайт Neptun",
   "otpTitle": "Подтверждение",
   "otpSubtitleEmail": "Введите одноразовый код из письма.",

@@ -273,7 +273,7 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get loginErrorUnavailable =>
-      'A hallgatói belépés nem elérhető. Próbáld újra, vagy lépj be a weben.';
+      'A hallgatói belépés hibát adott. Próbáld újra, vagy lépj be a weben.';
 
   @override
   String get loginOpenWebsite => 'Neptun weboldal megnyitása';

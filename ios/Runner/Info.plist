@@ -19,7 +19,7 @@
 	<!-- local_auth Face ID prompt. Does not replace Neptun 2FA. -->
 	<key>NSFaceIDUsageDescription</key>
 	<string>Karmin uses Face ID to unlock the local vault on this device. Face ID does not replace Neptun two-factor authentication.</string>
-	<!-- Neptun is HTTPS (neptun.elte.hu). App Transport Security stays enabled; do not set NSAllowsArbitraryLoads. -->
+	<!-- Neptun (neptun.elte.hu) and the login-page CDNs (jsdelivr, cdnjs) are HTTPS. App Transport Security stays enabled; no host exception; do not set NSAllowsArbitraryLoads. -->
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

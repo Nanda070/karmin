@@ -340,10 +340,9 @@ class LiveNeptunAuth implements NeptunAuthApi {
       rethrow;
     } on NeptunAuthException {
       rethrow;
-    } on NeptunUnavailableException {
-      // ELTE `/ujhallgato/api` is a 400/404 stub.
-    } on NeptunNetworkException {
-      // ELTE `/ujhallgato/api` often hangs; the MVC portal still works.
+    } on NeptunException {
+      // JSON `/ujhallgato/api` is a 400/404 stub and often hangs; MVC login
+      // on the host root is the real ELTE path.
     }
     return _portal.submitPassword(
       userName: code,

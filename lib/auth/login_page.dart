@@ -75,7 +75,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final error = _errorText(l10n, auth.errorMessage);
     final offerWebsite = auth.errorMessage ==
             const NeptunCaptchaException().message ||
-        auth.errorMessage == const NeptunUnavailableException().message;
+        auth.errorMessage == const NeptunUnavailableException().message ||
+        auth.errorMessage ==
+            const NeptunApiException('Neptun request failed.').message;
 
     return SecureAuthScaffold(
       body: Center(
