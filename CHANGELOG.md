@@ -2,7 +2,7 @@
 
 ## Unreleased — Stage 4 harden (polish)
 
-- Login: after MVC password, **POST `/Account/Login2FA` E-mail code** (`Phase=RequestEmail` / `Provider=Email`) so Neptun actually mails; “Send code again” is that same POST. Visible error if no prefix. “Can't reach Neptun.” only when there is no HTTP response (timeout / DNS / TLS). Dio GET `/Account/Login` must not send JSON `Content-Type` (Dio 5 `ArgumentError`). ELTE HTTP maps to credentials / captcha / OTP / request failed
+- Login: after MVC password, **POST `/Account/Login2FA` E-mail code** (`Phase=RequestEmail` / `Provider=Email`) so Neptun actually mails; “Send code again” is that same POST. Detect Potlap `type="button"` / `<a data-setval>` E-mail controls; follow 302 to Login2FA for the grey prefix. If mail dispatch fails but the 2FA session is alive, open Verification (not stay on Login) so resend works. “Can't reach Neptun.” only when there is no HTTP response (timeout / DNS / TLS). Dio GET `/Account/Login` must not send JSON `Content-Type` (Dio 5 `ArgumentError`). ELTE HTTP maps to credentials / captcha / OTP / request failed
 - Attribution: owner / founder **Nanda**, company **Cheterin Group**; contact Discord `nandak070`, Telegram `nanda070`, mail `turkapahf@gmail.com` (README, LICENSE, legal docs)
 - Shared empty / error / last-cached widgets on Today, Calendar, Study, Inbox, Auth (`KarminStatusBanner`, `KarminEmptyState`)
 - Accessibility: Semantics on tabs, PIN keypad, OTP, password visibility; 48pt icon tap targets; contrast-aware carmine text

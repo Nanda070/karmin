@@ -129,6 +129,15 @@ class AuthController extends StateNotifier<AuthState> {
         userName: code,
         password: password,
       );
+      // Email dispatch can fail while the 2FA session is still alive — land on
+      // Verification so "Send code again" is available (not stuck on Login).
+      if (ticket.step == NeptunAuthStep.needsOtp &&
+          normalizeOtpPrefix(ticket.otpPrefix).isEmpty) {
+        state = state.copyWith(
+          errorMessage: const NeptunEmailCodeException().message,
+          otpResendAvailableAt: _now(),
+        );
+      }
     } on NeptunException catch (error) {
       state = state.copyWith(busy: false, errorMessage: error.message);
     } catch (_) {

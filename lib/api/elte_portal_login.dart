@@ -52,11 +52,19 @@ class EltePortalLogin {
     // Password POST opens Login2FA (often authenticator / a chooser). Mail
     // fires only when we POST the official E-mail code control.
     final response = await _post(loginPath, fields, referer: '$origin$loginPath');
-    final ticket = _ticketFromPortalResponse(response);
+    final ticket = await _ticketFromPortalResponse(response);
     if (ticket.step != NeptunAuthStep.needsOtp) {
       return ticket;
     }
-    await _dispatchEmailCode(force: false);
+    try {
+      await _dispatchEmailCode(force: false);
+    } on NeptunEmailCodeException {
+      // Keep the 2FA session so the Verification screen can "Send code again".
+      // Throwing here stranded users on Login with no resend control.
+      if (!_hasSession) {
+        rethrow;
+      }
+    }
     return _emailOtpTicket();
   }
 
@@ -81,7 +89,7 @@ class EltePortalLogin {
     );
 
     final response = await _post(otpPath, fields, referer: '$origin$otpPath');
-    final ticket = _ticketFromPortalResponse(response, treatingAsOtp: true);
+    final ticket = await _ticketFromPortalResponse(response, treatingAsOtp: true);
     if (ticket.step == NeptunAuthStep.needsOtp) {
       throw const NeptunOtpException();
     }
@@ -144,6 +152,7 @@ class EltePortalLogin {
       await _refreshOtpForm();
     }
     if (htmlLooksLikePasswordLogin(_otpHtml)) {
+      _hasSession = false;
       throw const NeptunEmailCodeException();
     }
     if (!force && normalizeOtpPrefix(_otpPrefix).isNotEmpty) {
@@ -158,7 +167,7 @@ class EltePortalLogin {
     );
     final path = login2FaPostPath(button?.formAction);
     final response = await _post(path, fields, referer: '$origin$otpPath');
-    _applySendEmailResponse(response);
+    await _applySendEmailResponse(response);
     if (normalizeOtpPrefix(_otpPrefix).isEmpty) {
       await _refreshOtpForm();
     }
@@ -173,14 +182,14 @@ class EltePortalLogin {
 
   Future<void> _refreshOtpForm() async {
     try {
-      final otpHtml = await _get(otpPath);
-      _captureOtpForm(otpHtml);
+      final response = await _sendGet(otpPath, referer: '$origin$loginPath');
+      await _captureOtpResponse(response);
     } on NeptunException {
       // Keep whatever the previous response already captured.
     }
   }
 
-  void _applySendEmailResponse(Response<dynamic> response) {
+  Future<void> _applySendEmailResponse(Response<dynamic> response) async {
     final status = response.statusCode ?? 0;
     final location = response.headers.value('location') ?? '';
     final html = _htmlOf(response);
@@ -201,11 +210,60 @@ class EltePortalLogin {
             status < 400 &&
             location.toLowerCase().contains('login') &&
             !location.contains('Login2FA'))) {
+      _hasSession = false;
       throw const NeptunEmailCodeException();
     }
     if (htmlLooksLikeOtp(html) || html.trim().isNotEmpty) {
       _captureOtpForm(html);
     }
+    // Send-email often 302s to Login2FA with an empty body — follow for prefix.
+    if (normalizeOtpPrefix(_otpPrefix).isEmpty &&
+        _redirectsToLogin2Fa(status, location)) {
+      await _refreshOtpForm();
+    }
+  }
+
+  Future<void> _captureOtpResponse(Response<dynamic> response) async {
+    final status = response.statusCode ?? 0;
+    final location = response.headers.value('location') ?? '';
+    final html = _htmlOf(response);
+    if (htmlLooksLikePasswordLogin(html) ||
+        (status >= 300 &&
+            status < 400 &&
+            location.toLowerCase().contains('login') &&
+            !location.toLowerCase().contains('login2fa'))) {
+      _hasSession = false;
+      return;
+    }
+    if (htmlLooksLikeOtp(html) || html.trim().isNotEmpty) {
+      _captureOtpForm(html);
+      _hasSession = true;
+      return;
+    }
+    if (_redirectsToLogin2Fa(status, location)) {
+      _hasSession = true;
+      final path = _pathFromLocation(location) ?? otpPath;
+      final followed = await _sendGet(path, referer: '$origin$loginPath');
+      final followedHtml = _htmlOf(followed);
+      if (htmlLooksLikeOtp(followedHtml) || followedHtml.trim().isNotEmpty) {
+        _captureOtpForm(followedHtml);
+      }
+    }
+  }
+
+  String? _pathFromLocation(String location) {
+    final trimmed = location.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return Uri.tryParse(trimmed)?.path;
+    }
+    final path = trimmed.split('?').first;
+    if (path.startsWith('/')) {
+      return path;
+    }
+    return '/$path';
   }
 
   AuthTicket _emailOtpTicket() {
@@ -287,10 +345,10 @@ class EltePortalLogin {
     );
   }
 
-  AuthTicket _ticketFromPortalResponse(
+  Future<AuthTicket> _ticketFromPortalResponse(
     Response<dynamic> response, {
     bool treatingAsOtp = false,
-  }) {
+  }) async {
     final status = response.statusCode ?? 0;
     final location = response.headers.value('location') ?? '';
     final html = _htmlOf(response);
@@ -319,7 +377,7 @@ class EltePortalLogin {
     }
 
     if (_isOtpChallenge(status, location, html)) {
-      _captureOtpForm(html);
+      await _captureOtpResponse(response);
       _hasSession = true;
       return _emailOtpTicket();
     }
@@ -343,6 +401,7 @@ class EltePortalLogin {
     }
 
     if (_redirectsToLogin2Fa(status, location)) {
+      await _captureOtpResponse(response);
       _hasSession = true;
       return _emailOtpTicket();
     }
@@ -635,16 +694,36 @@ List<Login2FaSubmitControl> extractLogin2FaSubmitControls(String html) {
   for (final match in _buttonTag.allMatches(html)) {
     final attrs = match.group(1) ?? '';
     final type = (_attr(attrs, 'type') ?? 'submit').toLowerCase();
-    if (type == 'button' || type == 'reset') {
+    if (type == 'reset') {
+      continue;
+    }
+    final setvalTarget = _attr(attrs, 'data-setval-target');
+    final setvalValue = _attr(attrs, 'data-setval-value');
+    final name = _attr(attrs, 'name');
+    final value = _attr(attrs, 'value') ?? '';
+    final text =
+        (match.group(2) ?? '').replaceAll(RegExp(r'<[^>]+>'), '').trim();
+    // Potlap often uses type="button" + data-setval, then JS submits the form.
+    if (type == 'button' &&
+        (setvalTarget == null || setvalTarget.isEmpty) &&
+        !looksLikeEmailSendControl(
+          Login2FaSubmitControl(
+            name: name,
+            value: value,
+            setvalTarget: setvalTarget,
+            setvalValue: setvalValue,
+            text: text,
+          ),
+        )) {
       continue;
     }
     controls.add(
       Login2FaSubmitControl(
-        name: _attr(attrs, 'name'),
-        value: _attr(attrs, 'value') ?? '',
-        setvalTarget: _attr(attrs, 'data-setval-target'),
-        setvalValue: _attr(attrs, 'data-setval-value'),
-        text: (match.group(2) ?? '').replaceAll(RegExp(r'<[^>]+>'), '').trim(),
+        name: name,
+        value: value,
+        setvalTarget: setvalTarget,
+        setvalValue: setvalValue,
+        text: text,
         formAction: _attr(attrs, 'formaction'),
       ),
     );
@@ -664,6 +743,29 @@ List<Login2FaSubmitControl> extractLogin2FaSubmitControls(String html) {
         setvalValue: _attr(attrs, 'data-setval-value'),
         text: _attr(attrs, 'value') ?? '',
         formAction: _attr(attrs, 'formaction'),
+      ),
+    );
+  }
+  // <a class="btn" data-setval-…>E-mail code</a>
+  final anchor = RegExp(
+    r'<a\b([^>]*)>(.*?)</a>',
+    caseSensitive: false,
+    dotAll: true,
+  );
+  for (final match in anchor.allMatches(html)) {
+    final attrs = match.group(1) ?? '';
+    final setvalTarget = _attr(attrs, 'data-setval-target');
+    if (setvalTarget == null || setvalTarget.isEmpty) {
+      continue;
+    }
+    controls.add(
+      Login2FaSubmitControl(
+        name: _attr(attrs, 'name'),
+        value: _attr(attrs, 'value') ?? '',
+        setvalTarget: setvalTarget,
+        setvalValue: _attr(attrs, 'data-setval-value'),
+        text: (match.group(2) ?? '').replaceAll(RegExp(r'<[^>]+>'), '').trim(),
+        formAction: _attr(attrs, 'href') ?? _attr(attrs, 'formaction'),
       ),
     );
   }
@@ -717,6 +819,13 @@ Map<String, String> fillLogin2FaSendEmailFields({
   Login2FaSubmitControl? button,
 }) {
   final next = Map<String, String>.from(fields);
+  // Do not POST an empty TOTPCode as a verify attempt while requesting email.
+  for (final key in next.keys.toList()) {
+    if (isOtpCodeFieldName(key)) {
+      next.remove(key);
+    }
+  }
+
   if (button != null) {
     final target = button.setvalTarget;
     if (target != null && target.isNotEmpty) {
@@ -725,6 +834,19 @@ Map<String, String> fillLogin2FaSendEmailFields({
     }
     if (button.name != null && button.name!.isNotEmpty) {
       next[button.name!] = button.value;
+    }
+    // If the control only sets Provider=Email, also force an email Phase when
+    // the page is still on authenticator RequestTOTP.
+    final phaseKey = _fieldKeyIgnoringCase(next, 'Phase');
+    final phase = phaseKey == null ? '' : next[phaseKey]!;
+    if (button.name?.toLowerCase() == 'provider' &&
+        isEmailProviderValue(button.value) &&
+        !isEmailCodePhase(phase)) {
+      if (phaseKey != null) {
+        next[phaseKey] = 'RequestEmail';
+      } else {
+        next['Phase'] = 'RequestEmail';
+      }
     }
     return next;
   }

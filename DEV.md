@@ -60,7 +60,7 @@ ELTE’s **public** host does **not** serve that API. `POST …/ujhallgato/api/A
 **What actually logs in on ELTE:** ASP.NET MVC, browser-equivalent form POST:
 
 - `GET/POST https://neptun.elte.hu/Account/Login` — fields `LoginName` + `Password` + `__RequestVerificationToken`
-- then **`POST https://neptun.elte.hu/Account/Login2FA`** to request the **email** code (`Phase=RequestEmail` and/or `Provider=Email`, plus antiforgery). Password POST alone often lands on the authenticator / chooser page and **does not mail**.
+- then **`POST https://neptun.elte.hu/Account/Login2FA`** to request the **email** code (`Phase=RequestEmail` and/or `Provider=Email`, plus antiforgery). Password POST alone often lands on the authenticator / chooser page and **does not mail**. Detect Potlap `type="button"` / `<a data-setval>` E-mail controls (not only `type="submit"`). Follow 302 Location to Login2FA so the grey prefix HTML is captured. If mail fails but the 2FA cookie session is alive, still open Verification so **Send code again** works.
 - then the student types prefix+tail; Confirm is another `POST /Account/Login2FA` with `TOTPCode`
 
 **Why MVC:** a JSON Authenticate stub does not dispatch the email OTP. Official “E-mail code” is the Login2FA send POST (Potlap `data-setval-target` / named `Provider`), not scraping Login2FA HTML after password.

@@ -158,7 +158,29 @@ void main() {
       button: button,
     );
     expect(posted['Provider'], 'Email');
-    expect(posted['Phase'], 'RequestTOTP');
+    // Authenticator Phase alone would verify an empty TOTP — force email Phase.
+    expect(posted['Phase'], 'RequestEmail');
+    expect(posted.containsKey('TOTPCode'), isFalse);
+  });
+
+  test('type=button data-setval E-mail control is detected', () {
+    const html = '''
+<form action="/Account/Login2FA" method="post">
+  <input name="__RequestVerificationToken" value="t" />
+  <input name="Phase" value="RequestTOTP" />
+  <input name="TOTPCode" value="" />
+  <button type="button" data-setval-target="Phase" data-setval-value="RequestEmail">E-mail code</button>
+</form>
+''';
+    final button = findLogin2FaEmailSendControl(html);
+    expect(button, isNotNull);
+    expect(button!.setvalValue, 'RequestEmail');
+    final posted = fillLogin2FaSendEmailFields(
+      fields: extractNamedInputs(html),
+      button: button,
+    );
+    expect(posted['Phase'], 'RequestEmail');
+    expect(posted.containsKey('TOTPCode'), isFalse);
   });
 
   test('fallback send-email POST forces Provider=Email and Phase=RequestEmail', () {
@@ -332,8 +354,7 @@ void main() {
     expect(authenticatePosts, 1);
   });
 
-  test('failed send-email POST is a visible error, not a silent OTP screen',
-      () async {
+  test('failed send-email still returns OTP ticket so UI can resend', () async {
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
       if (url.contains('Account/Authenticate')) {
@@ -354,14 +375,53 @@ void main() {
       fail('unexpected ${options.method} $url');
     });
 
-    await expectLater(
-      LiveNeptunAuth(clientWith(adapter)).submitPassword(
-        userName: 'abc123',
-        password: 'secret',
-        lcid: 1033,
-      ),
-      throwsA(isA<NeptunEmailCodeException>()),
+    final ticket = await LiveNeptunAuth(clientWith(adapter)).submitPassword(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
     );
+    expect(ticket.step, NeptunAuthStep.needsOtp);
+    expect(ticket.otpChannel, OtpChannel.email);
+    expect(normalizeOtpPrefix(ticket.otpPrefix), isEmpty);
+  });
+
+  test('password 302 to Login2FA is followed so the E-mail control is visible',
+      () async {
+    final sendPosts = <Map<String, String>>[];
+    var login2faHtml = _chooserSetvalForm;
+    var followedGet = false;
+    final adapter = ScriptedAdapter((options) {
+      final url = options.uri.toString();
+      if (url.contains('Account/Authenticate')) {
+        return jsonBody(400, {});
+      }
+      if (options.method == 'GET' && isLogin2FaUrl(url)) {
+        followedGet = true;
+        return htmlBody(200, login2faHtml);
+      }
+      if (options.method == 'GET' && isPasswordLoginUrl(url)) {
+        return htmlBody(200, eltePasswordLoginHtml);
+      }
+      if (options.method == 'POST' && isLogin2FaUrl(url)) {
+        sendPosts.add(Uri.splitQueryString(options.data as String));
+        login2faHtml = _emailFormAfterSend;
+        return htmlBody(302, '', location: '/Account/Login2FA');
+      }
+      if (options.method == 'POST' && isPasswordLoginUrl(url)) {
+        return htmlBody(302, '', location: '/Account/Login2FA');
+      }
+      fail('unexpected ${options.method} $url');
+    });
+
+    final ticket = await LiveNeptunAuth(clientWith(adapter)).submitPassword(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+    );
+    expect(followedGet, isTrue);
+    expect(sendPosts, isNotEmpty);
+    expect(sendPosts.first['Phase'], 'RequestEmail');
+    expect(ticket.otpPrefix, '774-');
   });
 
   test('bare 6-digit TOTP is not posted to the email Login2FA form', () async {
