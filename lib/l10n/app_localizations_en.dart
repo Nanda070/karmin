@@ -291,6 +291,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enter the one-time code from your email or authenticator app.';
 
   @override
+  String get otpAuthenticatorParked =>
+      'This build uses the email code only; authenticator is temporarily off.';
+
+  @override
   String get otpPrefixHint =>
       'Enter the code after the dash; the prefix is filled by Neptun.';
 

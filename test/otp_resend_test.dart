@@ -42,6 +42,12 @@ void main() {
     await tester.pump();
 
     expect(find.text('Send code again'), findsOneWidget);
+    expect(
+      find.text(
+        'This build uses the email code only; authenticator is temporarily off.',
+      ),
+      findsOneWidget,
+    );
 
     await tester.enterText(find.byType(TextField), '123456');
     await tester.tap(find.text('Send code again'));

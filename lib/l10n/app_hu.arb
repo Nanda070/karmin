@@ -97,6 +97,7 @@
   "otpSubtitleEmail": "Add meg az e-mailben kapott egyszeri kódot.",
   "otpSubtitleAuthenticator": "Add meg a hitelesítő alkalmazás egyszeri kódját.",
   "otpSubtitleUnknown": "Add meg az e-mailben vagy a hitelesítő alkalmazásban kapott kódot.",
+  "otpAuthenticatorParked": "Ez a verzió csak az e-mailes kódot használja; a hitelesítő alkalmazás ideiglenesen ki van kapcsolva.",
   "otpPrefixHint": "Add meg a kötőjel utáni kódot; az előtagot a Neptun tölti ki.",
   "otpCodeHint": "Egyszeri kód",
   "otpConfirm": "Megerősítés",

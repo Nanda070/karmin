@@ -607,7 +607,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginErrorUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'Couldn't reach ELTE student login. Try again, or sign in on the website.'**
+  /// **'Couldn\'t reach ELTE student login. Try again, or sign in on the website.'**
   String get loginErrorUnavailable;
 
   /// No description provided for @loginOpenWebsite.
@@ -639,6 +639,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter the one-time code from your email or authenticator app.'**
   String get otpSubtitleUnknown;
+
+  /// No description provided for @otpAuthenticatorParked.
+  ///
+  /// In en, this message translates to:
+  /// **'This build uses the email code only; authenticator is temporarily off.'**
+  String get otpAuthenticatorParked;
 
   /// No description provided for @otpPrefixHint.
   ///

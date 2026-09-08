@@ -83,17 +83,64 @@ void main() {
     );
   });
 
-  test('live authenticate 202 without token is needsOtp', () async {
-    final adapter = ScriptedAdapter(
-      (options) => jsonBody(202, {
-        'data': {
-          'accessToken': null,
-          'isTwoFactorRequired': true,
-          'isCaptchaRequired': false,
-          'twoFactorType': 'email',
-        },
-      }),
-    );
+  test('live authenticate 202 without token still POSTs MVC Login', () async {
+    var loginPosts = 0;
+    final adapter = ScriptedAdapter((options) {
+      final url = options.uri.toString();
+      if (url.contains('Account/Authenticate')) {
+        return jsonBody(202, {
+          'data': {
+            'accessToken': null,
+            'isTwoFactorRequired': true,
+            'isCaptchaRequired': false,
+            'twoFactorType': 'email',
+          },
+        });
+      }
+      if (options.method == 'POST' &&
+          url.contains('Account/Login') &&
+          !url.contains('Login2FA')) {
+        loginPosts += 1;
+      }
+      if (url.contains('Account/Login')) {
+        if (options.method == 'GET' && url.contains('Login2FA')) {
+          return ResponseBody.fromString(
+            '<form action="/Account/Login2FA" method="post">'
+            '<input name="__RequestVerificationToken" value="t" />'
+            '<input name="Phase" value="RequestTOTP" />'
+            '<span>732-</span>'
+            '<input name="TOTPCode" value="" /></form>',
+            200,
+            headers: {
+              Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+            },
+          );
+        }
+        if (options.method == 'GET') {
+          return ResponseBody.fromString(
+            '<form action="/Account/Login" method="post">'
+            '<input name="__RequestVerificationToken" value="tok" />'
+            '<input name="LoginName" value="" />'
+            '<input name="Password" value="" /></form>',
+            200,
+            headers: {
+              Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+            },
+          );
+        }
+        if (options.method == 'POST' && !url.contains('Login2FA')) {
+          return ResponseBody.fromString(
+            '',
+            302,
+            headers: {
+              Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+              'location': ['/Account/Login2FA'],
+            },
+          );
+        }
+      }
+      fail('unexpected ${options.method} $url');
+    });
     final client = clientWith(adapter);
     final auth = LiveNeptunAuth(client);
     final ticket = await auth.submitPassword(
@@ -105,20 +152,64 @@ void main() {
     expect(ticket.hasJwt, isFalse);
     expect(ticket.otpChannel, OtpChannel.email);
     expect(client.hasJwt, isFalse);
+    expect(loginPosts, 1);
   });
 
-  test('resend-via-relogin is another password POST, not an OTP token', () async {
+  test('resend-via-relogin POSTs /Account/Login, not JSON Authenticate', () async {
+    var loginPosts = 0;
+    var authenticatePosts = 0;
     final adapter = ScriptedAdapter((options) {
-      expect(options.path.contains('Account/Authenticate'), isTrue);
-      expect(options.data, isA<Map>());
-      final body = options.data as Map;
-      expect(body.containsKey('token'), isFalse);
-      return jsonBody(202, {
-        'data': {
-          'isTwoFactorRequired': true,
-          'isCaptchaRequired': false,
-        },
-      });
+      final url = options.path.contains('http')
+          ? options.uri.toString()
+          : options.uri.toString();
+      if (url.contains('Account/Authenticate')) {
+        authenticatePosts += 1;
+        return jsonBody(400, {});
+      }
+      if (options.method == 'POST' &&
+          url.contains('Account/Login') &&
+          !url.contains('Login2FA')) {
+        loginPosts += 1;
+        final data = options.data;
+        if (data is Map) {
+          expect(data.containsKey('token'), isFalse);
+        } else if (data is String) {
+          expect(data.contains('token='), isFalse);
+        }
+        return ResponseBody.fromString(
+          '',
+          302,
+          headers: {
+            Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+            'location': ['/Account/Login2FA'],
+          },
+        );
+      }
+      if (options.method == 'GET' && url.contains('Login2FA')) {
+        return ResponseBody.fromString(
+          '<form action="/Account/Login2FA" method="post">'
+          '<input name="__RequestVerificationToken" value="t" />'
+          '<span>732-</span>'
+          '<input name="TOTPCode" value="" /></form>',
+          200,
+          headers: {
+            Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+          },
+        );
+      }
+      if (options.method == 'GET' && url.contains('Account/Login')) {
+        return ResponseBody.fromString(
+          '<form action="/Account/Login" method="post">'
+          '<input name="__RequestVerificationToken" value="tok" />'
+          '<input name="LoginName" value="" />'
+          '<input name="Password" value="" /></form>',
+          200,
+          headers: {
+            Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+          },
+        );
+      }
+      fail('unexpected ${options.method} $url');
     });
     final auth = LiveNeptunAuth(clientWith(adapter));
     final ticket = await auth.resendEmailCode(
@@ -127,6 +218,8 @@ void main() {
       lcid: 1033,
     );
     expect(ticket.step, NeptunAuthStep.needsOtp);
+    expect(loginPosts, 1);
+    expect(authenticatePosts, 0);
   });
 
   test('live student API maps calendar GET', () async {

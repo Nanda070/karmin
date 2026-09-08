@@ -224,7 +224,7 @@ class AuthController extends StateNotifier<AuthState> {
         state = state.copyWith(
           busy: false,
           neptunStep: NeptunAuthStep.needsOtp,
-          otpChannel: ticket.otpChannel,
+          otpChannel: OtpChannel.email,
           otpPrefix: ticket.otpPrefix,
           otpResendAvailableAt: _now().add(otpResendCooldown),
           otpResendNonce: state.otpResendNonce + 1,
@@ -439,7 +439,7 @@ class AuthController extends StateNotifier<AuthState> {
       state = state.copyWith(
         busy: false,
         neptunStep: NeptunAuthStep.needsOtp,
-        otpChannel: ticket.otpChannel,
+        otpChannel: OtpChannel.email,
         otpPrefix: ticket.otpPrefix,
         clearError: true,
       );

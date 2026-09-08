@@ -36,38 +36,33 @@ class EltePortalLogin {
     required int lcid,
   }) async {
     final code = userName.trim().toUpperCase();
-    final loginHtml = await _get(loginPath);
-    final fields = extractNamedInputs(loginHtml);
+    final loginHtml = await _fetchPasswordLoginHtml();
+    final fields = extractLoginFormFields(loginHtml);
+    if ((fields['__RequestVerificationToken'] ?? '').isEmpty) {
+      throw const NeptunUnavailableException();
+    }
     fields['LoginName'] = code;
     fields['Password'] = password;
     fields.putIfAbsent('ReturnUrl', () => '');
 
+    // Mail is dispatched only on a successful MVC password POST, same as Safari.
     final response = await _post(loginPath, fields, referer: '$origin$loginPath');
     final ticket = _ticketFromPortalResponse(response);
     if (ticket.step != NeptunAuthStep.needsOtp) {
       return ticket;
     }
-    var otpHtml = '';
-    if (_otpFields.isEmpty || _otpPrefix.isEmpty) {
-      try {
-        otpHtml = await _get(otpPath);
-        _captureOtpForm(otpHtml);
-      } on NeptunException {
-        // OTP submit will GET Login2FA again with the session cookie.
-      }
-    }
-    return AuthTicket(
-      step: NeptunAuthStep.needsOtp,
-      otpChannel: otpHtml.isNotEmpty
-          ? otpChannelFromHtml(otpHtml, otpPath)
-          : ticket.otpChannel,
-      otpPrefix: _otpPrefix,
-    );
+    await _scrapeLogin2FaPrefix();
+    return _emailOtpTicket();
   }
 
   Future<AuthTicket> submitOtp({
     required String otp,
   }) async {
+    if (normalizeOtpPrefix(_otpPrefix).isEmpty) {
+      // Email Login2FA expects prefix+tail (`732-893600`). A bare 6-digit TOTP
+      // is the authenticator payload and is rejected on the email form.
+      throw const NeptunOtpException();
+    }
     var fields = Map<String, String>.from(_otpFields);
     if (fields.isEmpty) {
       final html = await _get(otpPath);
@@ -92,23 +87,75 @@ class EltePortalLogin {
     required String userName,
     required String password,
     required int lcid,
-  }) {
-    clear();
-    return submitPassword(
-      userName: userName,
-      password: password,
-      lcid: lcid,
+  }) async {
+    final previousCookies = Map<String, String>.from(_cookies);
+    final previousFields = Map<String, String>.from(_otpFields);
+    final previousPrefix = _otpPrefix;
+    final previousSession = _hasSession;
+    try {
+      clear();
+      return await submitPassword(
+        userName: userName,
+        password: password,
+        lcid: lcid,
+      );
+    } catch (_) {
+      _cookies
+        ..clear()
+        ..addAll(previousCookies);
+      _otpFields = previousFields;
+      _otpPrefix = previousPrefix;
+      _hasSession = previousSession;
+      rethrow;
+    }
+  }
+
+  Future<String> _fetchPasswordLoginHtml() async {
+    var response = await _sendGet(loginPath, referer: '$origin$loginPath');
+    var html = _htmlOf(response);
+    final location = response.headers.value('location') ?? '';
+    if (_redirectsToLogin2Fa(response.statusCode, location) ||
+        htmlLooksLikeOtp(html)) {
+      // A pending 2FA session makes GET Login bounce to Login2FA (no mail).
+      _cookies.clear();
+      response = await _sendGet(loginPath, referer: '$origin$loginPath');
+      html = _htmlOf(response);
+    }
+    return html;
+  }
+
+  Future<void> _scrapeLogin2FaPrefix() async {
+    if (_otpFields.isNotEmpty && _otpPrefix.isNotEmpty) {
+      return;
+    }
+    try {
+      final otpHtml = await _get(otpPath);
+      _captureOtpForm(otpHtml);
+    } on NeptunException {
+      // Prefix stays whatever the Login POST body already captured.
+    }
+  }
+
+  AuthTicket _emailOtpTicket() {
+    return AuthTicket(
+      step: NeptunAuthStep.needsOtp,
+      otpChannel: OtpChannel.email,
+      otpPrefix: _otpPrefix,
     );
   }
 
   Future<String> _get(String path) async {
+    return _htmlOf(await _sendGet(path, referer: '$origin$loginPath'));
+  }
+
+  Future<Response<dynamic>> _sendGet(String path, {required String referer}) async {
     try {
       final response = await _client.dio.get<dynamic>(
         '$origin$path',
-        options: _options(referer: '$origin$loginPath'),
+        options: _options(referer: referer),
       );
       _storeCookies(response);
-      return _htmlOf(response);
+      return response;
     } on DioException catch (error) {
       throw mapDioException(error);
     }
@@ -122,7 +169,7 @@ class EltePortalLogin {
     try {
       final response = await _client.dio.post<dynamic>(
         '$origin$path',
-        data: fields,
+        data: encodeFormBody(fields),
         options: _options(
           referer: referer,
           contentType: Headers.formUrlEncodedContentType,
@@ -145,12 +192,19 @@ class EltePortalLogin {
   }) {
     return Options(
       followRedirects: false,
+      maxRedirects: 0,
       validateStatus: (status) => status != null && status < 500,
+      responseType: ResponseType.plain,
       contentType: contentType,
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      headers: <String, dynamic>{
+        'Accept':
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'hu-HU,hu;q=0.9,en-US;q=0.8,en;q=0.7',
         'Origin': origin,
         'Referer': referer,
+        // NeptunClient defaults to XHR+JSON; that AJAX path does not mail OTP.
+        'X-Requested-With': null,
+        Headers.contentTypeHeader: contentType,
         if (_cookies.isNotEmpty) 'Cookie': cookieHeader(_cookies),
       },
     );
@@ -184,11 +238,7 @@ class EltePortalLogin {
     if (_isOtpChallenge(status, location, html)) {
       _captureOtpForm(html);
       _hasSession = true;
-      return AuthTicket(
-        step: NeptunAuthStep.needsOtp,
-        otpChannel: otpChannelFromHtml(html, location),
-        otpPrefix: _otpPrefix,
-      );
+      return _emailOtpTicket();
     }
 
     if (_looksLoggedIn(status, location, html)) {
@@ -209,23 +259,29 @@ class EltePortalLogin {
       throw const NeptunAuthException();
     }
 
-    if (status >= 300 && status < 400 && location.contains('Login2FA')) {
+    if (_redirectsToLogin2Fa(status, location)) {
       _hasSession = true;
-      return AuthTicket(
-        step: NeptunAuthStep.needsOtp,
-        otpChannel: otpChannelFromHtml(html, location),
-        otpPrefix: _otpPrefix,
-      );
+      return _emailOtpTicket();
     }
 
     throw const NeptunUnavailableException();
   }
 
   bool _isOtpChallenge(int status, String location, String html) {
-    if (location.contains('Login2FA')) {
+    if (_redirectsToLogin2Fa(status, location)) {
       return true;
     }
+    if (htmlLooksLikePasswordLogin(html)) {
+      return false;
+    }
     return htmlLooksLikeOtp(html);
+  }
+
+  bool _redirectsToLogin2Fa(int? status, String location) {
+    return status != null &&
+        status >= 300 &&
+        status < 400 &&
+        location.toLowerCase().contains('login2fa');
   }
 
   bool _looksLoggedIn(int status, String location, String html) {
@@ -256,14 +312,15 @@ class EltePortalLogin {
   }
 
   void _captureOtpForm(String html) {
-    if (html.trim().isEmpty) {
+    if (html.trim().isEmpty || htmlLooksLikePasswordLogin(html)) {
       return;
     }
-    final fields = extractNamedInputs(html);
+    final formHtml = htmlOfLogin2FaForm(html) ?? html;
+    final fields = extractNamedInputs(formHtml);
     if (fields.isNotEmpty) {
       _otpFields = fields;
     }
-    final prefix = parseLogin2FaPrefix(html);
+    final prefix = parseLogin2FaPrefix(formHtml);
     if (prefix != null && prefix.isNotEmpty) {
       _otpPrefix = prefix;
     }
@@ -307,22 +364,97 @@ Map<String, String> extractNamedInputs(String html) {
   return fields;
 }
 
+/// `application/x-www-form-urlencoded`. Dio 5 only url-encodes
+/// `Map<String, dynamic>`; `Map<String, String>` is sent as `{key: value}`.
+String encodeFormBody(Map<String, String> fields) {
+  return fields.entries
+      .map(
+        (entry) =>
+            '${Uri.encodeQueryComponent(entry.key)}=${Uri.encodeQueryComponent(entry.value)}',
+      )
+      .join('&');
+}
+
+String? htmlOfForm(
+  String html, {
+  required bool Function(String attrs, String body) match,
+}) {
+  final form = RegExp(
+    r'<form\b([^>]*)>(.*?)</form>',
+    caseSensitive: false,
+    dotAll: true,
+  );
+  for (final found in form.allMatches(html)) {
+    if (match(found.group(1) ?? '', found.group(2) ?? '')) {
+      return found.group(0);
+    }
+  }
+  return null;
+}
+
+bool _actionIsPasswordLogin(String action) {
+  final path = action.split('?').first.toLowerCase();
+  if (path.contains('login2fa')) {
+    return false;
+  }
+  return path.endsWith('/account/login') || path.endsWith('account/login');
+}
+
+bool _actionIsLogin2Fa(String action) {
+  return action.split('?').first.toLowerCase().contains('login2fa');
+}
+
+/// Fields from the password form only — not language/theme switchers.
+Map<String, String> extractLoginFormFields(String html) {
+  final form = htmlOfForm(
+    html,
+    match: (attrs, body) {
+      if (_actionIsPasswordLogin(_attr(attrs, 'action') ?? '')) {
+        return true;
+      }
+      final lower = body.toLowerCase();
+      return (lower.contains('name="loginname"') ||
+              lower.contains("name='loginname'")) &&
+          !_actionIsLogin2Fa(_attr(attrs, 'action') ?? '');
+    },
+  );
+  return extractNamedInputs(form ?? html);
+}
+
+String? htmlOfLogin2FaForm(String html) {
+  return htmlOfForm(
+    html,
+    match: (attrs, body) {
+      if (_actionIsLogin2Fa(_attr(attrs, 'action') ?? '')) {
+        return true;
+      }
+      final lower = body.toLowerCase();
+      return lower.contains('totpcode') ||
+          lower.contains('name="phase"') ||
+          lower.contains("name='phase'");
+    },
+  );
+}
+
+bool htmlLooksLikePasswordLogin(String html) {
+  final lower = html.toLowerCase();
+  final hasLoginName =
+      lower.contains('name="loginname"') || lower.contains("name='loginname'");
+  if (!hasLoginName) {
+    return false;
+  }
+  return !lower.contains('login2fa') && !lower.contains('totpcode');
+}
+
 bool htmlLooksLikeOtp(String html) {
+  if (htmlLooksLikePasswordLogin(html)) {
+    return false;
+  }
   final lower = html.toLowerCase();
   return lower.contains('login2fa') ||
       lower.contains('totpcode') ||
       lower.contains('name="phase"') ||
-      lower.contains("name='phase'") ||
-      lower.contains('two-factor') ||
-      lower.contains('two factor') ||
-      lower.contains('e-mail code') ||
-      lower.contains('email code') ||
-      lower.contains('e-mail kód') ||
-      lower.contains('kétlépcsős') ||
-      lower.contains('ketlepcsos') ||
-      lower.contains('egyszeri') ||
-      lower.contains('authenticator') ||
-      lower.contains('hitelesítő');
+      lower.contains("name='phase'");
 }
 
 bool htmlLooksLikeLoginError(String html) {

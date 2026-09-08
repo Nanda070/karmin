@@ -70,12 +70,8 @@ class _OtpPageState extends ConsumerState<OtpPage> {
         );
   }
 
-  String _hint(AppLocalizations l10n, OtpChannel channel) {
-    return switch (channel) {
-      OtpChannel.email => l10n.otpSubtitleEmail,
-      OtpChannel.authenticator => l10n.otpSubtitleAuthenticator,
-      OtpChannel.unknown => l10n.otpSubtitleUnknown,
-    };
+  String _hint(AppLocalizations l10n) {
+    return l10n.otpSubtitleEmail;
   }
 
   Widget _codeField(
@@ -191,9 +187,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
             child: Column(
               children: [
                 AuthBadge(
-                  icon: auth.otpChannel == OtpChannel.authenticator
-                      ? KarminIcons.shield
-                      : KarminIcons.mail,
+                  icon: KarminIcons.mail,
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -213,24 +207,31 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _hint(l10n, auth.otpChannel),
+                  _hint(l10n),
                   textAlign: TextAlign.center,
                   style: KarminTypography.body(
                     fontSize: 13,
                     color: palette.muted,
                   ),
                 ),
-                if (auth.otpChannel != OtpChannel.authenticator) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    l10n.otpPrefixHint,
-                    textAlign: TextAlign.center,
-                    style: KarminTypography.body(
-                      fontSize: 12,
-                      color: palette.muted,
-                    ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.otpAuthenticatorParked,
+                  textAlign: TextAlign.center,
+                  style: KarminTypography.body(
+                    fontSize: 12,
+                    color: palette.muted,
                   ),
-                ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.otpPrefixHint,
+                  textAlign: TextAlign.center,
+                  style: KarminTypography.body(
+                    fontSize: 12,
+                    color: palette.muted,
+                  ),
+                ),
                 const SizedBox(height: 24),
                 _codeField(l10n, palette, auth.otpPrefix),
                 if (error != null) ...[

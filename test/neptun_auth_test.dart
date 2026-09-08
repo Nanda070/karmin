@@ -69,6 +69,61 @@ NeptunClient clientWith(ScriptedAdapter adapter) {
   return NeptunClient(dio: dio);
 }
 
+const eltePasswordLoginHtml = '''
+<form method="post" id="selectLanguageForm" action="/Home/SetLanguage">
+  <input type="hidden" name="returnUrl" value="/Account/Login" />
+  <input type="hidden" name="culture" value="en" />
+  <input name="__RequestVerificationToken" type="hidden" value="lang-token" />
+</form>
+<form action="/Account/Login" method="post">
+  <input name="__RequestVerificationToken" value="login-token" />
+  <input name="LoginName" value="" />
+  <input name="Password" value="" />
+  <input type="hidden" id="ReturnUrl" name="ReturnUrl" value="" />
+</form>
+''';
+
+const elteLogin2FaHtml = '''
+<form action="/Account/Login2FA" method="post">
+  <input name="__RequestVerificationToken" value="otp-token" />
+  <input name="Phase" value="RequestTOTP" />
+  <label>E-mail code</label>
+  <span class="input-group-text">732-</span>
+  <input id="TOTPCode" name="TOTPCode" value="" />
+</form>
+''';
+
+bool isLogin2FaUrl(String url) => url.contains('Account/Login2FA');
+
+bool isPasswordLoginUrl(String url) =>
+    url.contains('Account/Login') && !isLogin2FaUrl(url);
+
+ResponseBody Function(RequestOptions options) eltePortalScript({
+  String login2faHtml = elteLogin2FaHtml,
+  void Function(RequestOptions options)? onRequest,
+}) {
+  return (options) {
+    onRequest?.call(options);
+    final url = options.uri.toString();
+    if (url.contains('Account/Authenticate')) {
+      return jsonBody(400, {});
+    }
+    if (options.method == 'GET' && isLogin2FaUrl(url)) {
+      return htmlBody(200, login2faHtml);
+    }
+    if (options.method == 'GET' && isPasswordLoginUrl(url)) {
+      return htmlBody(200, eltePasswordLoginHtml);
+    }
+    if (options.method == 'POST' && isLogin2FaUrl(url)) {
+      return htmlBody(302, '', location: '/');
+    }
+    if (options.method == 'POST' && isPasswordLoginUrl(url)) {
+      return htmlBody(302, '', location: '/Account/Login2FA');
+    }
+    fail('unexpected ${options.method} $url');
+  };
+}
+
 void main() {
   group('parseAuthenticateResponse', () {
     test('HTTP 202 with isTwoFactorRequired is OTP, never invalidCredentials', () {
@@ -195,15 +250,27 @@ void main() {
     expect(body.containsKey('token'), isFalse);
   });
 
-  test('live 400 + 2FA is OTP and never invalidCredentials', () async {
-    final adapter = ScriptedAdapter(
-      (options) => jsonBody(400, {
-        'data': {
-          'isTwoFactorRequired': true,
-          'isCaptchaRequired': false,
+  test('live 400 + 2FA still POSTs MVC Login so Neptun can mail', () async {
+    var loginPosts = 0;
+    final adapter = ScriptedAdapter((options) {
+      final url = options.uri.toString();
+      if (url.contains('Account/Authenticate')) {
+        return jsonBody(400, {
+          'data': {
+            'isTwoFactorRequired': true,
+            'isCaptchaRequired': false,
+          },
+        });
+      }
+      return eltePortalScript(
+        onRequest: (request) {
+          if (request.method == 'POST' &&
+              isPasswordLoginUrl(request.uri.toString())) {
+            loginPosts += 1;
+          }
         },
-      }),
-    );
+      )(options);
+    });
     final auth = LiveNeptunAuth(clientWith(adapter));
     final ticket = await auth.submitPassword(
       userName: 'abc123',
@@ -211,57 +278,42 @@ void main() {
       lcid: 1033,
     );
     expect(ticket.step, NeptunAuthStep.needsOtp);
-    expect(adapter.calls, 1);
-    expect(adapter.paths.single.contains('Account/Authenticate'), isTrue);
+    expect(ticket.otpChannel, OtpChannel.email);
+    expect(loginPosts, 1);
+    expect(adapter.paths.any((path) => path.contains('Account/Login')), isTrue);
   });
 
-  test('live 202 without data envelope is OTP, not invalidCredentials', () async {
-    final adapter = ScriptedAdapter(
-      (options) => jsonBody(202, {'isTwoFactorRequired': true}),
-    );
+  test('live 202 without data envelope still POSTs MVC Login', () async {
+    final adapter = ScriptedAdapter((options) {
+      final url = options.uri.toString();
+      if (url.contains('Account/Authenticate')) {
+        return jsonBody(202, {'isTwoFactorRequired': true});
+      }
+      return eltePortalScript()(options);
+    });
     final ticket = await LiveNeptunAuth(clientWith(adapter)).submitPassword(
       userName: 'abc',
       password: 'secret',
       lcid: 1033,
     );
     expect(ticket.step, NeptunAuthStep.needsOtp);
+    expect(
+      adapter.paths.any(
+        (path) => path.contains('Account/Login') && !path.contains('Login2FA'),
+      ),
+      isTrue,
+    );
   });
 
   test('JSON API miss falls back to ELTE MVC Login2FA', () async {
-    final adapter = ScriptedAdapter((options) {
-      final url = options.uri.toString();
-      if (url.contains('Account/Authenticate')) {
-        return jsonBody(400, {});
-      }
-      if (options.method == 'GET' && url.contains('Account/Login2FA')) {
-        return htmlBody(
-          200,
-          '<form><input name="__RequestVerificationToken" value="t" />'
-          '<input name="TOTPCode" value="" />'
-          '<input name="Phase" value="RequestTOTP" /></form>',
-        );
-      }
-      if (options.method == 'GET' && url.contains('Account/Login')) {
-        return htmlBody(
-          200,
-          '<form method="post">'
-          '<input name="__RequestVerificationToken" value="tok" />'
-          '<input name="LoginName" value="" />'
-          '<input name="Password" value="" />'
-          '</form>',
-        );
-      }
-      if (options.method == 'POST' && url.contains('Account/Login')) {
-        return htmlBody(302, '', location: '/Account/Login2FA');
-      }
-      fail('unexpected ${options.method} $url');
-    });
+    final adapter = ScriptedAdapter(eltePortalScript());
     final ticket = await LiveNeptunAuth(clientWith(adapter)).submitPassword(
       userName: 'n4ibzj',
       password: 'secret',
       lcid: 1033,
     );
     expect(ticket.step, NeptunAuthStep.needsOtp);
+    expect(ticket.otpPrefix, '732-');
     expect(adapter.paths.any((path) => path.contains('Account/Login')), isTrue);
   });
 
@@ -273,6 +325,12 @@ void main() {
     expect(fields['__RequestVerificationToken'], 'abc');
     expect(fields['LoginName'], '');
     expect(htmlLooksLikeOtp('<input id="TOTPCode" name="TOTPCode" />'), isTrue);
+    expect(htmlLooksLikeOtp(eltePasswordLoginHtml), isFalse);
+    final loginFields = extractLoginFormFields(eltePasswordLoginHtml);
+    expect(loginFields['__RequestVerificationToken'], 'login-token');
+    expect(loginFields.containsKey('culture'), isFalse);
+    expect(loginFields['returnUrl'], isNull);
+    expect(encodeFormBody({'LoginName': 'ABC123'}), 'LoginName=ABC123');
     final jar = <String, String>{};
     mergeSetCookie(jar, ['.Potlap.Session=xyz; path=/; httponly']);
     expect(cookieHeader(jar), '.Potlap.Session=xyz');

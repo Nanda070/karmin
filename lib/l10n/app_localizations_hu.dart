@@ -293,6 +293,10 @@ class AppLocalizationsHu extends AppLocalizations {
       'Add meg az e-mailben vagy a hitelesítő alkalmazásban kapott kódot.';
 
   @override
+  String get otpAuthenticatorParked =>
+      'Ez a verzió csak az e-mailes kódot használja; a hitelesítő alkalmazás ideiglenesen ki van kapcsolva.';
+
+  @override
   String get otpPrefixHint =>
       'Add meg a kötőjel utáni kódot; az előtagot a Neptun tölti ki.';
 

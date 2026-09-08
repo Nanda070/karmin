@@ -263,7 +263,7 @@ class DebugNeptunAuth implements NeptunAuthApi {
     }
     return const AuthTicket(
       step: NeptunAuthStep.needsOtp,
-      otpChannel: OtpChannel.unknown,
+      otpChannel: OtpChannel.email,
     );
   }
 
@@ -323,27 +323,33 @@ class LiveNeptunAuth implements NeptunAuthApi {
     final code = normalizeNeptunCode(userName);
     _portal.clear();
     try {
-      return await _authenticate(
+      final ticket = await _authenticate(
         authenticateJsonBody(
           userName: code,
           password: password,
           lcid: lcid,
         ),
       );
+      if (ticket.step == NeptunAuthStep.authenticated) {
+        return ticket;
+      }
+      // JSON 2FA does not dispatch ELTE email. MVC POST /Account/Login does.
+    } on NeptunCaptchaException {
+      rethrow;
+    } on NeptunLockoutException {
+      rethrow;
+    } on NeptunAuthException {
+      rethrow;
     } on NeptunUnavailableException {
-      return _portal.submitPassword(
-        userName: code,
-        password: password,
-        lcid: lcid,
-      );
+      // ELTE `/ujhallgato/api` is a 400/404 stub.
     } on NeptunNetworkException {
-      // ELTE `/ujhallgato/api` often hangs or 404s; the MVC portal still works.
-      return _portal.submitPassword(
-        userName: code,
-        password: password,
-        lcid: lcid,
-      );
+      // ELTE `/ujhallgato/api` often hangs; the MVC portal still works.
     }
+    return _portal.submitPassword(
+      userName: code,
+      password: password,
+      lcid: lcid,
+    );
   }
 
   @override
@@ -378,14 +384,7 @@ class LiveNeptunAuth implements NeptunAuthApi {
     required String password,
     required int lcid,
   }) {
-    if (_portal.hasSession) {
-      return _portal.resendEmailCode(
-        userName: userName,
-        password: password,
-        lcid: lcid,
-      );
-    }
-    return submitPassword(
+    return _portal.resendEmailCode(
       userName: userName,
       password: password,
       lcid: lcid,
