@@ -137,8 +137,12 @@ class _OtpPageState extends ConsumerState<OtpPage> {
     if (error == null) {
       return null;
     }
+    // Detailed reject strings already include HTTP status / Neptun text.
     if (error == const NeptunOtpException().message) {
       return l10n.otpError;
+    }
+    if (error.startsWith('Neptun rejected this code')) {
+      return error;
     }
     if (error == const NeptunEmailCodeException().message) {
       return l10n.otpErrorNoMail;
@@ -157,6 +161,9 @@ class _OtpPageState extends ConsumerState<OtpPage> {
     }
     if (error == const NeptunUnavailableException().message) {
       return l10n.loginErrorUnavailable;
+    }
+    if (error == const NeptunMaintenanceException().message) {
+      return error;
     }
     return error;
   }

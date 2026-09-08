@@ -46,6 +46,11 @@ NeptunClient clientWith(ScriptedAdapter adapter) {
   final dio = Dio(
     BaseOptions(
       baseUrl: NeptunClient.baseUrl,
+      headers: const {
+        'User-Agent': NeptunClient.userAgent,
+        'Accept': 'application/json, text/plain, */*',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
       validateStatus: (status) => status != null && status >= 200 && status < 300,
     ),
   );
@@ -155,14 +160,19 @@ void main() {
     final urls = <String>[];
     final tokens = <String>[];
     final authHeaders = <String?>[];
+    final contentTypes = <String?>[];
+    final xhr = <String?>[];
     final adapter = ScriptedAdapter((options) {
       urls.add(options.uri.toString());
       authHeaders.add(options.headers['Authorization']?.toString());
+      contentTypes.add(options.headers[Headers.contentTypeHeader]?.toString());
+      xhr.add(options.headers['X-Requested-With']?.toString());
       final data = options.data;
       final map = data is Map
           ? data.map((k, v) => MapEntry('$k', v))
           : <String, dynamic>{};
       tokens.add('${map['token'] ?? ''}');
+      expect(map['LCID'], 1038);
       if ('${map['token'] ?? ''}'.isEmpty) {
         return jsonBody(202, {
           'data': {'isTwoFactorRequired': true},
@@ -198,8 +208,10 @@ void main() {
     );
     expect(urls.any((u) => u.contains('/api/api/')), isFalse);
     expect(tokens, ['', '654321']);
-    // Stale JWT must not ride along on Authenticate.
+    // Stale JWT must not ride along on Authenticate; fork = Content-Type only.
     expect(authHeaders, everyElement(isNull));
+    expect(xhr, everyElement(isNull));
+    expect(contentTypes, everyElement(Headers.jsonContentType));
   });
 
   test('HTML maintenance body maps to NeptunMaintenanceException', () {

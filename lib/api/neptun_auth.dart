@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -151,12 +153,20 @@ bool looksLikeMissingAuthApi(int? status, dynamic raw) {
 
 /// Maps an Authenticate HTTP result. HTTP 202 without a JWT is OTP, never
 /// invalid credentials. Does not log the body (may contain tokens).
+///
+/// When [forOtpSubmit] is true, a second 2FA challenge / 400 / 401 becomes
+/// [NeptunOtpException] with HTTP status — never silent remap of maintenance.
 AuthTicket parseAuthenticateResponse({
   required int? statusCode,
   required dynamic data,
+  bool forOtpSubmit = false,
 }) {
   if (statusCode == 429) {
     throw const NeptunLockoutException();
+  }
+
+  if (looksLikeHtmlPayload(data)) {
+    throw const NeptunMaintenanceException();
   }
 
   final body = asJsonMap(data);
@@ -189,10 +199,24 @@ AuthTicket parseAuthenticateResponse({
       looksLikeTwoFactorMessage(body, data);
 
   if (twoFactor) {
+    if (forOtpSubmit) {
+      throw NeptunOtpException.reject(
+        statusCode: statusCode,
+        neptunMessage: extractNeptunMessage(body) ?? extractNeptunMessage(data),
+      );
+    }
     return AuthTicket(
       step: NeptunAuthStep.needsOtp,
       otpChannel: otpChannelFromPayload(payload),
       otpPrefix: otpPrefixFromPayload(payload),
+    );
+  }
+
+  if (forOtpSubmit) {
+    // Do not collapse password/HTML/401 into the opaque default OTP string.
+    throw NeptunOtpException.reject(
+      statusCode: statusCode,
+      neptunMessage: extractNeptunMessage(body) ?? extractNeptunMessage(data),
     );
   }
 
@@ -234,27 +258,50 @@ bool looksLikeTwoFactorMessage(Map<String, dynamic> body, dynamic raw) {
       lower.contains('authenticator');
 }
 
+/// Fork ELTE always sends `LCID: 1038` on Authenticate (password + token).
+const int forkAuthenticateLcid = 1038;
+
+/// Body shape from zoligamer/Neptun-Mobile-fork `InstitutesRequest._tryModernLogin`
+/// / `submitTwoFactorCode` — key order preserved for JSON encode.
 Map<String, dynamic> authenticateJsonBody({
   required String userName,
   required String password,
-  required int lcid,
+  int lcid = forkAuthenticateLcid,
   String? otp,
 }) {
-  // Matches zoligamer/Neptun-Mobile-fork `InstitutesRequest._tryModernLogin` /
-  // `submitTwoFactorCode` (lib/API/api_coms.dart) byte-for-byte intent.
-  final body = <String, dynamic>{
+  final token = otp?.trim() ?? '';
+  return <String, dynamic>{
     'userName': normalizeNeptunCode(userName),
     'password': password,
     'captcha': '',
     'captchaIdentifier': '',
-    'token': '',
+    'token': token,
     'LCID': lcid,
   };
-  final token = otp?.trim();
-  if (token != null && token.isNotEmpty) {
-    body['token'] = token;
+}
+
+/// `Cookie: devicecookie-<base64(UPPER username)>=value` — fork exact.
+String? forkDeviceCookieHeader({
+  required String userName,
+  required String? cookieValue,
+}) {
+  if (cookieValue == null || cookieValue.isEmpty) {
+    return null;
   }
-  return body;
+  final b64 = base64.encode(utf8.encode(normalizeNeptunCode(userName)));
+  return 'devicecookie-$b64=$cookieValue';
+}
+
+/// Parse `devicecookie-…=<value>` from Set-Cookie (fork regex).
+String? extractDeviceCookieValue(List<String>? setCookieHeaders) {
+  if (setCookieHeaders == null || setCookieHeaders.isEmpty) {
+    return null;
+  }
+  final joined = setCookieHeaders.join(', ');
+  final match = RegExp(
+    r'devicecookie-[a-zA-Z0-9+/=]+=([a-zA-Z0-9+/=]+)',
+  ).firstMatch(joined);
+  return match?.group(1);
 }
 
 /// Debug / web preview: any non-empty credentials, then a 6–16 digit OTP.
@@ -309,9 +356,11 @@ class DebugNeptunAuth implements NeptunAuthApi {
   void reset() {}
 }
 
-/// Live login aligned with [zoligamer/Neptun-Mobile-fork]:
-/// `POST {institute}/api/Account/Authenticate` then 2FA via `token`.
-/// MVC `/Account/Login` is only a fallback; email send is never a hard blocker.
+/// Live login aligned 1:1 with [zoligamer/Neptun-Mobile-fork] for ELTE:
+/// `POST {institute}/api/Account/Authenticate` password then same URL + `token`.
+///
+/// **No MVC fallback** on password/OTP — mixing channels left OTP without a
+/// JSON pending session. Optional email resend still uses [EltePortalLogin].
 class LiveNeptunAuth implements NeptunAuthApi {
   LiveNeptunAuth(this._client) : _portal = EltePortalLogin(_client);
 
@@ -319,24 +368,19 @@ class LiveNeptunAuth implements NeptunAuthApi {
   final EltePortalLogin _portal;
 
   /// Set when password 2FA came from JSON Authenticate (fork path).
-  /// Cleared on JWT success, MVC takeover, or [reset] / [clear] — not at the
-  /// start of every [submitPassword] (unlock / 401 re-login must keep context).
   var _jsonTwoFactorPending = false;
 
-  /// Fork ELTE: `{instituteBase}/api/Account/Authenticate`.
-  /// Kept absolute so Dio's student [NeptunClient.baseUrl] (`…/Account/api/`)
-  /// cannot double `/api/` if a relative `api/Account/…` path is ever used.
-  static const String forkAuthenticateUrl = NeptunClient.authenticateUrl;
+  /// Fork `devicecookie-…` value from Authenticate Set-Cookie (RAM only).
+  String? _deviceCookieValue;
 
-  static const _authHeaders = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json, text/plain, */*',
-    'Origin': EltePortalLogin.origin,
-    'Referer': '${EltePortalLogin.origin}/Account/Login',
-  };
+  /// Fork ELTE: `{instituteBase}/api/Account/Authenticate`.
+  static const String forkAuthenticateUrl = NeptunClient.authenticateUrl;
 
   @visibleForTesting
   bool get jsonTwoFactorPending => _jsonTwoFactorPending;
+
+  @visibleForTesting
+  String? get deviceCookieValue => _deviceCookieValue;
 
   /// Alias for [reset].
   void clear() => reset();
@@ -344,6 +388,7 @@ class LiveNeptunAuth implements NeptunAuthApi {
   @override
   void reset() {
     _jsonTwoFactorPending = false;
+    _deviceCookieValue = null;
     _portal.clear();
   }
 
@@ -354,53 +399,33 @@ class LiveNeptunAuth implements NeptunAuthApi {
     required int lcid,
   }) async {
     final code = normalizeNeptunCode(userName);
-    // Fresh password attempt: drop MVC cookies. Do **not** clear
-    // `_jsonTwoFactorPending` here — a failed / in-flight re-login during OTP
-    // must not make [submitOtp] abandon the fork Authenticate `token` path.
+    // Fresh password attempt: drop MVC cookies. Keep device cookie + JSON
+    // pending across unlock re-login (fork keeps device cookie by username).
     _portal.clear();
 
-    // Fork modern JSON only (absolute URI — never relative under Account/api).
-    try {
-      final ticket = await _authenticate(
-        authenticateJsonBody(
-          userName: code,
-          password: password,
-          lcid: lcid,
-        ),
-      );
-      if (ticket.step == NeptunAuthStep.authenticated) {
-        _jsonTwoFactorPending = false;
-        return ticket;
-      }
-      if (ticket.step == NeptunAuthStep.needsOtp) {
-        // Fork has no email dispatch — 2FA is the authenticator `token` field.
-        _jsonTwoFactorPending = true;
-        return const AuthTicket(
-          step: NeptunAuthStep.needsOtp,
-          otpChannel: OtpChannel.authenticator,
-          otpPrefix: '',
-        );
-      }
-    } on NeptunCaptchaException {
-      rethrow;
-    } on NeptunLockoutException {
-      rethrow;
-    } on NeptunAuthException {
-      rethrow;
-    } on NeptunException {
-      // MVC fallback.
-    }
-
-    // ASP.NET MVC Login2FA — prefer authenticator; email is optional (resend).
-    // Only clear JSON pending after MVC owns the 2FA session (preserve flag if
-    // portal throws so OTP can still retry fork Authenticate).
-    final portalTicket = await _portal.submitPassword(
+    final ticket = await _authenticate(
+      authenticateJsonBody(
+        userName: code,
+        password: password,
+        // Fork hardcodes 1038 on Authenticate regardless of UI language.
+        lcid: forkAuthenticateLcid,
+      ),
       userName: code,
-      password: password,
-      lcid: lcid,
     );
-    _jsonTwoFactorPending = false;
-    return portalTicket;
+    if (ticket.step == NeptunAuthStep.authenticated) {
+      _jsonTwoFactorPending = false;
+      return ticket;
+    }
+    if (ticket.step == NeptunAuthStep.needsOtp) {
+      _jsonTwoFactorPending = true;
+      // Fork has no email dispatch — 2FA is the authenticator `token` field.
+      return const AuthTicket(
+        step: NeptunAuthStep.needsOtp,
+        otpChannel: OtpChannel.authenticator,
+        otpPrefix: '',
+      );
+    }
+    throw const NeptunUnavailableException();
   }
 
   @override
@@ -410,43 +435,30 @@ class LiveNeptunAuth implements NeptunAuthApi {
     required int lcid,
     required String otp,
   }) async {
-    // Fork: bare authenticator digits in `token` — never email `732-` + tail.
+    // Fork: authenticator digits in `token` — never email `732-` + tail.
     final digits = otp.replaceAll(RegExp(r'\D'), '');
     if (digits.isEmpty) {
-      throw const NeptunOtpException();
+      throw NeptunOtpException.reject(neptunMessage: 'empty code');
     }
-    final token = digits;
+    final code = normalizeNeptunCode(userName);
 
-    final preferJson = _jsonTwoFactorPending || !_portal.hasSession;
-    if (preferJson) {
-      final payload = authenticateJsonBody(
-        userName: userName,
+    // Same channel as password: fork Authenticate only (no MVC mix).
+    final ticket = await _authenticate(
+      authenticateJsonBody(
+        userName: code,
         password: password,
-        lcid: lcid,
-        otp: token,
-      );
-      try {
-        final ticket = await _authenticate(payload);
-        if (ticket.step == NeptunAuthStep.authenticated) {
-          _jsonTwoFactorPending = false;
-          _portal.clear();
-        }
-        return ticket;
-      } on NeptunOtpException {
-        rethrow;
-      } on NeptunAuthException {
-        throw const NeptunOtpException();
-      } on NeptunUnavailableException {
-        // try portal
-      } on NeptunException {
-        // try portal
-      }
+        lcid: forkAuthenticateLcid,
+        otp: digits,
+      ),
+      userName: code,
+      forOtpSubmit: true,
+    );
+    if (ticket.step == NeptunAuthStep.authenticated) {
+      _jsonTwoFactorPending = false;
+      _portal.clear();
+      return ticket;
     }
-
-    if (_portal.hasSession) {
-      return _portal.submitOtp(otp: token);
-    }
-    throw const NeptunOtpException();
+    throw NeptunOtpException.reject(statusCode: 202);
   }
 
   @override
@@ -463,31 +475,53 @@ class LiveNeptunAuth implements NeptunAuthApi {
   }
 
   /// Absolute `postUri` — bypasses Dio [NeptunClient.baseUrl] merge entirely.
-  Future<AuthTicket> _authenticate(Map<String, dynamic> payload) async {
+  Future<AuthTicket> _authenticate(
+    Map<String, dynamic> payload, {
+    required String userName,
+    bool forOtpSubmit = false,
+  }) async {
     final uri = Uri.parse(forkAuthenticateUrl);
+    final cookie = forkDeviceCookieHeader(
+      userName: userName,
+      cookieValue: _deviceCookieValue,
+    );
     try {
       final response = await _client.dio.postUri<dynamic>(
         uri,
         data: payload,
         options: Options(
-          headers: _authHeaders,
+          headers: {
+            Headers.contentTypeHeader: Headers.jsonContentType,
+            'Cookie': ?cookie,
+          },
           validateStatus: (status) => status != null && status < 500,
           sendTimeout: const Duration(seconds: 8),
           receiveTimeout: const Duration(seconds: 8),
         ),
       );
+      _absorbDeviceCookie(response.headers.map['set-cookie']);
       return parseAuthenticateResponse(
         statusCode: response.statusCode,
         data: response.data,
+        forOtpSubmit: forOtpSubmit,
       );
     } on DioException catch (error) {
       if (error.response != null) {
+        _absorbDeviceCookie(error.response!.headers.map['set-cookie']);
         return parseAuthenticateResponse(
           statusCode: error.response!.statusCode,
           data: error.response!.data,
+          forOtpSubmit: forOtpSubmit,
         );
       }
       throw mapDioException(error);
+    }
+  }
+
+  void _absorbDeviceCookie(List<String>? setCookie) {
+    final value = extractDeviceCookieValue(setCookie);
+    if (value != null && value.isNotEmpty) {
+      _deviceCookieValue = value;
     }
   }
 }

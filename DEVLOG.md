@@ -6,13 +6,21 @@
 
 ## 8 сентября 2026 г.
 
+### Auth / 2FA (fork 1:1)
+
+- **Deep compare** с [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork) `api_coms.dart` `_tryModernLogin` / `submitTwoFactorCode`
+- ELTE live: **только** fork Authenticate для пароля и OTP (без MVC mix). Body: `userName`, `password`, `captcha:""`, `captchaIdentifier:""`, `token`, `LCID:1038`. Заголовки Authenticate = только `Content-Type: application/json` (+ `devicecookie`)
+- Сохраняем/шлём fork `devicecookie-<base64(UPPER)>` между password и token шагами
+- OTP ошибка больше не opaque: `Neptun rejected this code (HTTP 400)` (+ текст Neptun). HTML/maintenance → отдельные исключения, не OTP
+- IPA `0.1.0+5`
+
 ### API / live data
 
 - **Fix «Neptun rejected this code» после смены baseUrl на Account/api:** Authenticate только absolute `https://neptun.elte.hu/Account/api/Account/Authenticate` (`institute` + `/api/Account/Authenticate`, `dio.postUri` — без merge с student `baseUrl`). Опасный вариант `baseUrl + api/Account/…` дал бы `/api/api/…`. Bearer на Authenticate снимается; student GET остаются на `…/Account/api/`
 - **Fix «Can't refresh from Neptun» после успешного Authenticator-логина:** `NeptunClient.baseUrl` сменён с мёртвого `ujhallgato/api` на fork-хост `https://neptun.elte.hu/Account/api/` (как Neptun-Mobile-fork). Календарь / сообщения / предметы идут туда же с реальным JWT
 - Placeholder MVC `elte-portal-session` больше не уходит как Bearer и не провоцирует OTP; честный баннер про web-login vs JSON
 - Soft-fail опциональных dashboard GET; HTML/maintenance → понятное сообщение
-- IPA `0.1.0+4`
+- IPA `0.1.0+4` (superseded by `+5` after fork header/cookie align)
 
 ### UI
 
@@ -29,8 +37,8 @@
 - Цепочка: дисклеймер → логин → 2FA → PIN → Today
 - 2FA на **каждый** новый вход в Neptun; PIN и Face ID открывают только локальный сейф
 - Пароль в Keystore / Keychain; JWT только в RAM
-- По образцу [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork): сначала `POST /Account/api/Account/Authenticate`, 2FA = тот же URL с `token` (6 цифр из Microsoft Authenticator). Письмо **не** обязательный шаг
-- MVC fallback: Login2FA; TOTP primary; опционально `GetEmail=true`; ошибка «письмо не ушло» больше не блокирует вход при authenticator
+- По образцу [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork): `POST /Account/api/Account/Authenticate` + тот же URL с `token` (6 цифр). Письмо **не** обязательный шаг
+- ELTE live: **без** MVC fallback на password/OTP (раньше mix каналов ломал OTP). Email resend по-прежнему через Login2FA
 - Debug — помеченный mock (любой логин и любой 6-значный код)
 - Live: `KARMIN_LIVE_AUTH` на устройстве; Chrome режет Neptun из‑за CORS
 - Если Keychain или Face ID зависают при старте — выходим из boot, а не крутим вечно
@@ -38,15 +46,14 @@
 
 ### 2FA
 
-- Primary: JSON Authenticate (`/Account/api/…`) + authenticator `token` (как Neptun-Mobile-fork)
-- **Fix «Neptun rejected code» (6 causes):** (1) stale email `_otpPrefix` cleared when session is TOTP; (2) relative Authenticate auth/unavailable errors fall through to MVC portal before final OTP throw; (3) empty digits → immediate `NeptunOtpException`; (4) OTP field length limit always 8; (5) always GET Login2FA before verify POST (fresh antiforgery); (6) `_sessionSupportsTotp` also matches authcode / verificationcode / authenticator in HTML
-- **Fix JSON 2FA session state:** `_jsonTwoFactorPending` больше не сбрасывается в начале каждого `submitPassword` (unlock / 401 re-login / failed re-auth не убивают fork `token` path). Флаг = true после JSON 202; false после JWT / MVC takeover / `NeptunAuthApi.reset()`. `signOut` вызывает `reset()` (portal cookies + pending)
+- Primary: JSON Authenticate (`/Account/api/…`) + authenticator `token` (как Neptun-Mobile-fork) — **единственный** канал password+OTP на ELTE live
+- **Fix «Neptun rejected code» again (fork deep compare):** strip Accept/Origin/Referer/XHR/UA on Authenticate; force `LCID:1038`; resend `devicecookie`; no MVC mix; OTP errors include `HTTP <status>` (+ Neptun text). IPA `0.1.0+5`
+- **Fix «Neptun rejected code» (6 causes, earlier):** (1) stale email `_otpPrefix` cleared when session is TOTP; (2) ~~relative Authenticate → MVC~~ superseded by Authenticate-only; (3) empty digits → immediate reject; (4) OTP field length limit always 8; (5) always GET Login2FA before verify POST (email path); (6) `_sessionSupportsTotp` also matches authcode / verificationcode / authenticator in HTML
+- **Fix JSON 2FA session state:** `_jsonTwoFactorPending` больше не сбрасывается в начале каждого `submitPassword` (unlock / 401 re-login / failed re-auth не убивают fork `token` path). Флаг = true после JSON 202; false после JWT / `NeptunAuthApi.reset()`. `signOut` вызывает `reset()` (portal cookies + pending + device cookie)
 - Authenticator OTP больше не склеивается с email-префиксом `732-`; JSON `token` = только 6 цифр
-- MVC fallback после пароля **не** шлёт `GetEmail` сам (fork); письмо только по «Send code again». TOTP игнорирует загрязнённый `RequestEmailCode` phase
-- Fallback MVC verify: `RequestTOTP` + `TOTPCode`; email только после явного `GetEmail=true` с `CodePrefix`
-- Пустой HTTP 400 на `ujhallgato` больше не считается «неверным паролем»
-- Authenticator снова включён (раньше был parked ради отладки email)
-- Живой ELTE 2FA на устройстве: IPA после фикса Authenticate URL — `0.1.0+4`; если сайт Neptun на maintenance — проверка подождёт
+- Email только по «Send code again» (`GetEmail=true`)
+- Пустой HTTP 400 на Authenticate = unavailable, не «неверный пароль»
+- Живой ELTE 2FA на устройстве: IPA `0.1.0+5` после fork header/cookie align
 
 ### API
 

@@ -2,17 +2,17 @@
 
 **Owner:** Nanda / Cheterin Group. Unofficial; not affiliated with ELTE or Neptun.
 
-Base (student reads): `https://neptun.elte.hu/Account/api/` (fork institute `…/Account` + `/api/`). Authenticate is **always** absolute `https://neptun.elte.hu/Account/api/Account/Authenticate` (`postUri` — never `baseUrl + api/Account/…`). Legacy `ujhallgato/api` unused for student reads. Live login: fork JSON Authenticate, then MVC `POST /Account/Login` → `/Account/Login2FA`.
+Base (student reads): `https://neptun.elte.hu/Account/api/` (fork institute `…/Account` + `/api/`). Authenticate is **always** absolute `https://neptun.elte.hu/Account/api/Account/Authenticate` (`postUri` — never `baseUrl + api/Account/…`). Legacy `ujhallgato/api` unused for student reads. Live login: fork JSON Authenticate for **both** password and OTP (no MVC mix). Optional email resend still uses MVC Login2FA.
 
-User-Agent: `Karmin/0.1.0 (Flutter; ELTE student client)` plus `X-Requested-With: XMLHttpRequest` on JSON auth (not Safari MVC headers). Authenticate strips `Authorization`.
+Authenticate headers: **only** `Content-Type: application/json` (+ fork `devicecookie` when present). Student GETs keep User-Agent `Karmin/0.1.0` + `X-Requested-With`. Authenticate strips `Authorization` / Accept / Origin / Referer / XHR / UA.
 
-JWT: RAM only. **Real** Authenticate `accessToken` → `Authorization: Bearer` on student GETs only. MVC placeholder `elte-portal-session` is **not** sent as Bearer and blocks student GETs with an honest portal-session error. 401 on a non-auth path drops a real JWT and does **not** retry until OTP succeeds. HTML/maintenance bodies → `NeptunMaintenanceException`.
+JWT: RAM only. **Real** Authenticate `accessToken` → `Authorization: Bearer` on student GETs only. MVC placeholder `elte-portal-session` is **not** sent as Bearer and blocks student GETs with an honest portal-session error. 401 on a non-auth path drops a real JWT and does **not** retry until OTP succeeds. HTML/maintenance bodies → `NeptunMaintenanceException`. OTP reject → `Neptun rejected this code (HTTP <status>)` (+ short Neptun text when present).
 
 | Dart method | Path | Stage | Write? | Notes |
 |---|---|---|---|---|
-| `submitPassword` | JSON `POST /Account/api/Account/Authenticate` `{ userName, password, captcha, captchaIdentifier, token:"", LCID }` then MVC `POST /Account/Login` | 1 | yes | HTTP 202 / `isTwoFactorRequired` → authenticator Verification; sets JSON 2FA pending (kept across re-login until JWT / MVC / `reset`). **No** auto `GetEmail` on password. Empty 400 is **not** invalid credentials. |
-| `submitOtp` | same Authenticate URL with `token=<bare 6 digits>` (or MVC `RequestTOTP`+`TOTPCode`) | 1 | yes | Prefer JSON while pending or no portal session. Never compose email prefix onto authenticator codes. Never silent. |
-| `reset` | clears JSON 2FA pending + portal cookies | — | — | Called from `AuthController.signOut`. |
+| `submitPassword` | JSON `POST /Account/api/Account/Authenticate` `{ userName, password, captcha:"", captchaIdentifier:"", token:"", LCID:1038 }` | 1 | yes | HTTP 202 / `isTwoFactorRequired` → authenticator Verification; sets JSON 2FA pending + device cookie. Empty 400 is **not** invalid credentials. **No** MVC fallback on ELTE live. |
+| `submitOtp` | same Authenticate URL with `token=<bare 6 digits>` + device cookie | 1 | yes | Same channel as password. Never compose email prefix. Failures include HTTP status in the message. |
+| `reset` | clears JSON 2FA pending + device cookie + portal cookies | — | — | Called from `AuthController.signOut`. |
 | `resendEmailCode` | **`POST /Account/Login2FA` + `GetEmail=true`** (or Login + GetEmail) | 1–2 | yes | Optional email path only. Visible error if no prefix. |
 | `getCalendarEvents` | `GET Calendar/GetCalendarEvents` | 2 | no | Query: `startDate` / `endDate` plus display flags. Parser best-effort. Live ELTE keys unconfirmed. |
 | `getDashboardAverages` | `GET Dashboard/GetAverages` | 2 | no | GPA chip; optional fields |

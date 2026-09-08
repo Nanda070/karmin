@@ -2,10 +2,10 @@
 
 ## Unreleased — Stage 4 harden (polish)
 
-- Fix Authenticator OTP after `Account/api` baseUrl: Authenticate always uses absolute fork URL `{institute}/api/Account/Authenticate` via `postUri` (never relative under `…/Account/api/` — that risks `/api/api/…`). Strip Bearer on Authenticate; bare 6-digit `token`; student reads stay on `…/Account/api/`
+- Fix Authenticator OTP (fork deep compare): ELTE live password+OTP **only** via absolute Authenticate; body matches fork (`token:""` then digits, `LCID:1038`); headers = Content-Type only (+ `devicecookie`); strip Accept/Origin/Referer/XHR/UA/Bearer. No MVC mix on that path. OTP failures show `Neptun rejected this code (HTTP …)` (+ Neptun text); HTML/maintenance not remapped to opaque OTP. Build `0.1.0+5`
+- Fix Authenticator OTP after `Account/api` baseUrl: Authenticate always uses absolute fork URL `{institute}/api/Account/Authenticate` via `postUri` (never relative under `…/Account/api/` — that risks `/api/api/…`). Student reads stay on `…/Account/api/`
 - Fix live student refresh after Authenticator login: `NeptunClient.baseUrl` → `https://neptun.elte.hu/Account/api/` (fork host); stop calling dead `ujhallgato/api`. Real JWT only for Bearer; portal placeholder never triggers OTP. Soft-fail optional dashboard GETs; map HTML/maintenance clearly
-- Fix JSON 2FA pending state: keep `_jsonTwoFactorPending` across unlock / 401 re-login until JWT, MVC takeover, or `NeptunAuthApi.reset()` (called from `signOut`); do not clear the flag at the start of every `submitPassword`
-- Fix Authenticator OTP reject (6 causes): clear stale email prefix on TOTP sessions; relative Authenticate errors fall through to MVC portal; empty digits reject early; OTP length limit always 8; always refresh Login2FA before verify POST; broaden TOTP HTML detection (authcode / verificationcode / authenticator). Bare 6-digit `token` only (no email `732-` compose); MVC password no longer auto-`GetEmail` (fork-aligned). Primary still `POST /Account/api/Account/Authenticate` per [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork)
+- Fix JSON 2FA pending state: keep `_jsonTwoFactorPending` across unlock / 401 re-login until JWT or `NeptunAuthApi.reset()` (called from `signOut`); do not clear the flag at the start of every `submitPassword`
 - Attribution: owner / founder **Nanda**, company **Cheterin Group**; contact Discord `nandak070`, Telegram `nanda070`, mail `turkapahf@gmail.com` (README, LICENSE, legal docs)
 - Shared empty / error / last-cached widgets on Today, Calendar, Study, Inbox, Auth (`KarminStatusBanner`, `KarminEmptyState`)
 - Accessibility: Semantics on tabs, PIN keypad, OTP, password visibility; 48pt icon tap targets; contrast-aware carmine text

@@ -58,16 +58,17 @@ The legacy public path `https://neptun.elte.hu/ujhallgato/api/` is a **stub** (G
 
 **What actually logs in (aligned with Neptun-Mobile-fork):**
 
-- Primary: `POST https://neptun.elte.hu/Account/api/Account/Authenticate` — `userName`, `password`, `captcha`, `captchaIdentifier`, `token` (empty), `LCID` ([zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork) `lib/API/api_coms.dart`). Institute base is `https://neptun.elte.hu/Account` → `/Account/api/Account/Authenticate`.
-- On `isTwoFactorRequired` → Verification with **Microsoft Authenticator** (6-digit). Confirm re-POSTs Authenticate with `token=<bare 6 digits>`. **Never** compose email `732-` onto authenticator codes. **No email send on this path.**
-- Fallback: MVC `GET/POST /Account/Login` → Login2FA. Prefer **TOTP** (`RequestTOTP` + `TOTPCode`) immediately — do **not** auto-`GetEmail` on password (dual UI scrapes a grey prefix and can flip Phase to email, which rejected bare TOTP). On verify: always GET Login2FA first (fresh antiforgery); if the session looks like TOTP, clear any scraped email prefix before POST. Optional mail only via **Send code again** (`GetEmail=true`).
+- Primary (ELTE live): `POST https://neptun.elte.hu/Account/api/Account/Authenticate` only — same URL for password and OTP. Body keys (fork order): `userName`, `password`, `captcha:""`, `captchaIdentifier:""`, `token` (`""` then bare 6 digits), `LCID: 1038` (fork hardcodes 1038). See [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork) `lib/API/api_coms.dart` `_tryModernLogin` / `submitTwoFactorCode`.
+- Headers on Authenticate: **only** `Content-Type: application/json` (+ optional fork `Cookie: devicecookie-<base64(UPPER user)>=…`). No Bearer, Accept, Origin, Referer, X-Requested-With, or Karmin User-Agent.
+- On `isTwoFactorRequired` → Verification with **Microsoft Authenticator**. Confirm re-POSTs Authenticate with `token=<bare 6 digits>`. **Never** compose email `732-` onto authenticator codes. **No email send on this path.**
+- **No MVC fallback** on password/OTP for ELTE live (mixing channels left OTP without a JSON session). Optional mail only via **Send code again** (`EltePortalLogin` `GetEmail=true`).
 - Email confirm (only with a prefix): `RequestEmailCode` + `EmailCode` + `CodePrefix`.
 
-**Why fork JSON first:** Neptun-Mobile-fork never does Login2FA email dispatch; its working 2FA is Authenticate + `token`. Do not invent `RequestEmail` / `Provider=Email`.
+**Why fork JSON only:** Neptun-Mobile-fork never does Login2FA for modern institutes; its working 2FA is Authenticate + `token` + device cookie. Do not invent `RequestEmail` / `Provider=Email`.
 
-`LiveNeptunAuth` POSTs Authenticate only via absolute `NeptunClient.authenticateUrl` (`dio.postUri`, 8s timeouts) so the student `baseUrl` (`…/Account/api/`) cannot double `/api/`. Then `EltePortalLogin` MVC fallback. No Bearer on Authenticate. JSON `/Account/api/…` keeps the app User-Agent (not Safari MVC headers). Captcha / lockout / real auth errors are **not** swallowed into that fallback.
+`LiveNeptunAuth` POSTs Authenticate only via absolute `NeptunClient.authenticateUrl` (`dio.postUri`, 8s timeouts) so the student `baseUrl` (`…/Account/api/`) cannot double `/api/`. Captures fork `devicecookie` from Set-Cookie and resends on the next Authenticate. OTP failures show `Neptun rejected this code (HTTP …)` plus short Neptun text — never collapse HTML/maintenance into the opaque OTP string.
 
-User-Agent (JSON client): `Karmin/0.1.0 (Flutter; ELTE student client)`. MVC form posts clear `X-Requested-With` and send `application/x-www-form-urlencoded`.
+User-Agent (student JSON GETs): `Karmin/0.1.0 (Flutter; ELTE student client)`. Authenticate strips it. MVC form posts (email resend only) clear `X-Requested-With` and send Safari-like headers.
 
 ---
 
@@ -111,19 +112,19 @@ PIN / biometrics are a **local vault** (`unlocked`, `hasPin`). They are **not** 
 |---|---|
 | `NeptunAuthApi` | `submitPassword` / `submitOtp` / `resendEmailCode` / `reset` |
 | `DebugNeptunAuth` | Any non-empty code+password → `needsOtp`; 6–16 digit OTP → fake JWT `debug-jwt` |
-| `LiveNeptunAuth` | JSON Authenticate, then MVC portal; `_jsonTwoFactorPending` until JWT / MVC / `reset` |
-| `EltePortalLogin` | Cookie jar + HTML form scrape + Login2FA |
+| `LiveNeptunAuth` | Fork Authenticate only (password + OTP); device cookie; `_jsonTwoFactorPending` until JWT / `reset` |
+| `EltePortalLogin` | Cookie jar + HTML form scrape + Login2FA (**email resend only** on live ELTE) |
 | `AuthController` | Hydrate, login, OTP, resend, PIN, bio, 401, lifecycle lock; `signOut` → `reset()` |
 
 **2FA every fresh Neptun session.** Stored password never finishes login alone.
 
-**JSON pending flag:** set on HTTP 202 / `needsOtp` from fork Authenticate; **not** cleared at the start of `submitPassword` (so unlock / 401 re-login / failed re-auth still POSTs `token` with userName+password). Cleared on JWT, successful MVC takeover, or `reset()` / `clear()` (sign-out).
+**JSON pending flag:** set on HTTP 202 / `needsOtp` from fork Authenticate; **not** cleared at the start of `submitPassword` (so unlock / 401 re-login / failed re-auth still POSTs `token` with userName+password). Cleared on JWT or `reset()` / `clear()` (sign-out).
 
 **Resend** = optional Login2FA `GetEmail=true` POST (or Login + GetEmail if the 2FA session died). Hidden when the channel is authenticator. 30s cooldown.
 
 **Current channel: authenticator primary** (fork-aligned). Email is optional when `GetEmail` returns a prefix. Missing email must **not** hard-block login. Do not store authenticator secrets.
 
-**OTP UI:** authenticator → 6 digits, no grey prefix, no “Send code again”. Email → grey **prefix** (`732-`) + tail; Confirm uses `EmailCode` / `CodePrefix` (or composed code on older forms).
+**OTP UI:** authenticator → 6 digits, no grey prefix, no “Send code again”. Email → grey **prefix** (`732-`) + tail; Confirm uses `EmailCode` / `CodePrefix` (or composed code on older forms). Failed OTP shows status e.g. `Neptun rejected this code (HTTP 400)`.
 
 **401:** Dio interceptor on **non-**`Account/Authenticate` paths drops the RAM token, calls `onUnauthorized`, and **does not retry** the original request. Controller then replays password and shows OTP. Wait until OTP succeeds.
 

@@ -60,10 +60,39 @@ final class NeptunPortalSessionException extends NeptunException {
 }
 
 /// Wrong or expired one-time code.
+///
+/// Prefer [NeptunOtpException.reject] so Verification can show HTTP status /
+/// Neptun text without logging secrets (never put password/OTP in [message]).
 final class NeptunOtpException extends NeptunException {
   const NeptunOtpException([
     super.message = 'Neptun rejected this code.',
   ]);
+
+  /// User-facing detail, e.g. `Neptun rejected this code (HTTP 400)` or with
+  /// a short Neptun server phrase. Truncates long text; never includes secrets.
+  factory NeptunOtpException.reject({
+    int? statusCode,
+    String? neptunMessage,
+  }) {
+    final raw = neptunMessage?.trim();
+    final detail = (raw == null || raw.isEmpty)
+        ? null
+        : (raw.length > 120 ? '${raw.substring(0, 120)}…' : raw);
+    if (statusCode != null && detail != null) {
+      return NeptunOtpException(
+        'Neptun rejected this code (HTTP $statusCode): $detail',
+      );
+    }
+    if (statusCode != null) {
+      return NeptunOtpException(
+        'Neptun rejected this code (HTTP $statusCode)',
+      );
+    }
+    if (detail != null) {
+      return NeptunOtpException('Neptun rejected this code: $detail');
+    }
+    return const NeptunOtpException();
+  }
 }
 
 /// Login2FA never dispatched the email OTP (chooser not POSTed, or send failed).

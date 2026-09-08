@@ -40,10 +40,11 @@ class NeptunClient {
           applyEltePortalBrowserHeaders(options);
           final authCall = isAuthenticateUri(options.uri) ||
               options.path.contains('Account/Authenticate');
-          // Fork Authenticate never sends Bearer (password or OTP `token`).
-          // A leftover JWT would make Neptun reject a valid Authenticator code.
+          // Fork Authenticate (`http.Request`): Content-Type only — no Bearer,
+          // Accept, Origin, Referer, X-Requested-With, or custom User-Agent.
+          // Extra headers / stale JWT made Neptun reject valid OTP codes.
           if (authCall) {
-            options.headers.remove('Authorization');
+            stripAuthenticateHeaders(options);
           } else if (hasRealJwt) {
             // Never send the MVC placeholder as Bearer — it 401s every GET and
             // falsely triggers the OTP unlock loop.
@@ -252,6 +253,18 @@ void applyEltePortalBrowserHeaders(RequestOptions options) {
   if (options.method.toUpperCase() == 'GET') {
     options.headers.remove(Headers.contentTypeHeader);
   }
+}
+
+/// Match [zoligamer/Neptun-Mobile-fork] `_APIRequest.postRequestRaw`: only
+/// `Content-Type: application/json` (+ optional Cookie set by the caller).
+void stripAuthenticateHeaders(RequestOptions options) {
+  options.headers.remove('Authorization');
+  options.headers.remove('Accept');
+  options.headers.remove('Origin');
+  options.headers.remove('Referer');
+  options.headers.remove('X-Requested-With');
+  options.headers.remove('User-Agent');
+  options.headers[Headers.contentTypeHeader] = Headers.jsonContentType;
 }
 
 /// Typed mapping for Dio failures. Do not pass request bodies into logs.

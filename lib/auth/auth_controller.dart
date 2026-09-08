@@ -185,7 +185,7 @@ class AuthController extends StateNotifier<AuthState> {
       if (ticket.step == NeptunAuthStep.needsOtp) {
         state = state.copyWith(
           busy: false,
-          errorMessage: const NeptunOtpException().message,
+          errorMessage: NeptunOtpException.reject(statusCode: 202).message,
         );
         return;
       }
