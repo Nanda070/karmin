@@ -8,6 +8,8 @@ import 'package:karmin/auth/auth_models.dart';
 /// `/Account/Login`), not the SDA JSON `ujhallgato` API.
 ///
 /// After a valid password the portal sends the user to `/Account/Login2FA`.
+/// Mail is **not** fired by the password POST. Official “E-mail code” is
+/// `POST /Account/Login2FA` with `Phase=RequestEmail` and/or `Provider=Email`.
 class EltePortalLogin {
   EltePortalLogin(this._client);
 
@@ -19,6 +21,7 @@ class EltePortalLogin {
   final Map<String, String> _cookies = {};
   Map<String, String> _otpFields = {};
   String _otpPrefix = '';
+  String _otpHtml = '';
   var _hasSession = false;
 
   bool get hasSession => _hasSession;
@@ -27,6 +30,7 @@ class EltePortalLogin {
     _cookies.clear();
     _otpFields = {};
     _otpPrefix = '';
+    _otpHtml = '';
     _hasSession = false;
   }
 
@@ -45,13 +49,14 @@ class EltePortalLogin {
     fields['Password'] = password;
     fields.putIfAbsent('ReturnUrl', () => '');
 
-    // Mail is dispatched only on a successful MVC password POST, same as Safari.
+    // Password POST opens Login2FA (often authenticator / a chooser). Mail
+    // fires only when we POST the official E-mail code control.
     final response = await _post(loginPath, fields, referer: '$origin$loginPath');
     final ticket = _ticketFromPortalResponse(response);
     if (ticket.step != NeptunAuthStep.needsOtp) {
       return ticket;
     }
-    await _scrapeLogin2FaPrefix();
+    await _dispatchEmailCode(force: false);
     return _emailOtpTicket();
   }
 
@@ -91,8 +96,17 @@ class EltePortalLogin {
     final previousCookies = Map<String, String>.from(_cookies);
     final previousFields = Map<String, String>.from(_otpFields);
     final previousPrefix = _otpPrefix;
+    final previousHtml = _otpHtml;
     final previousSession = _hasSession;
     try {
+      if (_hasSession || _otpFields.isNotEmpty) {
+        try {
+          await _dispatchEmailCode(force: true);
+          return _emailOtpTicket();
+        } on NeptunException {
+          // 2FA session died; Login then the same send-email POST.
+        }
+      }
       clear();
       return await submitPassword(
         userName: userName,
@@ -105,6 +119,7 @@ class EltePortalLogin {
         ..addAll(previousCookies);
       _otpFields = previousFields;
       _otpPrefix = previousPrefix;
+      _otpHtml = previousHtml;
       _hasSession = previousSession;
       rethrow;
     }
@@ -124,15 +139,72 @@ class EltePortalLogin {
     return html;
   }
 
-  Future<void> _scrapeLogin2FaPrefix() async {
-    if (_otpFields.isNotEmpty && _otpPrefix.isNotEmpty) {
+  Future<void> _dispatchEmailCode({required bool force}) async {
+    if (_otpFields.isEmpty || _otpHtml.isEmpty || force) {
+      await _refreshOtpForm();
+    }
+    if (htmlLooksLikePasswordLogin(_otpHtml)) {
+      throw const NeptunEmailCodeException();
+    }
+    if (!force && normalizeOtpPrefix(_otpPrefix).isNotEmpty) {
       return;
     }
+
+    final previousPrefix = _otpPrefix;
+    final button = findLogin2FaEmailSendControl(_otpHtml);
+    final fields = fillLogin2FaSendEmailFields(
+      fields: _otpFields,
+      button: button,
+    );
+    final path = login2FaPostPath(button?.formAction);
+    final response = await _post(path, fields, referer: '$origin$otpPath');
+    _applySendEmailResponse(response);
+    if (normalizeOtpPrefix(_otpPrefix).isEmpty) {
+      await _refreshOtpForm();
+    }
+    if (normalizeOtpPrefix(_otpPrefix).isEmpty &&
+        normalizeOtpPrefix(previousPrefix).isNotEmpty) {
+      _otpPrefix = previousPrefix;
+    }
+    if (normalizeOtpPrefix(_otpPrefix).isEmpty) {
+      throw const NeptunEmailCodeException();
+    }
+  }
+
+  Future<void> _refreshOtpForm() async {
     try {
       final otpHtml = await _get(otpPath);
       _captureOtpForm(otpHtml);
     } on NeptunException {
-      // Prefix stays whatever the Login POST body already captured.
+      // Keep whatever the previous response already captured.
+    }
+  }
+
+  void _applySendEmailResponse(Response<dynamic> response) {
+    final status = response.statusCode ?? 0;
+    final location = response.headers.value('location') ?? '';
+    final html = _htmlOf(response);
+    if (status == 429) {
+      throw const NeptunLockoutException();
+    }
+    if (status >= 500) {
+      throw NeptunApiException(
+        'Neptun request failed.',
+        statusCode: status,
+      );
+    }
+    if (html.toLowerCase().contains('captcha')) {
+      throw const NeptunCaptchaException();
+    }
+    if (htmlLooksLikePasswordLogin(html) ||
+        (status >= 300 &&
+            status < 400 &&
+            location.toLowerCase().contains('login') &&
+            !location.contains('Login2FA'))) {
+      throw const NeptunEmailCodeException();
+    }
+    if (htmlLooksLikeOtp(html) || html.trim().isNotEmpty) {
+      _captureOtpForm(html);
     }
   }
 
@@ -327,6 +399,7 @@ class EltePortalLogin {
       return;
     }
     final formHtml = htmlOfLogin2FaForm(html) ?? html;
+    _otpHtml = formHtml;
     final fields = extractNamedInputs(formHtml);
     if (fields.isNotEmpty) {
       _otpFields = fields;
@@ -463,6 +536,219 @@ String? htmlOfLogin2FaForm(String html) {
           lower.contains("name='phase'");
     },
   );
+}
+
+/// Official E-mail code / send-code control on Login2FA (not the TOTP verify submit).
+class Login2FaSubmitControl {
+  const Login2FaSubmitControl({
+    this.name,
+    this.value = '',
+    this.setvalTarget,
+    this.setvalValue,
+    this.text = '',
+    this.formAction,
+  });
+
+  final String? name;
+  final String value;
+  final String? setvalTarget;
+  final String? setvalValue;
+  final String text;
+  final String? formAction;
+
+  String get blob =>
+      '$name $value $setvalTarget $setvalValue $text $formAction'.toLowerCase();
+}
+
+final _buttonTag = RegExp(
+  r'<button\b([^>]*)>(.*?)</button>',
+  caseSensitive: false,
+  dotAll: true,
+);
+
+const _emailSendFieldNames = {
+  'sendcode',
+  'sendemail',
+  'sendemailcode',
+  'requestemail',
+  'emailcode',
+};
+
+const _emailProviderValues = {
+  'email',
+  'mail',
+  'emailcode',
+  'emailotp',
+};
+
+const _emailPhaseValues = {
+  'requestemail',
+  'sendemail',
+  'email',
+  'emailcode',
+  'emailpreparation',
+  'requestemailotp',
+  'requestemailcode',
+};
+
+bool isEmailProviderValue(String? raw) {
+  final value = (raw ?? '').trim().toLowerCase();
+  return _emailProviderValues.contains(value);
+}
+
+bool isEmailCodePhase(String? raw) {
+  final value = (raw ?? '').trim().toLowerCase();
+  return _emailPhaseValues.contains(value);
+}
+
+bool _isAuthenticatorOnlyBlob(String blob) {
+  final auth = blob.contains('authenticator') ||
+      blob.contains('hiteles') ||
+      blob.contains('totp');
+  final mail = blob.contains('mail');
+  return auth && !mail;
+}
+
+bool looksLikeEmailSendControl(Login2FaSubmitControl control) {
+  final blob = control.blob;
+  if (_isAuthenticatorOnlyBlob(blob)) {
+    return false;
+  }
+  final name = (control.name ?? '').toLowerCase();
+  final value = control.value.toLowerCase();
+  if (name.contains('provider') && isEmailProviderValue(value)) {
+    return true;
+  }
+  if (_emailSendFieldNames.contains(name)) {
+    return true;
+  }
+  if (isEmailCodePhase(control.setvalValue) || isEmailCodePhase(control.value)) {
+    return true;
+  }
+  return blob.contains('e-mail') ||
+      blob.contains('email') ||
+      RegExp(r'(^|[^a-z])mail([^a-z]|$)').hasMatch(blob);
+}
+
+List<Login2FaSubmitControl> extractLogin2FaSubmitControls(String html) {
+  final controls = <Login2FaSubmitControl>[];
+  for (final match in _buttonTag.allMatches(html)) {
+    final attrs = match.group(1) ?? '';
+    final type = (_attr(attrs, 'type') ?? 'submit').toLowerCase();
+    if (type == 'button' || type == 'reset') {
+      continue;
+    }
+    controls.add(
+      Login2FaSubmitControl(
+        name: _attr(attrs, 'name'),
+        value: _attr(attrs, 'value') ?? '',
+        setvalTarget: _attr(attrs, 'data-setval-target'),
+        setvalValue: _attr(attrs, 'data-setval-value'),
+        text: (match.group(2) ?? '').replaceAll(RegExp(r'<[^>]+>'), '').trim(),
+        formAction: _attr(attrs, 'formaction'),
+      ),
+    );
+  }
+  final input = RegExp(r'<input\b([^>]*)>', caseSensitive: false);
+  for (final match in input.allMatches(html)) {
+    final attrs = match.group(1) ?? '';
+    final type = (_attr(attrs, 'type') ?? '').toLowerCase();
+    if (type != 'submit') {
+      continue;
+    }
+    controls.add(
+      Login2FaSubmitControl(
+        name: _attr(attrs, 'name'),
+        value: _attr(attrs, 'value') ?? '',
+        setvalTarget: _attr(attrs, 'data-setval-target'),
+        setvalValue: _attr(attrs, 'data-setval-value'),
+        text: _attr(attrs, 'value') ?? '',
+        formAction: _attr(attrs, 'formaction'),
+      ),
+    );
+  }
+  return controls;
+}
+
+Login2FaSubmitControl? findLogin2FaEmailSendControl(String html) {
+  final matches =
+      extractLogin2FaSubmitControls(html).where(looksLikeEmailSendControl);
+  for (final control in matches) {
+    return control;
+  }
+  return null;
+}
+
+String login2FaPostPath(String? formAction) {
+  if (formAction == null || formAction.trim().isEmpty) {
+    return EltePortalLogin.otpPath;
+  }
+  final raw = formAction.trim();
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    final path = Uri.tryParse(raw)?.path;
+    if (path != null && path.isNotEmpty) {
+      return path;
+    }
+    return EltePortalLogin.otpPath;
+  }
+  final path = raw.split('?').first;
+  if (path.startsWith('/')) {
+    return path;
+  }
+  return '/$path';
+}
+
+String? _fieldKeyIgnoringCase(Map<String, String> fields, String name) {
+  if (fields.containsKey(name)) {
+    return name;
+  }
+  final lower = name.toLowerCase();
+  for (final key in fields.keys) {
+    if (key.toLowerCase() == lower) {
+      return key;
+    }
+  }
+  return null;
+}
+
+/// Builds the Login2FA POST that official “E-mail code” uses to dispatch mail.
+Map<String, String> fillLogin2FaSendEmailFields({
+  required Map<String, String> fields,
+  Login2FaSubmitControl? button,
+}) {
+  final next = Map<String, String>.from(fields);
+  if (button != null) {
+    final target = button.setvalTarget;
+    if (target != null && target.isNotEmpty) {
+      final key = _fieldKeyIgnoringCase(next, target) ?? target;
+      next[key] = button.setvalValue ?? '';
+    }
+    if (button.name != null && button.name!.isNotEmpty) {
+      next[button.name!] = button.value;
+    }
+    return next;
+  }
+
+  for (final key in const ['Provider', 'SelectedProvider']) {
+    final existing = _fieldKeyIgnoringCase(next, key);
+    if (existing != null) {
+      next[existing] = 'Email';
+    }
+  }
+  if (_fieldKeyIgnoringCase(next, 'Provider') == null) {
+    next['Provider'] = 'Email';
+  }
+
+  final phaseKey = _fieldKeyIgnoringCase(next, 'Phase');
+  final phase = phaseKey == null ? '' : next[phaseKey]!;
+  if (!isEmailCodePhase(phase)) {
+    if (phaseKey != null) {
+      next[phaseKey] = 'RequestEmail';
+    } else {
+      next['Phase'] = 'RequestEmail';
+    }
+  }
+  return next;
 }
 
 bool htmlLooksLikePasswordLogin(String html) {

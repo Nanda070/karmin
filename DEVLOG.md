@@ -21,7 +21,7 @@
 - Цепочка: дисклеймер → логин → 2FA → PIN → Today
 - 2FA на **каждый** новый вход в Neptun; PIN и Face ID открывают только локальный сейф
 - Пароль в Keystore / Keychain; JWT только в RAM
-- «Отправить код ещё раз» = повторный логин (тот же пароль), не отдельный resend; пауза 30 с
+- «Отправить код ещё раз» = тот же `POST /Account/Login2FA` (E-mail code / `Phase=RequestEmail` / `Provider=Email`), не повтор пароля и не GET; пауза 30 с; ошибка, если письмо не ушло
 - Debug — помеченный mock (любой логин и любой 6-значный код)
 - Live: `KARMIN_LIVE_AUTH` на устройстве; Chrome режет Neptun из‑за CORS
 - Если Keychain или Face ID зависают при старте — выходим из boot, а не крутим вечно
@@ -29,10 +29,10 @@
 
 ### 2FA
 
-- Сначала JSON `Account/Authenticate`; если ELTE не отдаёт `/ujhallgato/api/` — MVC `POST /Account/Login` → `/Account/Login2FA`
+- Сначала JSON `Account/Authenticate`; если ELTE не отдаёт `/ujhallgato/api/` — MVC `POST /Account/Login` → **`POST /Account/Login2FA` с E-mail code** (`Phase=RequestEmail` и/или `Provider=Email`) — пароль сам по себе письмо не шлёт
 - Пустой HTTP 400 больше не считается «неверным паролем»
 - Код из почты: префикс с сервера (`732-`) + хвост, который вводит студент
-- Authenticator / TOTP временно отключён — форма Login2FA ждёт email-код
+- Authenticator / TOTP временно отключён — после пароля форсируем email-провайдер, даже если в аккаунте по умолчанию authenticator
 - Живой ELTE 2FA на реальном аккаунте ещё не доказан
 
 ### API

@@ -112,6 +112,7 @@
   },
   "otpResent": "Новый код запрошен.",
   "otpError": "Neptun отклонил этот код.",
+  "otpErrorNoMail": "Neptun не отправил код на почту. Нажмите «Отправить ещё раз» или запросите e-mail код на сайте.",
   "todayEmptyNext": "Нет ближайшей пары",
   "todayEmptySchedule": "На сегодня ничего нет.",
   "calendarEmpty": "Нет событий для показа.",

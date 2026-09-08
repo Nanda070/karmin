@@ -132,6 +132,9 @@ class _OtpPageState extends ConsumerState<OtpPage> {
     if (error == const NeptunOtpException().message) {
       return l10n.otpError;
     }
+    if (error == const NeptunEmailCodeException().message) {
+      return l10n.otpErrorNoMail;
+    }
     if (error == const NeptunAuthException().message) {
       return l10n.loginErrorBadCredentials;
     }

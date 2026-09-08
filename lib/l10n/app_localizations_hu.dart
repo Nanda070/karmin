@@ -321,6 +321,10 @@ class AppLocalizationsHu extends AppLocalizations {
   String get otpError => 'A Neptun elutasította ezt a kódot.';
 
   @override
+  String get otpErrorNoMail =>
+      'A Neptun nem küldött e-mail kódot. Próbáld a Kód küldése újra gombot, vagy kérj e-mail kódot a weboldalon.';
+
+  @override
   String get todayEmptyNext => 'Nincs következő óra';
 
   @override

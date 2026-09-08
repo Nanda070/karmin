@@ -138,6 +138,18 @@ void main() {
             },
           );
         }
+        if (options.method == 'POST' && url.contains('Login2FA')) {
+          return ResponseBody.fromString(
+            '<form action="/Account/Login2FA" method="post">'
+            '<input name="__RequestVerificationToken" value="t" />'
+            '<span>732-</span>'
+            '<input name="TOTPCode" value="" /></form>',
+            200,
+            headers: {
+              Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+            },
+          );
+        }
       }
       fail('unexpected ${options.method} $url');
     });
@@ -186,6 +198,18 @@ void main() {
         );
       }
       if (options.method == 'GET' && url.contains('Login2FA')) {
+        return ResponseBody.fromString(
+          '<form action="/Account/Login2FA" method="post">'
+          '<input name="__RequestVerificationToken" value="t" />'
+          '<span>732-</span>'
+          '<input name="TOTPCode" value="" /></form>',
+          200,
+          headers: {
+            Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+          },
+        );
+      }
+      if (options.method == 'POST' && url.contains('Login2FA')) {
         return ResponseBody.fromString(
           '<form action="/Account/Login2FA" method="post">'
           '<input name="__RequestVerificationToken" value="t" />'

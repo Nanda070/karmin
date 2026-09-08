@@ -319,6 +319,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get otpError => 'Neptun rejected this code.';
 
   @override
+  String get otpErrorNoMail =>
+      'Neptun did not send an email code. Try Send code again, or tap E-mail code on the website.';
+
+  @override
   String get todayEmptyNext => 'No upcoming class';
 
   @override

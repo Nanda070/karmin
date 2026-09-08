@@ -26,7 +26,7 @@
 - Every fresh Neptun authentication requires an interactive OTP (email or authenticator). Stored password never completes login alone.
 - PIN / biometrics open the local vault. They do not replace 2FA.
 - 401: drop JWT, replay stored password, then show Verification. Do not retry the original request until OTP succeeds.
-- **Resend OTP:** re-POST `Account/Authenticate` with stored code+password (no `token`). Neptun email OTP is unreliable; a new login triggers a new challenge / mail. 30s cooldown. Stay on Verification.
+- **Resend OTP:** `POST /Account/Login2FA` with the official E-mail code fields (`Phase=RequestEmail` / `Provider=Email`). Fallback: Login then that same send-email POST. Visible error if Neptun still does not dispatch. 30s cooldown. Stay on Verification.
 - Base URL hardcoded to ELTE. No university picker.
 - Debug / web: `DebugNeptunAuth` + `DebugNeptunStudentApi` (labeled banner) unless `--dart-define=KARMIN_LIVE_AUTH=true`.
 

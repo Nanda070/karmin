@@ -60,9 +60,10 @@ ELTE’s **public** host does **not** serve that API. `POST …/ujhallgato/api/A
 **What actually logs in on ELTE:** ASP.NET MVC, browser-equivalent form POST:
 
 - `GET/POST https://neptun.elte.hu/Account/Login` — fields `LoginName` + `Password` + `__RequestVerificationToken`
-- then `POST https://neptun.elte.hu/Account/Login2FA`
+- then **`POST https://neptun.elte.hu/Account/Login2FA`** to request the **email** code (`Phase=RequestEmail` and/or `Provider=Email`, plus antiforgery). Password POST alone often lands on the authenticator / chooser page and **does not mail**.
+- then the student types prefix+tail; Confirm is another `POST /Account/Login2FA` with `TOTPCode`
 
-**Why MVC:** a JSON Authenticate stub does not dispatch the email OTP. The MVC password POST is what the official site uses, so the mail actually sends.
+**Why MVC:** a JSON Authenticate stub does not dispatch the email OTP. Official “E-mail code” is the Login2FA send POST (Potlap `data-setval-target` / named `Provider`), not scraping Login2FA HTML after password.
 
 `LiveNeptunAuth` still **tries** JSON `Account/Authenticate` first (8s send/receive timeout). On `NeptunUnavailableException` or hang/`NeptunNetworkException` it falls through to `EltePortalLogin`. Captcha / lockout / real auth errors are **not** swallowed into that fallback.
 
@@ -116,9 +117,9 @@ PIN / biometrics are a **local vault** (`unlocked`, `hasPin`). They are **not** 
 
 **2FA every fresh Neptun session.** Stored password never finishes login alone.
 
-**Resend** = re-POST Login (same code+password, no OTP field). There is no dedicated resend endpoint. Neptun email OTP is unreliable; a new password POST triggers a new challenge / mail. 30s cooldown; stay on Verification.
+**Resend** = the same Login2FA **send-email POST** (or Login + send-email if the 2FA session died). Not a no-op GET and not password-only. Visible error if Neptun still does not show a prefix. 30s cooldown; stay on Verification.
 
-**Current channel: email 2FA only.** Microsoft Authenticator / TOTP is **parked** (`otpAuthenticatorParked` copy on `/verify`). MVC tickets force `OtpChannel.email`. Bare 6-digit TOTP is **rejected** on the email Login2FA form (that form expects prefix+tail like `732-893600`). Do not store authenticator secrets.
+**Current channel: email 2FA only.** Microsoft Authenticator / TOTP is **parked** (`otpAuthenticatorParked` copy on `/verify`). After password, Karmin **forces the email provider** on Login2FA even when the account default is authenticator. Bare 6-digit TOTP is **rejected** on the email Login2FA form (that form expects prefix+tail like `732-893600`). Do not store authenticator secrets.
 
 **OTP UI:** grey read-only **prefix** from Login2FA HTML (`732-`) + user **tail**. Confirm POSTs prefix+tail the way the official page does (`composeLogin2FaCode` / `fillLogin2FaOtpFields`, usually `TOTPCode`). If the user pastes the full mail code, the tail normalizer strips a duplicated prefix.
 

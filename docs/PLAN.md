@@ -20,7 +20,7 @@ Last updated: 2026-09-08
 |---|---|
 | **Stage 0 — Foundation** | **Done** |
 | **Stage 1 — Auth** | **Done in code** — live `Authenticate` + debug mock; not claimed proven on a real ELTE account |
-| **Stage 2 — Cached reads** | **Done in code** — calendar/dashboard/unread + OTP resend-via-relogin. Isar deferred (JSON cache). Local notifications still deferred. Live ELTE JSON unproven. |
+| **Stage 2 — Cached reads** | **Done in code** — calendar/dashboard/unread + OTP resend via Login2FA send-email POST. Isar deferred (JSON cache). Local notifications still deferred. Live ELTE JSON unproven. |
 | **Stage 3 — Study + Inbox** | **Done in code** — subjects/grades/GPA/credits, inbox list + thread + mark-read, Settings from `UserInfo`, exam signup confirm + `SignUpForExam`. Live payloads best-effort / unproven. |
 | **Stage 4 — Harden** | **In progress in code** — shared empty/error/cached banners, a11y labels, full light theme pass. Figma light frames pending (file is View-only). Android debug APK builds on Windows; notifications / TestFlight still not in this slice. |
 | **UI visual system** | **Done** — Figma + Flutter widgets are the source of truth (not a future polish pass). Light tokens now applied in Flutter. |
@@ -212,7 +212,7 @@ Session API states (Stage 2 plugs live payloads into the same enum):
 | No HTTP (timeout / DNS / TLS) | “Can’t reach Neptun.” Never for ELTE HTTP or Dio header crashes (GET `/Account/Login` must not send JSON `Content-Type`). Cache still used after unlock if already logged in before. |
 | ELTE HTTP (other) | Credentials / captcha / OTP / “Neptun request failed.” — not the network string. |
 | HTTP 202 + captcha | “Neptun wants a captcha. Sign in once on the website, then retry.” Button: open `https://neptun.elte.hu/` |
-| HTTP 202 + 2FA | **Happy path**, not an error: Verification screen. Channel hint: email / authenticator / unknown. **Resend = re-POST `Account/Authenticate` with stored code+password** (no OTP `token`). Neptun’s email OTP often never arrives; a fresh login issues a new challenge / mail. There is no verified dedicated “resend OTP” endpoint. Show the control on Verification even when the channel is unknown (authenticator users can ignore it). Cooldown 30s. |
+| HTTP 202 + 2FA | **Happy path**, not an error: Verification screen. Channel hint: email / authenticator / unknown. **Resend = `POST /Account/Login2FA` send-email** (`Phase=RequestEmail` / `Provider=Email`; fallback Login + send-email). Password POST does not mail by itself. Show the control on Verification even when the channel is unknown (authenticator users can ignore it). Cooldown 30s. Visible error if no prefix. |
 | Bad OTP | “Neptun rejected this code.” Stay on Verification. |
 | HTTP 403 on a feature | Hide the tile. Do not crash. |
 
@@ -479,7 +479,7 @@ Neptun code, password, Sign in, Keystore one-liner. Disclaimer already accepted.
 
 ### 9.1b Verification (2FA)
 
-Always shown after a successful password step when there is no JWT. Icon-led one-time code, hint for email vs authenticator vs unknown, gradient Confirm. **Send code again** re-submits stored Neptun code+password (in-memory login attempt or Keystore) so Neptun issues a new email OTP — it does not call a separate resend endpoint. Visible for every channel (the bug is email; TOTP users can ignore it). 30s cooldown; stay on Verification after HTTP 202 / `needsOtp`; clear the OTP field and snackbar. Not a Figma frame yet — same chrome as 01/02.
+Always shown after a successful password step when there is no JWT. Icon-led one-time code, hint for email vs authenticator vs unknown, gradient Confirm. **Send code again** POSTs the official Login2FA E-mail code action (or Login + that POST) so Neptun mails a new OTP. Visible for every channel (the bug is email; TOTP users can ignore it). 30s cooldown; stay on Verification after HTTP 202 / `needsOtp`; clear the OTP field and snackbar. Not a Figma frame yet — same chrome as 01/02.
 
 ### 9.2 Unlock
 
@@ -584,7 +584,7 @@ Shipped:
 - Authenticated `NeptunClient` GET helper + 401 interceptor (drop JWT, no retry).
 - Live reads: `Calendar/GetCalendarEvents`, `Dashboard/GetAverages`, `dashboard/creditprogress`, `Message/GetUnreadedMessagesCount`.
 - Today + Calendar bind to that snapshot when the call succeeds; graceful empty / “last saved” on failure.
-- **OTP resend = re-login** (re-POST Authenticate with stored password). Debug mock also re-issues `needsOtp`.
+- **OTP resend = Login2FA send-email POST** (`Phase=RequestEmail` / `Provider=Email`). Debug mock also re-issues `needsOtp`.
 - Stale-while-revalidate JSON cache (`SharedPreferences`, 5 min). **Isar deferred** — codegen + incomplete Android tree. Hive/Isar still the planned durable store.
 - Local notifications from cache: **not shipped** (platform setup; keep cache ready). Stage 4/notifications.
 

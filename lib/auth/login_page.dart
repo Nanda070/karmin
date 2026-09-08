@@ -64,6 +64,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (error == const NeptunUnavailableException().message) {
       return l10n.loginErrorUnavailable;
     }
+    if (error == const NeptunEmailCodeException().message) {
+      return l10n.otpErrorNoMail;
+    }
     return error;
   }
 

@@ -19,7 +19,7 @@ PIN plaintext is never stored. JWT is never persisted. TOTP secrets and email OT
 - PIN / Face ID = local app lock.
 - Warm resume (JWT still in RAM): Unlock only.
 - Cold start or 401: Unlock (if needed) then interactive 2FA. Password may be replayed from Keystore.
-- Email OTP resend is **re-authentication** (same password POST). Do not log the password or the OTP. Cooldown 30s to avoid hammering Neptun.
+- Email OTP resend is **the Login2FA send-email POST** (not password-only). Do not log the password or the OTP. Cooldown 30s to avoid hammering Neptun.
 
 ## Platform
 

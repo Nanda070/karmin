@@ -100,6 +100,16 @@ bool isLogin2FaUrl(String url) => url.contains('Account/Login2FA');
 bool isPasswordLoginUrl(String url) =>
     url.contains('Account/Login') && !isLogin2FaUrl(url);
 
+Map<String, String> _postedFields(Object? data) {
+  if (data is String) {
+    return Uri.splitQueryString(data);
+  }
+  if (data is Map) {
+    return data.map((key, value) => MapEntry('$key', '$value'));
+  }
+  return {};
+}
+
 ResponseBody Function(RequestOptions options) eltePortalScript({
   String login2faHtml = elteLogin2FaHtml,
   void Function(RequestOptions options)? onRequest,
@@ -124,7 +134,13 @@ ResponseBody Function(RequestOptions options) eltePortalScript({
       );
     }
     if (options.method == 'POST' && isLogin2FaUrl(url)) {
-      return htmlBody(302, '', location: '/');
+      final posted = _postedFields(options.data);
+      final totpDigits =
+          (posted['TOTPCode'] ?? '').replaceAll(RegExp(r'\D'), '');
+      if (totpDigits.length >= 6) {
+        return htmlBody(302, '', location: '/');
+      }
+      return htmlBody(200, login2faHtml);
     }
     if (options.method == 'POST' && isPasswordLoginUrl(url)) {
       return htmlBody(302, '', location: '/Account/Login2FA');

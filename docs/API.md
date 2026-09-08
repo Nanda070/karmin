@@ -10,9 +10,9 @@ JWT: RAM only, `Authorization: Bearer`. 401 on a non-auth path drops the JWT and
 
 | Dart method | Path | Stage | Write? | Notes |
 |---|---|---|---|---|
-| `submitPassword` | JSON `POST Account/Authenticate` `{ userName, password, lcid, captcha }` then ELTE `POST /Account/Login` `{ LoginName, Password }` | 1 | yes | HTTP 202 / `isTwoFactorRequired` / MVC `Login2FA` → Verification. Empty 400 is **not** invalid credentials. |
+| `submitPassword` | JSON `POST Account/Authenticate` `{ userName, password, lcid, captcha }` then ELTE `POST /Account/Login` `{ LoginName, Password }` then **`POST /Account/Login2FA` send-email** (`Phase=RequestEmail` and/or `Provider=Email`) | 1 | yes | HTTP 202 / `isTwoFactorRequired` / MVC `Login2FA` → Verification. Empty 400 is **not** invalid credentials. Password POST does **not** mail by itself. |
 | `submitOtp` | same, plus `token` (one-time code) | 1 | yes | Never silent |
-| `resendEmailCode` | **same as `submitPassword`** | 1–2 | yes | Not a dedicated resend endpoint. Re-login so Neptun mails a new OTP. No `token` field. |
+| `resendEmailCode` | **`POST /Account/Login2FA` send-email** (or Login + send-email) | 1–2 | yes | Same action as official “E-mail code”. Visible error if no prefix. No `token` field. |
 | `getCalendarEvents` | `GET Calendar/GetCalendarEvents` | 2 | no | Query: `startDate` / `endDate` plus display flags. Parser best-effort. Live ELTE keys unconfirmed. |
 | `getDashboardAverages` | `GET Dashboard/GetAverages` | 2 | no | GPA chip; optional fields |
 | `getDashboardCreditProgress` | `GET dashboard/creditprogress` | 2 | no | Study credits card |

@@ -688,6 +688,12 @@ abstract class AppLocalizations {
   /// **'Neptun rejected this code.'**
   String get otpError;
 
+  /// No description provided for @otpErrorNoMail.
+  ///
+  /// In en, this message translates to:
+  /// **'Neptun did not send an email code. Try Send code again, or tap E-mail code on the website.'**
+  String get otpErrorNoMail;
+
   /// No description provided for @todayEmptyNext.
   ///
   /// In en, this message translates to:

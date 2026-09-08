@@ -115,6 +115,7 @@
   },
   "otpResent": "A new code was requested.",
   "otpError": "Neptun rejected this code.",
+  "otpErrorNoMail": "Neptun did not send an email code. Try Send code again, or tap E-mail code on the website.",
   "todayEmptyNext": "No upcoming class",
   "todayEmptySchedule": "Nothing on the schedule today.",
   "calendarEmpty": "No events to show.",

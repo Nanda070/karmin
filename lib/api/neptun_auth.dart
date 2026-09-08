@@ -333,7 +333,8 @@ class LiveNeptunAuth implements NeptunAuthApi {
       if (ticket.step == NeptunAuthStep.authenticated) {
         return ticket;
       }
-      // JSON 2FA does not dispatch ELTE email. MVC POST /Account/Login does.
+      // JSON 2FA does not dispatch ELTE email. MVC Login then the official
+      // Login2FA "E-mail code" POST does.
     } on NeptunCaptchaException {
       rethrow;
     } on NeptunLockoutException {

@@ -41,6 +41,34 @@ const _hiddenPrefixForm = '''
 </form>
 ''';
 
+const _chooserSetvalForm = '''
+<form action="/Account/Login2FA" method="post">
+  <input name="__RequestVerificationToken" value="t" />
+  <input type="hidden" id="Phase" name="Phase" value="SelectMethod" />
+  <button type="submit" class="btn btn-primary" data-setval-target="Phase" data-setval-value="RequestTOTP">Authenticator</button>
+  <button type="submit" class="btn btn-secondary" data-setval-target="Phase" data-setval-value="RequestEmail">E-mail code</button>
+</form>
+''';
+
+const _chooserProviderForm = '''
+<form action="/Account/Login2FA" method="post">
+  <input name="__RequestVerificationToken" value="t" />
+  <input name="Phase" value="RequestTOTP" />
+  <input id="TOTPCode" name="TOTPCode" value="" />
+  <button type="submit" class="btn btn-primary">Log in</button>
+  <button type="submit" name="Provider" value="Email" class="btn btn-secondary">E-mail kód</button>
+</form>
+''';
+
+const _emailFormAfterSend = '''
+<form action="/Account/Login2FA" method="post">
+  <input name="__RequestVerificationToken" value="t2" />
+  <input name="Phase" value="RequestEmail" />
+  <span class="input-group-text">774-</span>
+  <input id="TOTPCode" name="TOTPCode" value="" />
+</form>
+''';
+
 void main() {
   test('span prefix 732- plus tail 893600 composes 732-893600', () {
     expect(parseLogin2FaPrefix(_spanForm), _prefix);
@@ -106,6 +134,41 @@ void main() {
     expect(ticket.otpChannel, OtpChannel.email);
   });
 
+  test('data-setval E-mail code button sets Phase=RequestEmail', () {
+    final button = findLogin2FaEmailSendControl(_chooserSetvalForm);
+    expect(button, isNotNull);
+    expect(button!.setvalTarget, 'Phase');
+    expect(button.setvalValue, 'RequestEmail');
+    final posted = fillLogin2FaSendEmailFields(
+      fields: extractNamedInputs(_chooserSetvalForm),
+      button: button,
+    );
+    expect(posted['Phase'], 'RequestEmail');
+    expect(posted['__RequestVerificationToken'], 't');
+    expect(posted.containsKey('TOTPCode'), isFalse);
+  });
+
+  test('Provider=Email button is the send-mail control on RequestTOTP', () {
+    final button = findLogin2FaEmailSendControl(_chooserProviderForm);
+    expect(button, isNotNull);
+    expect(button!.name, 'Provider');
+    expect(button.value, 'Email');
+    final posted = fillLogin2FaSendEmailFields(
+      fields: extractNamedInputs(_chooserProviderForm),
+      button: button,
+    );
+    expect(posted['Provider'], 'Email');
+    expect(posted['Phase'], 'RequestTOTP');
+  });
+
+  test('fallback send-email POST forces Provider=Email and Phase=RequestEmail', () {
+    final posted = fillLogin2FaSendEmailFields(
+      fields: {'__RequestVerificationToken': 't', 'Phase': 'RequestTOTP'},
+    );
+    expect(posted['Provider'], 'Email');
+    expect(posted['Phase'], 'RequestEmail');
+  });
+
   test('Login2FA POST concatenates span prefix with the typed tail', () async {
     Map<String, String>? posted;
     final adapter = ScriptedAdapter(
@@ -147,15 +210,75 @@ void main() {
     expect(posted!['Phase'], 'RequestTOTP');
   });
 
-  test('resend re-POSTs /Account/Login, not GET Login2FA or JSON Authenticate',
+  test('prefix already on Login2FA does not POST send-email', () async {
+    var login2faPosts = 0;
+    final adapter = ScriptedAdapter(
+      eltePortalScript(
+        login2faHtml: _spanForm,
+        onRequest: (options) {
+          if (options.method == 'POST' &&
+              isLogin2FaUrl(options.uri.toString())) {
+            login2faPosts += 1;
+          }
+        },
+      ),
+    );
+    final ticket = await LiveNeptunAuth(clientWith(adapter)).submitPassword(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+    );
+    expect(ticket.otpPrefix, _prefix);
+    expect(login2faPosts, 0);
+  });
+
+  test('chooser Login2FA POSTs E-mail code before showing the prefix', () async {
+    final sendPosts = <Map<String, String>>[];
+    var login2faHtml = _chooserSetvalForm;
+    final adapter = ScriptedAdapter((options) {
+      final url = options.uri.toString();
+      if (url.contains('Account/Authenticate')) {
+        return jsonBody(400, {});
+      }
+      if (options.method == 'GET' && isLogin2FaUrl(url)) {
+        return htmlBody(200, login2faHtml);
+      }
+      if (options.method == 'GET' && isPasswordLoginUrl(url)) {
+        return htmlBody(200, eltePasswordLoginHtml);
+      }
+      if (options.method == 'POST' && isLogin2FaUrl(url)) {
+        final posted = Uri.splitQueryString(options.data as String);
+        sendPosts.add(posted);
+        expect(posted['Phase'], 'RequestEmail');
+        expect(posted['__RequestVerificationToken'], 't');
+        login2faHtml = _emailFormAfterSend;
+        return htmlBody(200, _emailFormAfterSend);
+      }
+      if (options.method == 'POST' && isPasswordLoginUrl(url)) {
+        return htmlBody(302, '', location: '/Account/Login2FA');
+      }
+      fail('unexpected ${options.method} $url');
+    });
+
+    final auth = LiveNeptunAuth(clientWith(adapter));
+    final ticket = await auth.submitPassword(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+    );
+    expect(ticket.step, NeptunAuthStep.needsOtp);
+    expect(ticket.otpPrefix, '774-');
+    expect(ticket.otpChannel, OtpChannel.email);
+    expect(sendPosts, hasLength(1));
+  });
+
+  test('resend POSTs Login2FA send-email, not a no-op GET or JSON Authenticate',
       () async {
     var loginPosts = 0;
-    var loginGets = 0;
-    var login2faGets = 0;
     var login2faPosts = 0;
     var authenticatePosts = 0;
-    String? lastLoginBody;
-    var login2faHtml = _spanForm;
+    var login2faHtml = _chooserProviderForm;
+    final sendBodies = <String>[];
 
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
@@ -164,35 +287,20 @@ void main() {
         return jsonBody(400, {});
       }
       if (options.method == 'GET' && isLogin2FaUrl(url)) {
-        login2faGets += 1;
         return htmlBody(200, login2faHtml);
       }
       if (options.method == 'GET' && isPasswordLoginUrl(url)) {
-        loginGets += 1;
-        return htmlBody(
-          200,
-          eltePasswordLoginHtml,
-          setCookie: const [
-            '.Potlap.Antiforgery=af; path=/; httponly',
-            '.Potlap.Session=sess; path=/; httponly',
-          ],
-        );
+        return htmlBody(200, eltePasswordLoginHtml);
       }
       if (options.method == 'POST' && isLogin2FaUrl(url)) {
         login2faPosts += 1;
-        fail('resend must not POST Login2FA');
+        expect(options.data, isA<String>());
+        sendBodies.add(options.data as String);
+        login2faHtml = _emailFormAfterSend.replaceAll('774-', '881-');
+        return htmlBody(200, login2faHtml);
       }
       if (options.method == 'POST' && isPasswordLoginUrl(url)) {
         loginPosts += 1;
-        expect(options.data, isA<String>());
-        lastLoginBody = options.data as String;
-        expect(lastLoginBody, contains('LoginName=ABC123'));
-        expect(lastLoginBody, contains('__RequestVerificationToken=login-token'));
-        expect(lastLoginBody, isNot(contains('culture=')));
-        expect(lastLoginBody, isNot(contains('{LoginName:')));
-        expect(options.headers['X-Requested-With'], isNull);
-        expect(options.headers['User-Agent'], contains('Safari'));
-        expect(options.headers['Cookie'], contains('.Potlap.Session=sess'));
         return htmlBody(302, '', location: '/Account/Login2FA');
       }
       fail('unexpected ${options.method} $url');
@@ -204,11 +312,13 @@ void main() {
       password: 'secret',
       lcid: 1033,
     );
-    expect(first.otpPrefix, '732-');
+    expect(first.otpPrefix, '881-');
     expect(loginPosts, 1);
+    expect(login2faPosts, 1);
+    expect(sendBodies.first, contains('Provider=Email'));
     expect(authenticatePosts, 1);
 
-    login2faHtml = _spanForm.replaceAll('732-', '881-');
+    login2faHtml = _emailFormAfterSend.replaceAll('774-', '881-');
     final again = await auth.resendEmailCode(
       userName: 'abc123',
       password: 'secret',
@@ -217,11 +327,41 @@ void main() {
     expect(again.step, NeptunAuthStep.needsOtp);
     expect(again.otpPrefix, '881-');
     expect(again.otpChannel, OtpChannel.email);
-    expect(loginPosts, 2);
-    expect(loginGets, greaterThanOrEqualTo(2));
+    expect(loginPosts, 1);
+    expect(login2faPosts, 2);
     expect(authenticatePosts, 1);
-    expect(login2faPosts, 0);
-    expect(login2faGets, greaterThanOrEqualTo(1));
+  });
+
+  test('failed send-email POST is a visible error, not a silent OTP screen',
+      () async {
+    final adapter = ScriptedAdapter((options) {
+      final url = options.uri.toString();
+      if (url.contains('Account/Authenticate')) {
+        return jsonBody(400, {});
+      }
+      if (options.method == 'GET' && isLogin2FaUrl(url)) {
+        return htmlBody(200, _chooserSetvalForm);
+      }
+      if (options.method == 'GET' && isPasswordLoginUrl(url)) {
+        return htmlBody(200, eltePasswordLoginHtml);
+      }
+      if (options.method == 'POST' && isLogin2FaUrl(url)) {
+        return htmlBody(200, _chooserSetvalForm);
+      }
+      if (options.method == 'POST' && isPasswordLoginUrl(url)) {
+        return htmlBody(302, '', location: '/Account/Login2FA');
+      }
+      fail('unexpected ${options.method} $url');
+    });
+
+    await expectLater(
+      LiveNeptunAuth(clientWith(adapter)).submitPassword(
+        userName: 'abc123',
+        password: 'secret',
+        lcid: 1033,
+      ),
+      throwsA(isA<NeptunEmailCodeException>()),
+    );
   });
 
   test('bare 6-digit TOTP is not posted to the email Login2FA form', () async {

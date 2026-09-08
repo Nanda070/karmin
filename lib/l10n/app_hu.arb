@@ -112,6 +112,7 @@
   },
   "otpResent": "Új kódot kértünk.",
   "otpError": "A Neptun elutasította ezt a kódot.",
+  "otpErrorNoMail": "A Neptun nem küldött e-mail kódot. Próbáld a Kód küldése újra gombot, vagy kérj e-mail kódot a weboldalon.",
   "todayEmptyNext": "Nincs következő óra",
   "todayEmptySchedule": "Ma nincs semmi a naptárban.",
   "calendarEmpty": "Nincs megjeleníthető esemény.",

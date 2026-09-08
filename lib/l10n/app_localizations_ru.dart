@@ -317,6 +317,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get otpError => 'Neptun отклонил этот код.';
 
   @override
+  String get otpErrorNoMail =>
+      'Neptun не отправил код на почту. Нажмите «Отправить ещё раз» или запросите e-mail код на сайте.';
+
+  @override
   String get todayEmptyNext => 'Нет ближайшей пары';
 
   @override

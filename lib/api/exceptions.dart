@@ -50,6 +50,14 @@ final class NeptunOtpException extends NeptunException {
   ]);
 }
 
+/// Login2FA never dispatched the email OTP (chooser not POSTed, or send failed).
+final class NeptunEmailCodeException extends NeptunException {
+  const NeptunEmailCodeException([
+    super.message =
+        'Neptun did not send an email code. Try Send code again, or tap E-mail code on the website.',
+  ]);
+}
+
 /// JWT died; UI must collect a new OTP (password may be replayed from Keystore).
 final class NeptunSessionExpiredException extends NeptunException {
   const NeptunSessionExpiredException([
