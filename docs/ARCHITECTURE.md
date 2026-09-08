@@ -1,5 +1,7 @@
 # Architecture
 
+**Owner:** Nanda / Cheterin Group. Unofficial; not affiliated with ELTE or Neptun.
+
 ```
 [Disclaimer] → [Login] → [Verification / 2FA] → [Set PIN]
 [Unlock]     → (JWT in RAM? Today : password from Keystore + 2FA)

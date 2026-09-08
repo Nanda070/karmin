@@ -1,5 +1,7 @@
 # API map
 
+**Owner:** Nanda / Cheterin Group. Unofficial; not affiliated with ELTE or Neptun.
+
 Base: `https://neptun.elte.hu/ujhallgato/api/` (SDA JSON student web). **ELTE's public host does not serve that path** (GET 404 / POST empty 400). Live login therefore tries JSON `Account/Authenticate` first, then falls back to the real MVC form `POST https://neptun.elte.hu/Account/Login` with `LoginName` + `Password` (then `/Account/Login2FA`).
 
 User-Agent: `Karmin/0.1.0 (Flutter; ELTE student client)` plus `X-Requested-With: XMLHttpRequest` on JSON auth.

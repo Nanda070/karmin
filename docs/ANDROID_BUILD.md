@@ -1,5 +1,6 @@
 # Android on Windows (emulator / local APK)
 
+**Owner:** Nanda / Cheterin Group. Unofficial; not affiliated with ELTE or Neptun.  
 **Application ID:** `online.cheterin.karmin`  
 **Display name:** Karmin  
 **Testers:** physical **iPhone** ([IOS_SIDELLOAD.md](IOS_SIDELLOAD.md)). There is **no** Android phone in this project. Do not sideload the APK onto a device. Verify Android by building an APK on this machine and, optionally, running the emulator.

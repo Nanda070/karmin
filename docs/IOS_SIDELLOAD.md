@@ -1,5 +1,6 @@
 # iOS on a physical iPhone (free)
 
+**Owner:** Nanda / Cheterin Group. Unofficial; not affiliated with ELTE or Neptun.  
 **Bundle ID:** `online.cheterin.karmin`  
 **Display name:** Kármin (home screen) / Karmin (short name)  
 **Paid Apple Developer Program / TestFlight:** not required.

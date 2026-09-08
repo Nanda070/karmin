@@ -1,5 +1,7 @@
 # Release (stub — Stage 0)
 
+**Owner:** Nanda / Cheterin Group. Unofficial; not affiliated with ELTE or Neptun.
+
 - Version: `pubspec` `0.1.0+1` — bump build number every IPA / APK.
 - **Primary tester device: iPhone.** iOS bundle ID: `online.cheterin.karmin`. Display name: Kármin.
 - Free v1 path (no $99 Apple program): Mac + Xcode Personal Team, **or** GitHub Actions unsigned IPA + Sideloadly / AltStore / SideStore. Step-by-step: [IOS_SIDELLOAD.md](IOS_SIDELLOAD.md). Re-sign every **7 days** on a free Apple ID.

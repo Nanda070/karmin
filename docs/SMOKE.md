@@ -1,5 +1,7 @@
 # Live smoke (manual)
 
+**Owner:** Nanda / Cheterin Group. Unofficial; not affiliated with ELTE or Neptun.
+
 Run on a **physical iPhone** (primary). Debug: `KARMIN_LIVE_AUTH=true`. Release IPA is always live. Chrome/web stays on the labeled debug mock (CORS). Do not log passwords, OTP, or JWT. Free install: [IOS_SIDELLOAD.md](IOS_SIDELLOAD.md).
 
 1. Disclaimer → Login → 2FA → PIN → Today  
