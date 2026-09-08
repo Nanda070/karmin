@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// Best-effort FLAG_SECURE on Android. No-ops on web/desktop or if the
-/// native channel is missing (this repo's Android tree is incomplete).
+/// Best-effort FLAG_SECURE on Android (`karmin/secure_flag`). No-ops on
+/// web/desktop or if the native channel is missing.
 abstract final class SecureFlag {
   static const _channel = MethodChannel('karmin/secure_flag');
 

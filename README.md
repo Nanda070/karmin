@@ -58,6 +58,7 @@ Live ELTE on a device: `flutter run --dart-define=KARMIN_LIVE_AUTH=true` (or ins
 |---|---|
 | [docs/PLAN.md](docs/PLAN.md) | Full product & stage plan |
 | [docs/IOS_SIDELLOAD.md](docs/IOS_SIDELLOAD.md) | Free iPhone install (no $99 account) |
+| [docs/ANDROID_BUILD.md](docs/ANDROID_BUILD.md) | Windows APK + optional emulator (no Android phone) |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers and cache |
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model, keystore |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | On-device processing |

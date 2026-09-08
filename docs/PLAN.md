@@ -20,13 +20,13 @@ Last updated: 2026-09-08
 | **Stage 1 — Auth** | **Done in code** — live `Authenticate` + debug mock; not claimed proven on a real ELTE account |
 | **Stage 2 — Cached reads** | **Done in code** — calendar/dashboard/unread + OTP resend-via-relogin. Isar deferred (JSON cache). Local notifications still deferred. Live ELTE JSON unproven. |
 | **Stage 3 — Study + Inbox** | **Done in code** — subjects/grades/GPA/credits, inbox list + thread + mark-read, Settings from `UserInfo`, exam signup confirm + `SignUpForExam`. Live payloads best-effort / unproven. |
-| **Stage 4 — Harden** | **In progress in code** — shared empty/error/cached banners, a11y labels, full light theme pass. Figma light frames pending (file is View-only). Android Gradle / notifications / TestFlight APK not in this slice. |
+| **Stage 4 — Harden** | **In progress in code** — shared empty/error/cached banners, a11y labels, full light theme pass. Figma light frames pending (file is View-only). Android debug APK builds on Windows; notifications / TestFlight still not in this slice. |
 | **UI visual system** | **Done** — Figma + Flutter widgets are the source of truth (not a future polish pass). Light tokens now applied in Flutter. |
 | Web platform (`web/`) | Added alongside iOS/Android (dev/preview; v1 ship target remains mobile) |
-| Platforms | **iOS testing is primary** (physical iPhone). Bundle ID `online.cheterin.karmin`. Full `ios/` Xcode tree + unsigned IPA workflow. **Android is emulator/CI on Windows** (Gradle tree is a separate track). Web is UI preview only. |
+| Platforms | **iOS testing is primary** (physical iPhone). Bundle ID `online.cheterin.karmin`. Full `ios/` Xcode tree + unsigned IPA workflow. **Android Gradle is complete** — debug APK on Windows, optional emulator ([ANDROID_BUILD.md](ANDROID_BUILD.md)). No Android phone. Web is UI preview only. |
 | Live Neptun auth | Implemented (`LiveNeptunAuth`) + labeled debug/mock. CORS blocks live from Chrome/web. Do not claim ELTE 2FA works until proven on a **device** with a real account. |
 | Light theme | **Shipped in Flutter** — Settings System / Dark / Light restyles all 7 screens + shell via `KarminPalette`. Cream paper `#F4EFE6`, not Material white. Figma light frames still pending. |
-| **Next** | Prove Stage 1–3 on a real iPhone (`KARMIN_LIVE_AUTH` / release IPA). Free install: [IOS_SIDELLOAD.md](IOS_SIDELLOAD.md). Android Gradle remains emulator/CI on Windows. |
+| **Next** | Prove Stage 1–3 on a real iPhone (`KARMIN_LIVE_AUTH` / release IPA). Free install: [IOS_SIDELLOAD.md](IOS_SIDELLOAD.md). Android: [ANDROID_BUILD.md](ANDROID_BUILD.md) (Windows APK / emulator). |
 
 Stage 0 exit criteria met: English Today matching the locked dark visual contract, gear → Settings, l10n EN/HU/RU, `NeptunClient` skeleton, secure storage + PIN helpers, doc stubs, MIT license under Cheterin. Luxury UI redesign shipped in Figma (7 screens + Components) and Flutter (`flutter analyze` clean; tests pass).
 
@@ -62,7 +62,7 @@ It is **not** an ELTE product, **not** a SDA Informatika product, and **not** a 
 | Classmate lists, avatars of others | PII of third parties; skip endpoints |
 | Scraping HTML of the old Neptun | We only use the documented-in-neptun-api JSON API |
 
-Web is UI preview only. **iOS on a physical iPhone is the primary test target** (free Apple ID / Personal Team or GitHub Actions IPA — [IOS_SIDELLOAD.md](IOS_SIDELLOAD.md)). Android on Windows is emulator/CI. TestFlight requires a paid Apple program and is optional later, not the v1 path.
+Web is UI preview only. **iOS on a physical iPhone is the primary test target** (free Apple ID / Personal Team or GitHub Actions IPA — [IOS_SIDELLOAD.md](IOS_SIDELLOAD.md)). Android on Windows is debug APK / optional emulator ([ANDROID_BUILD.md](ANDROID_BUILD.md)). TestFlight requires a paid Apple program and is optional later, not the v1 path.
 
 ### 1.3 Success criteria for v1
 
@@ -460,7 +460,7 @@ Do not invent extra tabs. Do not add a floating compose button.
 ### 8.4 Remaining UI (not a redesign)
 
 - **Stage 1:** implement Login, Disclaimer, Verification (2FA), Set PIN, Unlock against Figma 01/02 + the 02b contract (behavior + FLAG_SECURE). ThemeMode preference can be stored and exposed in Settings.
-- **Stage 4:** empty / error / offline banners (`KarminStatusBanner`, `KarminEmptyState`); TalkBack/VoiceOver labels and carmine contrast (§7.10); **full light theme pass in Flutter** (all 7 screens + shell). **Figma light frames still pending** (KARMIN file is View-only from this agent). Android Gradle + local notifications + TestFlight APK are **not** in this polish slice.
+- **Stage 4:** empty / error / offline banners (`KarminStatusBanner`, `KarminEmptyState`); TalkBack/VoiceOver labels and carmine contrast (§7.10); **full light theme pass in Flutter** (all 7 screens + shell). **Figma light frames still pending** (KARMIN file is View-only from this agent). Android debug APK + FLAG_SECURE are done on Windows; local notifications + TestFlight are **not** in this polish slice.
 - Web stays a preview scaffold; v1 ship target is mobile.
 - No Lucide migration, no extra motion system (nav already animates the active pill).
 
@@ -617,7 +617,7 @@ Shipped in this pass:
 
 - Figma light frames (file access is View-only; still pending).
 - Local notifications (`flutter_local_notifications`) — still deferred; cache is ready.
-- Completing the Android Gradle tree / `MainActivity` FLAG_SECURE channel / sideload APK / TestFlight.
+- Android phone sideload / Play Store. Debug APK + FLAG_SECURE `MainActivity` are done on Windows ([ANDROID_BUILD.md](ANDROID_BUILD.md)). TestFlight remains iOS-only.
 - Live ELTE proof (same gate as Stages 1–3).
 
 **Exit (not met):** invite-only APK + TestFlight after Android tree + live smoke on a real account.
@@ -645,6 +645,7 @@ All live under `docs/` unless noted. Stage 0 stubs exist; freeze text in Stage 4
 | `docs/API.md` | Devs | Dart method ↔ path ↔ sample fields (no personal dumps) |
 | `docs/I18N.md` | Devs | EN source; lcid mapping |
 | `docs/IOS_SIDELLOAD.md` | Testers | Free iPhone install (Personal Team / GHA IPA / Sideloadly); 7-day expiry |
+| `docs/ANDROID_BUILD.md` | Devs | Windows debug APK + optional emulator (no Android phone) |
 | `docs/RELEASE.md` | Team | Sideload, optional TestFlight later, versioning `0.1.0+1` |
 | `CHANGELOG.md` | Testers | Human changes |
 | `LICENSE` | Everyone | MIT © Cheterin / cheterin.online |
@@ -726,7 +727,7 @@ License decided: **MIT** under Cheterin.
 
 1. **Stage 1–3 live on iPhone** (`KARMIN_LIVE_AUTH=true` or release IPA): confirm calendar/study/inbox JSON keys; prove 2FA + resend-via-relogin; capture `SignUpForExam` body. Free install: [IOS_SIDELLOAD.md](IOS_SIDELLOAD.md). Push `.github/workflows/ios.yml` so Actions can build an unsigned IPA (this Windows checkout cannot).  
 2. Fill `docs/legal/SOURCES.md` after personally opening ELTE Neptun terms.  
-3. Figma light frames (when write access exists). Android remains emulator/CI on Windows until that tree is ready.  
+3. Figma light frames (when write access exists). Android on Windows: [ANDROID_BUILD.md](ANDROID_BUILD.md) (debug APK / optional emulator).  
 4. If ELTE or SDA asks to stop distribution — stop, note in CHANGELOG, contact via cheterin.online.
 
 ---
