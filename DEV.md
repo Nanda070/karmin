@@ -59,14 +59,14 @@ ELTE’s **public** host does **not** serve that API. `POST …/ujhallgato/api/A
 
 **What actually logs in (aligned with Neptun-Mobile-fork):**
 
-- Primary: `POST https://neptun.elte.hu/Account/api/Account/Authenticate` — `userName`, `password`, `captcha`, `captchaIdentifier`, `token` (empty), `LCID` ([zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork) `lib/API/api_coms.dart`).
-- On `isTwoFactorRequired` → Verification with **Microsoft Authenticator** (6-digit). Confirm re-POSTs Authenticate with `token=<code>`. **No email send on this path.**
-- Fallback: MVC `GET/POST /Account/Login` (`LoginName` + `Password` + antiforgery) → Login2FA. Prefer **TOTP** (`RequestTOTP` + `TOTPCode`). Optional mail: `GetEmail=true`; mail failure must **not** block authenticator login.
+- Primary: `POST https://neptun.elte.hu/Account/api/Account/Authenticate` — `userName`, `password`, `captcha`, `captchaIdentifier`, `token` (empty), `LCID` ([zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork) `lib/API/api_coms.dart`). Institute base is `https://neptun.elte.hu/Account` → `/Account/api/Account/Authenticate`.
+- On `isTwoFactorRequired` → Verification with **Microsoft Authenticator** (6-digit). Confirm re-POSTs Authenticate with `token=<bare 6 digits>`. **Never** compose email `732-` onto authenticator codes. **No email send on this path.**
+- Fallback: MVC `GET/POST /Account/Login` → Login2FA. Prefer **TOTP** (`RequestTOTP` + `TOTPCode`) immediately — do **not** auto-`GetEmail` on password (dual UI scrapes a grey prefix and can flip Phase to email, which rejected bare TOTP). Optional mail only via **Send code again** (`GetEmail=true`).
 - Email confirm (only with a prefix): `RequestEmailCode` + `EmailCode` + `CodePrefix`.
 
 **Why fork JSON first:** Neptun-Mobile-fork never does Login2FA email dispatch; its working 2FA is Authenticate + `token`. Do not invent `RequestEmail` / `Provider=Email`.
 
-`LiveNeptunAuth` tries fork Absolute Authenticate first (8s timeouts), then `ujhallgato` relative, then `EltePortalLogin`. Captcha / lockout / real auth errors are **not** swallowed into that fallback.
+`LiveNeptunAuth` tries fork Absolute Authenticate first (8s timeouts), then `ujhallgato` relative, then `EltePortalLogin`. JSON `/Account/api/…` keeps the app User-Agent (not Safari MVC headers). Captcha / lockout / real auth errors are **not** swallowed into that fallback.
 
 User-Agent (JSON client): `Karmin/0.1.0 (Flutter; ELTE student client)`. MVC form posts clear `X-Requested-With` and send `application/x-www-form-urlencoded`.
 

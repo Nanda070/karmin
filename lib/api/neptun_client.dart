@@ -152,12 +152,21 @@ bool isDioTransportFailure(DioException error) {
   };
 }
 
-/// MVC login is `https://neptun.elte.hu/Account/Login`, not `/ujhallgato/api/`.
+/// MVC login is `https://neptun.elte.hu/Account/Login`, not `/ujhallgato/api/`
+/// and not JSON `/Account/api/…` (fork Authenticate).
 bool isEltePortalUri(Uri uri) {
   if (uri.host != 'neptun.elte.hu') {
     return false;
   }
-  return !uri.path.toLowerCase().contains('/ujhallgato/');
+  final path = uri.path.toLowerCase();
+  if (path.contains('/ujhallgato/')) {
+    return false;
+  }
+  // Keep JSON Account API on the app User-Agent / XHR defaults (fork-like).
+  if (path.contains('/api/')) {
+    return false;
+  }
+  return true;
 }
 
 /// Safari-like GET/POST for the ASP.NET form. Call after Dio composes options

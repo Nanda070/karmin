@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:karmin/api/elte_portal_login.dart';
 import 'package:karmin/api/exceptions.dart';
 import 'package:karmin/api/neptun_auth.dart';
 import 'package:karmin/api/neptun_client.dart';
@@ -83,7 +84,7 @@ void main() {
     );
   });
 
-  test('live authenticate 202 without token still POSTs MVC Login', () async {
+  test('live authenticate 202 2FA stays on JSON authenticator (no MVC)', () async {
     var loginPosts = 0;
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
@@ -103,53 +104,7 @@ void main() {
         loginPosts += 1;
       }
       if (url.contains('Account/Login')) {
-        if (options.method == 'GET' && url.contains('Login2FA')) {
-          return ResponseBody.fromString(
-            '<form action="/Account/Login2FA" method="post">'
-            '<input name="__RequestVerificationToken" value="t" />'
-            '<input name="Phase" value="RequestTOTP" />'
-            '<span>732-</span>'
-            '<input name="TOTPCode" value="" /></form>',
-            200,
-            headers: {
-              Headers.contentTypeHeader: ['text/html; charset=utf-8'],
-            },
-          );
-        }
-        if (options.method == 'GET') {
-          return ResponseBody.fromString(
-            '<form action="/Account/Login" method="post">'
-            '<input name="__RequestVerificationToken" value="tok" />'
-            '<input name="LoginName" value="" />'
-            '<input name="Password" value="" /></form>',
-            200,
-            headers: {
-              Headers.contentTypeHeader: ['text/html; charset=utf-8'],
-            },
-          );
-        }
-        if (options.method == 'POST' && !url.contains('Login2FA')) {
-          return ResponseBody.fromString(
-            '',
-            302,
-            headers: {
-              Headers.contentTypeHeader: ['text/html; charset=utf-8'],
-              'location': ['/Account/Login2FA'],
-            },
-          );
-        }
-        if (options.method == 'POST' && url.contains('Login2FA')) {
-          return ResponseBody.fromString(
-            '<form action="/Account/Login2FA" method="post">'
-            '<input name="__RequestVerificationToken" value="t" />'
-            '<span>732-</span>'
-            '<input name="TOTPCode" value="" /></form>',
-            200,
-            headers: {
-              Headers.contentTypeHeader: ['text/html; charset=utf-8'],
-            },
-          );
-        }
+        fail('fork JSON 2FA must not fall through to MVC');
       }
       fail('unexpected ${options.method} $url');
     });
@@ -162,9 +117,10 @@ void main() {
     );
     expect(ticket.step, NeptunAuthStep.needsOtp);
     expect(ticket.hasJwt, isFalse);
-    expect(ticket.otpChannel, OtpChannel.email);
+    expect(ticket.otpChannel, OtpChannel.authenticator);
+    expect(normalizeOtpPrefix(ticket.otpPrefix), isEmpty);
     expect(client.hasJwt, isFalse);
-    expect(loginPosts, 1);
+    expect(loginPosts, 0);
   });
 
   test('resend-via-relogin POSTs /Account/Login, not JSON Authenticate', () async {

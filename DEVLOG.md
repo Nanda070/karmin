@@ -31,10 +31,12 @@
 ### 2FA
 
 - Primary: JSON Authenticate (`/Account/api/…`) + authenticator `token` (как Neptun-Mobile-fork)
-- Fallback MVC: `RequestTOTP` + `TOTPCode`; email только если пришёл `CodePrefix` после `GetEmail=true`
+- **Fix «Neptun rejected code»:** Authenticator OTP больше не склеивается с email-префиксом `732-`; JSON `token` = только 6 цифр
+- MVC fallback после пароля **не** шлёт `GetEmail` сам (fork); письмо только по «Send code again». TOTP игнорирует загрязнённый `RequestEmailCode` phase
+- Fallback MVC verify: `RequestTOTP` + `TOTPCode`; email только после явного `GetEmail=true` с `CodePrefix`
 - Пустой HTTP 400 на `ujhallgato` больше не считается «неверным паролем»
 - Authenticator снова включён (раньше был parked ради отладки email)
-- Живой ELTE 2FA на реальном аккаунте ещё проверяется этой IPA
+- Живой ELTE 2FA на реальном аккаунте проверяется новой IPA после этого фикса
 
 ### API
 

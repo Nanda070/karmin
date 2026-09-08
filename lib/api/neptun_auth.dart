@@ -238,7 +238,7 @@ Map<String, dynamic> authenticateJsonBody({
   String? otp,
 }) {
   // Matches zoligamer/Neptun-Mobile-fork `InstitutesRequest._tryModernLogin` /
-  // `submitTwoFactorCode` (lib/API/api_coms.dart).
+  // `submitTwoFactorCode` (lib/API/api_coms.dart) byte-for-byte intent.
   final body = <String, dynamic>{
     'userName': normalizeNeptunCode(userName),
     'password': password,
@@ -246,7 +246,6 @@ Map<String, dynamic> authenticateJsonBody({
     'captchaIdentifier': '',
     'token': '',
     'LCID': lcid,
-    'lcid': lcid,
   };
   final token = otp?.trim();
   if (token != null && token.isNotEmpty) {
@@ -313,6 +312,9 @@ class LiveNeptunAuth implements NeptunAuthApi {
   final NeptunClient _client;
   final EltePortalLogin _portal;
 
+  /// Set when password 2FA came from JSON Authenticate (fork path).
+  var _jsonTwoFactorPending = false;
+
   /// Fork ELTE institute URL → Authenticate under `/Account/api/…`.
   static const String forkAuthenticateUrl =
       '${EltePortalLogin.origin}/Account/api/Account/Authenticate';
@@ -332,6 +334,7 @@ class LiveNeptunAuth implements NeptunAuthApi {
   }) async {
     final code = normalizeNeptunCode(userName);
     _portal.clear();
+    _jsonTwoFactorPending = false;
 
     // 1) Fork modern JSON (primary).
     try {
@@ -348,10 +351,11 @@ class LiveNeptunAuth implements NeptunAuthApi {
       }
       if (ticket.step == NeptunAuthStep.needsOtp) {
         // Fork has no email dispatch — 2FA is the authenticator `token` field.
-        return AuthTicket(
+        _jsonTwoFactorPending = true;
+        return const AuthTicket(
           step: NeptunAuthStep.needsOtp,
           otpChannel: OtpChannel.authenticator,
-          otpPrefix: ticket.otpPrefix,
+          otpPrefix: '',
         );
       }
     } on NeptunCaptchaException {
@@ -377,10 +381,11 @@ class LiveNeptunAuth implements NeptunAuthApi {
         return ticket;
       }
       if (ticket.step == NeptunAuthStep.needsOtp) {
-        return AuthTicket(
+        _jsonTwoFactorPending = true;
+        return const AuthTicket(
           step: NeptunAuthStep.needsOtp,
           otpChannel: OtpChannel.authenticator,
-          otpPrefix: ticket.otpPrefix,
+          otpPrefix: '',
         );
       }
     } on NeptunCaptchaException {
@@ -393,7 +398,7 @@ class LiveNeptunAuth implements NeptunAuthApi {
       // MVC fallback.
     }
 
-    // 3) ASP.NET MVC Login2FA — prefer authenticator; email is optional.
+    // 3) ASP.NET MVC Login2FA — prefer authenticator; email is optional (resend).
     return _portal.submitPassword(
       userName: code,
       password: password,
@@ -408,37 +413,60 @@ class LiveNeptunAuth implements NeptunAuthApi {
     required int lcid,
     required String otp,
   }) async {
+    // Fork: bare authenticator digits in `token` — never email `732-` + tail.
     final digits = otp.replaceAll(RegExp(r'\D'), '');
+    final token = digits.isNotEmpty ? digits : otp.trim();
+
+    final preferJson = _jsonTwoFactorPending || !_portal.hasSession;
+    if (preferJson) {
+      final payload = authenticateJsonBody(
+        userName: userName,
+        password: password,
+        lcid: lcid,
+        otp: token,
+      );
+      try {
+        final ticket =
+            await _authenticateAbsolute(forkAuthenticateUrl, payload);
+        if (ticket.step == NeptunAuthStep.authenticated) {
+          _jsonTwoFactorPending = false;
+        }
+        return ticket;
+      } on NeptunOtpException {
+        rethrow;
+      } on NeptunAuthException {
+        throw const NeptunOtpException();
+      } on NeptunUnavailableException {
+        // try relative / portal
+      } on NeptunException {
+        // try relative / portal
+      }
+
+      try {
+        final ticket = await _authenticateRelative(payload);
+        if (ticket.step == NeptunAuthStep.authenticated) {
+          _jsonTwoFactorPending = false;
+        }
+        return ticket;
+      } on NeptunAuthException {
+        if (!_portal.hasSession) {
+          throw const NeptunOtpException();
+        }
+      } on NeptunUnavailableException {
+        if (!_portal.hasSession) {
+          throw const NeptunOtpException();
+        }
+      } on NeptunOtpException {
+        if (!_portal.hasSession) {
+          rethrow;
+        }
+      }
+    }
+
     if (_portal.hasSession) {
-      return _portal.submitOtp(otp: digits.isNotEmpty ? digits : otp);
+      return _portal.submitOtp(otp: token);
     }
-
-    final payload = authenticateJsonBody(
-      userName: userName,
-      password: password,
-      lcid: lcid,
-      otp: digits.isNotEmpty ? digits : otp,
-    );
-
-    try {
-      return await _authenticateAbsolute(forkAuthenticateUrl, payload);
-    } on NeptunOtpException {
-      rethrow;
-    } on NeptunAuthException {
-      throw const NeptunOtpException();
-    } on NeptunUnavailableException {
-      // try relative
-    } on NeptunException {
-      // try relative
-    }
-
-    try {
-      return await _authenticateRelative(payload);
-    } on NeptunAuthException {
-      throw const NeptunOtpException();
-    } on NeptunUnavailableException {
-      throw const NeptunOtpException();
-    }
+    throw const NeptunOtpException();
   }
 
   @override

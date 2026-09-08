@@ -171,11 +171,16 @@ class AuthController extends StateNotifier<AuthState> {
 
     state = state.copyWith(busy: true, clearError: true);
     try {
+      // Authenticator / JSON `token` must stay bare 6 digits. Only email OTP
+      // uses the Login2FA grey prefix (`732-` + tail).
+      final token = state.otpChannel == OtpChannel.email
+          ? composeLogin2FaCode(prefix: state.otpPrefix, tail: otp)
+          : otp.trim();
       final ticket = await _authApi.submitOtp(
         userName: resolvedUser,
         password: resolvedPassword,
         lcid: lcid,
-        otp: composeLogin2FaCode(prefix: state.otpPrefix, tail: otp),
+        otp: token,
       );
       if (ticket.step == NeptunAuthStep.needsOtp) {
         state = state.copyWith(
@@ -449,7 +454,10 @@ class AuthController extends StateNotifier<AuthState> {
         busy: false,
         neptunStep: NeptunAuthStep.needsOtp,
         otpChannel: ticket.otpChannel,
-        otpPrefix: ticket.otpPrefix,
+        otpPrefix: ticket.otpChannel == OtpChannel.authenticator
+            ? ''
+            : ticket.otpPrefix,
+        clearOtpPrefix: ticket.otpChannel == OtpChannel.authenticator,
         clearError: true,
       );
       return;

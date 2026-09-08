@@ -2,7 +2,7 @@
 
 ## Unreleased — Stage 4 harden (polish)
 
-- Login aligned with [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork): primary `POST /Account/api/Account/Authenticate`, 2FA via `token` (Microsoft Authenticator 6-digit). Missing email is **not** a hard login blocker. MVC fallback prefers `RequestTOTP`; optional mail uses `GetEmail=true`
+- Fix Authenticator OTP reject: bare 6-digit `token` only (no email `732-` compose); MVC password no longer auto-`GetEmail` (fork-aligned). Primary still `POST /Account/api/Account/Authenticate` per [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork)
 - Attribution: owner / founder **Nanda**, company **Cheterin Group**; contact Discord `nandak070`, Telegram `nanda070`, mail `turkapahf@gmail.com` (README, LICENSE, legal docs)
 - Shared empty / error / last-cached widgets on Today, Calendar, Study, Inbox, Auth (`KarminStatusBanner`, `KarminEmptyState`)
 - Accessibility: Semantics on tabs, PIN keypad, OTP, password visibility; 48pt icon tap targets; contrast-aware carmine text

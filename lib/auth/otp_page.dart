@@ -237,7 +237,11 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                   ),
                 ],
                 const SizedBox(height: 24),
-                _codeField(l10n, palette, auth.otpPrefix),
+                _codeField(
+                  l10n,
+                  palette,
+                  auth.otpChannel == OtpChannel.email ? auth.otpPrefix : '',
+                ),
                 if (error != null) ...[
                   const SizedBox(height: 12),
                   KarminInlineError(error),

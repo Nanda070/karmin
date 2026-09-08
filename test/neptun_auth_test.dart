@@ -332,7 +332,7 @@ void main() {
     );
   });
 
-  test('JSON API miss falls back to ELTE MVC Login2FA', () async {
+  test('JSON API miss falls back to ELTE MVC Login2FA authenticator', () async {
     final adapter = ScriptedAdapter(eltePortalScript());
     final ticket = await LiveNeptunAuth(clientWith(adapter)).submitPassword(
       userName: 'n4ibzj',
@@ -340,7 +340,8 @@ void main() {
       lcid: 1033,
     );
     expect(ticket.step, NeptunAuthStep.needsOtp);
-    expect(ticket.otpPrefix, '732-');
+    expect(ticket.otpChannel, OtpChannel.authenticator);
+    expect(normalizeOtpPrefix(ticket.otpPrefix), isEmpty);
     expect(adapter.paths.any((path) => path.contains('Account/Login')), isTrue);
   });
 

@@ -55,22 +55,17 @@ class EltePortalLogin {
     fields['Password'] = password;
     fields.putIfAbsent('ReturnUrl', () => '');
 
-    // Password POST opens Login2FA. Fork never blocks on email — prefer TOTP.
+    // Password POST opens Login2FA. Fork never auto-mails — prefer TOTP.
     final response = await _post(loginPath, fields, referer: '$origin$loginPath');
     final ticket = await _ticketFromPortalResponse(response);
     if (ticket.step != NeptunAuthStep.needsOtp) {
       return ticket;
     }
     if (_sessionSupportsTotp()) {
-      // Optional email attempt; failure must not block authenticator login.
-      try {
-        await _dispatchEmailCode(force: false);
-        if (normalizeOtpPrefix(_otpPrefix).isNotEmpty) {
-          return _otpTicket(OtpChannel.email);
-        }
-      } on NeptunException {
-        // Keep authenticator path.
-      }
+      // Do not POST GetEmail here. A dual Login2FA page often scrapes a grey
+      // `732-` span and/or flips Phase to RequestEmailCode; composing that onto
+      // a Microsoft Authenticator code makes Neptun reject the token.
+      _otpPrefix = '';
       return _otpTicket(OtpChannel.authenticator);
     }
     try {
@@ -93,14 +88,12 @@ class EltePortalLogin {
       _captureOtpForm(html);
       fields = Map<String, String>.from(_otpFields);
     }
-    final useTotp = normalizeOtpPrefix(_otpPrefix).isEmpty &&
-        !isEmailCodePhase(_phaseOf(fields));
-    if (!useTotp && normalizeOtpPrefix(_otpPrefix).isEmpty) {
-      throw const NeptunOtpException();
-    }
+    // Bare 6-digit TOTP wins whenever there is no email CodePrefix. Ignore a
+    // polluted RequestEmailCode phase left by optional GetEmail / dual UI.
+    final useTotp = normalizeOtpPrefix(_otpPrefix).isEmpty;
     fields = fillLogin2FaOtpFields(
       fields: fields,
-      prefix: _otpPrefix,
+      prefix: useTotp ? '' : _otpPrefix,
       tail: otp,
       isTotp: useTotp,
     );
@@ -134,11 +127,18 @@ class EltePortalLogin {
         }
       }
       clear();
-      return await submitPassword(
+      // Password path no longer auto-mails (fork / Authenticator). Re-open
+      // Login2FA, then force GetEmail for the optional email channel.
+      await submitPassword(
         userName: userName,
         password: password,
         lcid: lcid,
       );
+      if (!_hasSession) {
+        throw const NeptunEmailCodeException();
+      }
+      await _dispatchEmailCode(force: true);
+      return _otpTicket(OtpChannel.email);
     } catch (_) {
       _cookies
         ..clear()
@@ -352,10 +352,15 @@ class EltePortalLogin {
   }
 
   AuthTicket _otpTicket(OtpChannel channel) {
+    final prefix =
+        channel == OtpChannel.authenticator ? '' : _otpPrefix;
+    if (channel == OtpChannel.authenticator) {
+      _otpPrefix = '';
+    }
     return AuthTicket(
       step: NeptunAuthStep.needsOtp,
       otpChannel: channel,
-      otpPrefix: _otpPrefix,
+      otpPrefix: prefix,
     );
   }
 

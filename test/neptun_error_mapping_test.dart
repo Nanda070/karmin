@@ -120,7 +120,7 @@ void main() {
       lcid: 1033,
     );
     expect(ticket.step, NeptunAuthStep.needsOtp);
-    expect(ticket.otpChannel, OtpChannel.email);
+    expect(ticket.otpChannel, OtpChannel.authenticator);
     expect(getContentType, isNull);
     expect(postedXhr, isNull);
     expect(postedUa, contains('Safari'));

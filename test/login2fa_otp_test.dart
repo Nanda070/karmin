@@ -165,7 +165,7 @@ void main() {
     expect(lastPost!['TOTPCode'], '123456');
   });
 
-  test('optional GetEmail succeeds → email channel with prefix', () async {
+  test('optional GetEmail via resend → email channel with prefix', () async {
     var login2faHtml = _totpForm;
     final sendPosts = <Map<String, String>>[];
     final adapter = ScriptedAdapter((options) {
@@ -193,7 +193,17 @@ void main() {
       fail('unexpected ${options.method} $url');
     });
 
-    final ticket = await LiveNeptunAuth(clientWith(adapter)).submitPassword(
+    final auth = LiveNeptunAuth(clientWith(adapter));
+    final first = await auth.submitPassword(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+    );
+    expect(first.otpChannel, OtpChannel.authenticator);
+    expect(normalizeOtpPrefix(first.otpPrefix), isEmpty);
+    expect(sendPosts, isEmpty);
+
+    final ticket = await auth.resendEmailCode(
       userName: 'abc123',
       password: 'secret',
       lcid: 1033,
@@ -203,7 +213,8 @@ void main() {
     expect(sendPosts, isNotEmpty);
   });
 
-  test('failed GetEmail still returns authenticator OTP ticket', () async {
+  test('password Login2FA with dual UI span stays authenticator (no GetEmail)',
+      () async {
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
       if (url.contains('Account/Authenticate')) {
@@ -216,7 +227,7 @@ void main() {
         return htmlBody(200, eltePasswordLoginHtml);
       }
       if (options.method == 'POST' && isLogin2FaUrl(url)) {
-        return htmlBody(200, _totpForm);
+        fail('password must not auto-POST Login2FA GetEmail');
       }
       if (options.method == 'POST' && isPasswordLoginUrl(url)) {
         return htmlBody(302, '', location: '/Account/Login2FA');
@@ -245,6 +256,8 @@ void main() {
             ? data.map((k, v) => MapEntry('$k', v))
             : <String, dynamic>{};
         final token = '${map['token'] ?? ''}';
+        expect(map.containsKey('lcid'), isFalse);
+        expect(map['LCID'], 1038);
         if (token.isEmpty) {
           return jsonBody(202, {
             'data': {
@@ -273,6 +286,7 @@ void main() {
     );
     expect(first.step, NeptunAuthStep.needsOtp);
     expect(first.otpChannel, OtpChannel.authenticator);
+    expect(normalizeOtpPrefix(first.otpPrefix), isEmpty);
 
     final done = await auth.submitOtp(
       userName: 'abc123',
@@ -283,6 +297,41 @@ void main() {
     expect(sawToken, isTrue);
     expect(done.step, NeptunAuthStep.authenticated);
     expect(done.accessToken, 'jwt-from-fork');
+  });
+
+  test('controller does not compose email prefix onto authenticator TOTP',
+      () async {
+    String? seenOtp;
+    final controller = AuthController(
+      store: MemorySecureStore(),
+      prefs: MemoryPrefsStore(),
+      authApi: _CapturingAuth(
+        onPassword: () => const AuthTicket(
+          step: NeptunAuthStep.needsOtp,
+          otpChannel: OtpChannel.authenticator,
+          otpPrefix: '732-',
+        ),
+        onOtp: (otp) {
+          seenOtp = otp;
+          return const AuthTicket(
+            step: NeptunAuthStep.authenticated,
+            accessToken: 'jwt',
+            neptunCode: 'ABC123',
+          );
+        },
+      ),
+      client: NeptunClient(),
+      localAuth: LocalAuthProbe(),
+      usingDebugAuth: true,
+      hydrateOnStart: false,
+    );
+    await controller.acceptDisclaimer();
+    await controller.login(userName: 'abc123', password: 'secret', lcid: 1038);
+    expect(controller.state.otpChannel, OtpChannel.authenticator);
+    expect(controller.state.otpPrefix, isEmpty);
+
+    await controller.submitOtp(otp: '654321', lcid: 1038);
+    expect(seenOtp, '654321');
   });
 
   testWidgets('OTP screen shows authenticator hint without email-parked copy',
@@ -324,4 +373,46 @@ void main() {
     );
     expect(find.text('Send code again'), findsNothing);
   });
+}
+
+class _CapturingAuth implements NeptunAuthApi {
+  _CapturingAuth({
+    this.onPassword,
+    required this.onOtp,
+  });
+
+  final AuthTicket Function()? onPassword;
+  final AuthTicket Function(String otp) onOtp;
+
+  @override
+  Future<AuthTicket> submitPassword({
+    required String userName,
+    required String password,
+    required int lcid,
+  }) async {
+    return onPassword?.call() ??
+        const AuthTicket(
+          step: NeptunAuthStep.needsOtp,
+          otpChannel: OtpChannel.authenticator,
+        );
+  }
+
+  @override
+  Future<AuthTicket> submitOtp({
+    required String userName,
+    required String password,
+    required int lcid,
+    required String otp,
+  }) async {
+    return onOtp(otp);
+  }
+
+  @override
+  Future<AuthTicket> resendEmailCode({
+    required String userName,
+    required String password,
+    required int lcid,
+  }) {
+    return submitPassword(userName: userName, password: password, lcid: lcid);
+  }
 }

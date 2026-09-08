@@ -2,17 +2,17 @@
 
 **Owner:** Nanda / Cheterin Group. Unofficial; not affiliated with ELTE or Neptun.
 
-Base: `https://neptun.elte.hu/ujhallgato/api/` (SDA JSON student web). **ELTE's public host does not serve that path** (GET 404 / POST empty 400). Live login therefore tries JSON `Account/Authenticate` first, then falls back to the real MVC form `POST https://neptun.elte.hu/Account/Login` with `LoginName` + `Password` (then `/Account/Login2FA`).
+Base: `https://neptun.elte.hu/ujhallgato/api/` (SDA JSON student web). **ELTE's public host does not serve that path** (GET 404 / POST empty 400). Live login therefore tries fork JSON `POST https://neptun.elte.hu/Account/api/Account/Authenticate` first, then relative `ujhallgato`, then MVC `POST /Account/Login` → `/Account/Login2FA`.
 
-User-Agent: `Karmin/0.1.0 (Flutter; ELTE student client)` plus `X-Requested-With: XMLHttpRequest` on JSON auth.
+User-Agent: `Karmin/0.1.0 (Flutter; ELTE student client)` plus `X-Requested-With: XMLHttpRequest` on JSON auth (not Safari MVC headers).
 
 JWT: RAM only, `Authorization: Bearer`. 401 on a non-auth path drops the JWT and does **not** retry until OTP succeeds.
 
 | Dart method | Path | Stage | Write? | Notes |
 |---|---|---|---|---|
-| `submitPassword` | JSON `POST Account/Authenticate` `{ userName, password, lcid, captcha }` then ELTE `POST /Account/Login` `{ LoginName, Password }` then **`POST /Account/Login2FA` send-email** (`Phase=RequestEmail` and/or `Provider=Email`) | 1 | yes | HTTP 202 / `isTwoFactorRequired` / MVC `Login2FA` → Verification. Empty 400 is **not** invalid credentials. Password POST does **not** mail by itself. |
-| `submitOtp` | same, plus `token` (one-time code) | 1 | yes | Never silent |
-| `resendEmailCode` | **`POST /Account/Login2FA` send-email** (or Login + send-email) | 1–2 | yes | Same action as official “E-mail code”. Visible error if no prefix. No `token` field. |
+| `submitPassword` | JSON `POST /Account/api/Account/Authenticate` `{ userName, password, captcha, captchaIdentifier, token:"", LCID }` then MVC `POST /Account/Login` | 1 | yes | HTTP 202 / `isTwoFactorRequired` → authenticator Verification. **No** auto `GetEmail` on password. Empty 400 is **not** invalid credentials. |
+| `submitOtp` | same Authenticate URL with `token=<bare 6 digits>` (or MVC `RequestTOTP`+`TOTPCode`) | 1 | yes | Never compose email prefix onto authenticator codes. Never silent. |
+| `resendEmailCode` | **`POST /Account/Login2FA` + `GetEmail=true`** (or Login + GetEmail) | 1–2 | yes | Optional email path only. Visible error if no prefix. |
 | `getCalendarEvents` | `GET Calendar/GetCalendarEvents` | 2 | no | Query: `startDate` / `endDate` plus display flags. Parser best-effort. Live ELTE keys unconfirmed. |
 | `getDashboardAverages` | `GET Dashboard/GetAverages` | 2 | no | GPA chip; optional fields |
 | `getDashboardCreditProgress` | `GET dashboard/creditprogress` | 2 | no | Study credits card |
