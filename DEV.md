@@ -61,7 +61,7 @@ ELTE’s **public** host does **not** serve that API. `POST …/ujhallgato/api/A
 
 - Primary: `POST https://neptun.elte.hu/Account/api/Account/Authenticate` — `userName`, `password`, `captcha`, `captchaIdentifier`, `token` (empty), `LCID` ([zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork) `lib/API/api_coms.dart`). Institute base is `https://neptun.elte.hu/Account` → `/Account/api/Account/Authenticate`.
 - On `isTwoFactorRequired` → Verification with **Microsoft Authenticator** (6-digit). Confirm re-POSTs Authenticate with `token=<bare 6 digits>`. **Never** compose email `732-` onto authenticator codes. **No email send on this path.**
-- Fallback: MVC `GET/POST /Account/Login` → Login2FA. Prefer **TOTP** (`RequestTOTP` + `TOTPCode`) immediately — do **not** auto-`GetEmail` on password (dual UI scrapes a grey prefix and can flip Phase to email, which rejected bare TOTP). Optional mail only via **Send code again** (`GetEmail=true`).
+- Fallback: MVC `GET/POST /Account/Login` → Login2FA. Prefer **TOTP** (`RequestTOTP` + `TOTPCode`) immediately — do **not** auto-`GetEmail` on password (dual UI scrapes a grey prefix and can flip Phase to email, which rejected bare TOTP). On verify: always GET Login2FA first (fresh antiforgery); if the session looks like TOTP, clear any scraped email prefix before POST. Optional mail only via **Send code again** (`GetEmail=true`).
 - Email confirm (only with a prefix): `RequestEmailCode` + `EmailCode` + `CodePrefix`.
 
 **Why fork JSON first:** Neptun-Mobile-fork never does Login2FA email dispatch; its working 2FA is Authenticate + `token`. Do not invent `RequestEmail` / `Provider=Email`.

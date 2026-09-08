@@ -82,15 +82,17 @@ class EltePortalLogin {
   Future<AuthTicket> submitOtp({
     required String otp,
   }) async {
+    // Always refresh Login2FA before POST — antiforgery tokens go stale.
+    final html = await _get(_otpGetPath());
+    _captureOtpForm(html);
     var fields = Map<String, String>.from(_otpFields);
-    if (fields.isEmpty) {
-      final html = await _get(_otpGetPath());
-      _captureOtpForm(html);
-      fields = Map<String, String>.from(_otpFields);
+    // Stale email CodePrefix from dual UI / GetEmail must not glue onto TOTP.
+    final sessionIsTotp = _sessionSupportsTotp();
+    final useTotp =
+        sessionIsTotp || normalizeOtpPrefix(_otpPrefix).isEmpty;
+    if (sessionIsTotp) {
+      _otpPrefix = '';
     }
-    // Bare 6-digit TOTP wins whenever there is no email CodePrefix. Ignore a
-    // polluted RequestEmailCode phase left by optional GetEmail / dual UI.
-    final useTotp = normalizeOtpPrefix(_otpPrefix).isEmpty;
     fields = fillLogin2FaOtpFields(
       fields: fields,
       prefix: useTotp ? '' : _otpPrefix,
@@ -342,8 +344,12 @@ class EltePortalLogin {
         _otpFields[hasTotp]!.toLowerCase() == 'true') {
       return true;
     }
+    final html = _otpHtml.toLowerCase();
     return _fieldKeyIgnoringCase(_otpFields, 'TOTPCode') != null ||
-        _otpHtml.toLowerCase().contains('totpcode');
+        html.contains('totpcode') ||
+        html.contains('authcode') ||
+        html.contains('verificationcode') ||
+        html.contains('authenticator');
   }
 
   String _phaseOf(Map<String, String> fields) {

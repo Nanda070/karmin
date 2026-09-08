@@ -98,7 +98,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
       autofillHints: const [AutofillHints.oneTimeCode],
       inputFormatters: [
         FilteringTextInputFormatter.digitsOnly,
-        LengthLimitingTextInputFormatter(prefix.isEmpty ? 6 : 8),
+        LengthLimitingTextInputFormatter(8),
       ],
     );
     if (prefix.isEmpty) {

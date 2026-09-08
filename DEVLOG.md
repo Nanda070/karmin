@@ -31,7 +31,8 @@
 ### 2FA
 
 - Primary: JSON Authenticate (`/Account/api/…`) + authenticator `token` (как Neptun-Mobile-fork)
-- **Fix «Neptun rejected code»:** Authenticator OTP больше не склеивается с email-префиксом `732-`; JSON `token` = только 6 цифр
+- **Fix «Neptun rejected code» (6 causes):** (1) stale email `_otpPrefix` cleared when session is TOTP; (2) relative Authenticate auth/unavailable errors fall through to MVC portal before final OTP throw; (3) empty digits → immediate `NeptunOtpException`; (4) OTP field length limit always 8; (5) always GET Login2FA before verify POST (fresh antiforgery); (6) `_sessionSupportsTotp` also matches authcode / verificationcode / authenticator in HTML
+- Authenticator OTP больше не склеивается с email-префиксом `732-`; JSON `token` = только 6 цифр
 - MVC fallback после пароля **не** шлёт `GetEmail` сам (fork); письмо только по «Send code again». TOTP игнорирует загрязнённый `RequestEmailCode` phase
 - Fallback MVC verify: `RequestTOTP` + `TOTPCode`; email только после явного `GetEmail=true` с `CodePrefix`
 - Пустой HTTP 400 на `ujhallgato` больше не считается «неверным паролем»

@@ -165,6 +165,112 @@ void main() {
     expect(lastPost!['TOTPCode'], '123456');
   });
 
+  test('stale dual-UI email prefix does not glue onto TOTP verify', () async {
+    // Dual Login2FA: TOTP fields + grey 732- span (pollutes parseLogin2FaPrefix).
+    const dualHtml = '''
+<form action="/Account/Login2FA" method="post">
+  <input name="__RequestVerificationToken" value="t" />
+  <input name="Phase" value="RequestTOTP" />
+  <input name="HasTOTP" value="True" />
+  <input name="HasEmail" value="True" />
+  <input name="NeptunCode" value="ABC123" />
+  <input name="Key" value="session-key" />
+  <input name="Rendered" value="r" />
+  <input name="CodePrefix" value="" />
+  <span class="input-group-text">732-</span>
+  <input id="TOTPCode" name="TOTPCode" value="" />
+</form>
+''';
+    Map<String, String>? lastPost;
+    final adapter = ScriptedAdapter(
+      eltePortalScript(
+        login2faHtml: dualHtml,
+        onRequest: (options) {
+          if (options.method == 'POST' &&
+              isLogin2FaUrl(options.uri.toString())) {
+            final data = options.data;
+            if (data is String) {
+              lastPost = Uri.splitQueryString(data);
+            }
+          }
+        },
+      ),
+    );
+
+    final auth = LiveNeptunAuth(clientWith(adapter));
+    await auth.submitPassword(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+    );
+    final done = await auth.submitOtp(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+      otp: '654321',
+    );
+    expect(done.step, NeptunAuthStep.authenticated);
+    expect(lastPost!['Phase'], 'RequestTOTP');
+    expect(lastPost!['TOTPCode'], '654321');
+    expect(lastPost!['CodePrefix'], '');
+    expect(lastPost!.containsKey('EmailCode'), isFalse);
+  });
+
+  test('submitOtp always GETs Login2FA before POST (fresh antiforgery)', () async {
+    var login2faGets = 0;
+    var login2faPosts = 0;
+    final adapter = ScriptedAdapter(
+      eltePortalScript(
+        login2faHtml: _totpForm,
+        onRequest: (options) {
+          if (!isLogin2FaUrl(options.uri.toString())) {
+            return;
+          }
+          if (options.method == 'GET') {
+            login2faGets += 1;
+          }
+          if (options.method == 'POST') {
+            login2faPosts += 1;
+          }
+        },
+      ),
+    );
+
+    final auth = LiveNeptunAuth(clientWith(adapter));
+    await auth.submitPassword(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+    );
+    final getsAfterPassword = login2faGets;
+    await auth.submitOtp(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+      otp: '123456',
+    );
+    expect(login2faGets, greaterThan(getsAfterPassword));
+    expect(login2faPosts, 1);
+  });
+
+  test('empty OTP digits throw NeptunOtpException immediately', () async {
+    final auth = LiveNeptunAuth(clientWith(ScriptedAdapter(eltePortalScript())));
+    await auth.submitPassword(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+    );
+    expect(
+      () => auth.submitOtp(
+        userName: 'abc123',
+        password: 'secret',
+        lcid: 1033,
+        otp: '   ---',
+      ),
+      throwsA(isA<NeptunOtpException>()),
+    );
+  });
+
   test('optional GetEmail via resend → email channel with prefix', () async {
     var login2faHtml = _totpForm;
     final sendPosts = <Map<String, String>>[];

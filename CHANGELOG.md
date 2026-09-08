@@ -2,7 +2,7 @@
 
 ## Unreleased — Stage 4 harden (polish)
 
-- Fix Authenticator OTP reject: bare 6-digit `token` only (no email `732-` compose); MVC password no longer auto-`GetEmail` (fork-aligned). Primary still `POST /Account/api/Account/Authenticate` per [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork)
+- Fix Authenticator OTP reject (6 causes): clear stale email prefix on TOTP sessions; relative Authenticate errors fall through to MVC portal; empty digits reject early; OTP length limit always 8; always refresh Login2FA before verify POST; broaden TOTP HTML detection (authcode / verificationcode / authenticator). Bare 6-digit `token` only (no email `732-` compose); MVC password no longer auto-`GetEmail` (fork-aligned). Primary still `POST /Account/api/Account/Authenticate` per [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork)
 - Attribution: owner / founder **Nanda**, company **Cheterin Group**; contact Discord `nandak070`, Telegram `nanda070`, mail `turkapahf@gmail.com` (README, LICENSE, legal docs)
 - Shared empty / error / last-cached widgets on Today, Calendar, Study, Inbox, Auth (`KarminStatusBanner`, `KarminEmptyState`)
 - Accessibility: Semantics on tabs, PIN keypad, OTP, password visibility; 48pt icon tap targets; contrast-aware carmine text

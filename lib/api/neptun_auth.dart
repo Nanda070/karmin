@@ -415,7 +415,10 @@ class LiveNeptunAuth implements NeptunAuthApi {
   }) async {
     // Fork: bare authenticator digits in `token` — never email `732-` + tail.
     final digits = otp.replaceAll(RegExp(r'\D'), '');
-    final token = digits.isNotEmpty ? digits : otp.trim();
+    if (digits.isEmpty) {
+      throw const NeptunOtpException();
+    }
+    final token = digits;
 
     final preferJson = _jsonTwoFactorPending || !_portal.hasSession;
     if (preferJson) {
@@ -449,13 +452,9 @@ class LiveNeptunAuth implements NeptunAuthApi {
         }
         return ticket;
       } on NeptunAuthException {
-        if (!_portal.hasSession) {
-          throw const NeptunOtpException();
-        }
+        // Give MVC portal a chance when a Login2FA session exists.
       } on NeptunUnavailableException {
-        if (!_portal.hasSession) {
-          throw const NeptunOtpException();
-        }
+        // Give MVC portal a chance when a Login2FA session exists.
       } on NeptunOtpException {
         if (!_portal.hasSession) {
           rethrow;
