@@ -237,11 +237,16 @@ Map<String, dynamic> authenticateJsonBody({
   required int lcid,
   String? otp,
 }) {
+  // Matches zoligamer/Neptun-Mobile-fork `InstitutesRequest._tryModernLogin` /
+  // `submitTwoFactorCode` (lib/API/api_coms.dart).
   final body = <String, dynamic>{
     'userName': normalizeNeptunCode(userName),
     'password': password,
-    'lcid': lcid,
     'captcha': '',
+    'captchaIdentifier': '',
+    'token': '',
+    'LCID': lcid,
+    'lcid': lcid,
   };
   final token = otp?.trim();
   if (token != null && token.isNotEmpty) {
@@ -263,7 +268,7 @@ class DebugNeptunAuth implements NeptunAuthApi {
     }
     return const AuthTicket(
       step: NeptunAuthStep.needsOtp,
-      otpChannel: OtpChannel.email,
+      otpChannel: OtpChannel.authenticator,
     );
   }
 
@@ -299,16 +304,21 @@ class DebugNeptunAuth implements NeptunAuthApi {
   }
 }
 
-/// Live login: JSON `POST Account/Authenticate` (SDA student web), then ELTE
-/// MVC `/Account/Login` if that JSON API is missing.
+/// Live login aligned with [zoligamer/Neptun-Mobile-fork]:
+/// `POST {origin}/Account/api/Account/Authenticate` then 2FA via `token`.
+/// MVC `/Account/Login` is only a fallback; email send is never a hard blocker.
 class LiveNeptunAuth implements NeptunAuthApi {
   LiveNeptunAuth(this._client) : _portal = EltePortalLogin(_client);
 
   final NeptunClient _client;
   final EltePortalLogin _portal;
 
+  /// Fork ELTE institute URL → Authenticate under `/Account/api/…`.
+  static const String forkAuthenticateUrl =
+      '${EltePortalLogin.origin}/Account/api/Account/Authenticate';
+
   static const _authHeaders = {
-    'X-Requested-With': 'XMLHttpRequest',
+    'Content-Type': 'application/json',
     'Accept': 'application/json, text/plain, */*',
     'Origin': EltePortalLogin.origin,
     'Referer': '${EltePortalLogin.origin}/Account/Login',
@@ -322,8 +332,11 @@ class LiveNeptunAuth implements NeptunAuthApi {
   }) async {
     final code = normalizeNeptunCode(userName);
     _portal.clear();
+
+    // 1) Fork modern JSON (primary).
     try {
-      final ticket = await _authenticate(
+      final ticket = await _authenticateAbsolute(
+        forkAuthenticateUrl,
         authenticateJsonBody(
           userName: code,
           password: password,
@@ -333,8 +346,14 @@ class LiveNeptunAuth implements NeptunAuthApi {
       if (ticket.step == NeptunAuthStep.authenticated) {
         return ticket;
       }
-      // JSON 2FA does not dispatch ELTE email. MVC Login then the official
-      // Login2FA "E-mail code" POST does.
+      if (ticket.step == NeptunAuthStep.needsOtp) {
+        // Fork has no email dispatch — 2FA is the authenticator `token` field.
+        return AuthTicket(
+          step: NeptunAuthStep.needsOtp,
+          otpChannel: OtpChannel.authenticator,
+          otpPrefix: ticket.otpPrefix,
+        );
+      }
     } on NeptunCaptchaException {
       rethrow;
     } on NeptunLockoutException {
@@ -342,9 +361,39 @@ class LiveNeptunAuth implements NeptunAuthApi {
     } on NeptunAuthException {
       rethrow;
     } on NeptunException {
-      // JSON `/ujhallgato/api` is a 400/404 stub and often hangs; MVC login
-      // on the host root is the real ELTE path.
+      // Fall through to ujhallgato stub / MVC.
     }
+
+    // 2) Legacy Dio base (`ujhallgato/api`) — usually empty 400 on public ELTE.
+    try {
+      final ticket = await _authenticateRelative(
+        authenticateJsonBody(
+          userName: code,
+          password: password,
+          lcid: lcid,
+        ),
+      );
+      if (ticket.step == NeptunAuthStep.authenticated) {
+        return ticket;
+      }
+      if (ticket.step == NeptunAuthStep.needsOtp) {
+        return AuthTicket(
+          step: NeptunAuthStep.needsOtp,
+          otpChannel: OtpChannel.authenticator,
+          otpPrefix: ticket.otpPrefix,
+        );
+      }
+    } on NeptunCaptchaException {
+      rethrow;
+    } on NeptunLockoutException {
+      rethrow;
+    } on NeptunAuthException {
+      rethrow;
+    } on NeptunException {
+      // MVC fallback.
+    }
+
+    // 3) ASP.NET MVC Login2FA — prefer authenticator; email is optional.
     return _portal.submitPassword(
       userName: code,
       password: password,
@@ -359,18 +408,32 @@ class LiveNeptunAuth implements NeptunAuthApi {
     required int lcid,
     required String otp,
   }) async {
+    final digits = otp.replaceAll(RegExp(r'\D'), '');
     if (_portal.hasSession) {
-      return _portal.submitOtp(otp: otp);
+      return _portal.submitOtp(otp: digits.isNotEmpty ? digits : otp);
     }
+
+    final payload = authenticateJsonBody(
+      userName: userName,
+      password: password,
+      lcid: lcid,
+      otp: digits.isNotEmpty ? digits : otp,
+    );
+
     try {
-      return await _authenticate(
-        authenticateJsonBody(
-          userName: userName,
-          password: password,
-          lcid: lcid,
-          otp: otp,
-        ),
-      );
+      return await _authenticateAbsolute(forkAuthenticateUrl, payload);
+    } on NeptunOtpException {
+      rethrow;
+    } on NeptunAuthException {
+      throw const NeptunOtpException();
+    } on NeptunUnavailableException {
+      // try relative
+    } on NeptunException {
+      // try relative
+    }
+
+    try {
+      return await _authenticateRelative(payload);
     } on NeptunAuthException {
       throw const NeptunOtpException();
     } on NeptunUnavailableException {
@@ -391,7 +454,37 @@ class LiveNeptunAuth implements NeptunAuthApi {
     );
   }
 
-  Future<AuthTicket> _authenticate(Map<String, dynamic> payload) async {
+  Future<AuthTicket> _authenticateAbsolute(
+    String url,
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final response = await _client.dio.post<dynamic>(
+        url,
+        data: payload,
+        options: Options(
+          headers: _authHeaders,
+          validateStatus: (status) => status != null && status < 500,
+          sendTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 8),
+        ),
+      );
+      return parseAuthenticateResponse(
+        statusCode: response.statusCode,
+        data: response.data,
+      );
+    } on DioException catch (error) {
+      if (error.response != null) {
+        return parseAuthenticateResponse(
+          statusCode: error.response!.statusCode,
+          data: error.response!.data,
+        );
+      }
+      throw mapDioException(error);
+    }
+  }
+
+  Future<AuthTicket> _authenticateRelative(Map<String, dynamic> payload) async {
     try {
       final response = await _client.dio.post<dynamic>(
         'Account/Authenticate',

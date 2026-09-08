@@ -129,9 +129,9 @@ class AuthController extends StateNotifier<AuthState> {
         userName: code,
         password: password,
       );
-      // Email dispatch can fail while the 2FA session is still alive — land on
-      // Verification so "Send code again" is available (not stuck on Login).
+      // Never hard-block login on missing email prefix — fork uses authenticator.
       if (ticket.step == NeptunAuthStep.needsOtp &&
+          ticket.otpChannel == OtpChannel.email &&
           normalizeOtpPrefix(ticket.otpPrefix).isEmpty) {
         state = state.copyWith(
           errorMessage: const NeptunEmailCodeException().message,
@@ -448,7 +448,7 @@ class AuthController extends StateNotifier<AuthState> {
       state = state.copyWith(
         busy: false,
         neptunStep: NeptunAuthStep.needsOtp,
-        otpChannel: OtpChannel.email,
+        otpChannel: ticket.otpChannel,
         otpPrefix: ticket.otpPrefix,
         clearError: true,
       );

@@ -262,7 +262,7 @@ void main() {
     });
   });
 
-  test('authenticate JSON body uppercases the code and omits token', () {
+  test('authenticate JSON body matches fork (empty token + captchaIdentifier)', () {
     final body = authenticateJsonBody(
       userName: 'n4ibzj',
       password: 'secret',
@@ -270,20 +270,22 @@ void main() {
     );
     expect(body['userName'], 'N4IBZJ');
     expect(body['password'], 'secret');
-    expect(body['lcid'], 1038);
+    expect(body['LCID'], 1038);
     expect(body['captcha'], '');
-    expect(body.containsKey('token'), isFalse);
+    expect(body['captchaIdentifier'], '');
+    expect(body['token'], '');
   });
 
-  test('live 400 + 2FA still POSTs MVC Login so Neptun can mail', () async {
+  test('JSON 2FA (fork Authenticate) is authenticator — no MVC mail block', () async {
     var loginPosts = 0;
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
       if (url.contains('Account/Authenticate')) {
-        return jsonBody(400, {
+        return jsonBody(202, {
           'data': {
             'isTwoFactorRequired': true,
             'isCaptchaRequired': false,
+            'twoFactorLoginToken': 'pending',
           },
         });
       }
@@ -303,12 +305,11 @@ void main() {
       lcid: 1033,
     );
     expect(ticket.step, NeptunAuthStep.needsOtp);
-    expect(ticket.otpChannel, OtpChannel.email);
-    expect(loginPosts, 1);
-    expect(adapter.paths.any((path) => path.contains('Account/Login')), isTrue);
+    expect(ticket.otpChannel, OtpChannel.authenticator);
+    expect(loginPosts, 0);
   });
 
-  test('live 202 without data envelope still POSTs MVC Login', () async {
+  test('JSON 202 without envelope stays on authenticator path', () async {
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
       if (url.contains('Account/Authenticate')) {
@@ -322,11 +323,12 @@ void main() {
       lcid: 1033,
     );
     expect(ticket.step, NeptunAuthStep.needsOtp);
+    expect(ticket.otpChannel, OtpChannel.authenticator);
     expect(
       adapter.paths.any(
         (path) => path.contains('Account/Login') && !path.contains('Login2FA'),
       ),
-      isTrue,
+      isFalse,
     );
   });
 

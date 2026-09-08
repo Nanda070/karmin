@@ -8,8 +8,12 @@ import 'package:karmin/auth/auth_models.dart';
 /// `/Account/Login`), not the SDA JSON `ujhallgato` API.
 ///
 /// After a valid password the portal sends the user to `/Account/Login2FA`.
-/// Mail is **not** fired by the password POST. Official “E-mail code” is
-/// `POST /Account/Login2FA` with `Phase=RequestEmail` and/or `Provider=Email`.
+/// Mail is **not** fired by the password POST. Working open-source clients
+/// (notably [XxBAJNOKxX/Neptun-Mobile](https://github.com/XxBAJNOKxX/Neptun-Mobile)
+/// `NeptunApiClient.request2FAEmailCode`) dispatch mail with
+/// `POST /Account/Login2FA` + `GetEmail=true` while **keeping** the current
+/// `Phase` (often `RequestTOTP`). Verify uses `Phase=RequestEmailCode` +
+/// `EmailCode`, or `Phase=RequestTOTP` + `TOTPCode` for authenticator.
 class EltePortalLogin {
   EltePortalLogin(this._client);
 
@@ -22,6 +26,7 @@ class EltePortalLogin {
   Map<String, String> _otpFields = {};
   String _otpPrefix = '';
   String _otpHtml = '';
+  String _otpLocationQuery = '';
   var _hasSession = false;
 
   bool get hasSession => _hasSession;
@@ -31,6 +36,7 @@ class EltePortalLogin {
     _otpFields = {};
     _otpPrefix = '';
     _otpHtml = '';
+    _otpLocationQuery = '';
     _hasSession = false;
   }
 
@@ -49,43 +55,54 @@ class EltePortalLogin {
     fields['Password'] = password;
     fields.putIfAbsent('ReturnUrl', () => '');
 
-    // Password POST opens Login2FA (often authenticator / a chooser). Mail
-    // fires only when we POST the official E-mail code control.
+    // Password POST opens Login2FA. Fork never blocks on email — prefer TOTP.
     final response = await _post(loginPath, fields, referer: '$origin$loginPath');
     final ticket = await _ticketFromPortalResponse(response);
     if (ticket.step != NeptunAuthStep.needsOtp) {
       return ticket;
     }
+    if (_sessionSupportsTotp()) {
+      // Optional email attempt; failure must not block authenticator login.
+      try {
+        await _dispatchEmailCode(force: false);
+        if (normalizeOtpPrefix(_otpPrefix).isNotEmpty) {
+          return _otpTicket(OtpChannel.email);
+        }
+      } on NeptunException {
+        // Keep authenticator path.
+      }
+      return _otpTicket(OtpChannel.authenticator);
+    }
     try {
       await _dispatchEmailCode(force: false);
+      return _otpTicket(OtpChannel.email);
     } on NeptunEmailCodeException {
-      // Keep the 2FA session so the Verification screen can "Send code again".
-      // Throwing here stranded users on Login with no resend control.
       if (!_hasSession) {
         rethrow;
       }
+      return _otpTicket(OtpChannel.unknown);
     }
-    return _emailOtpTicket();
   }
 
   Future<AuthTicket> submitOtp({
     required String otp,
   }) async {
-    if (normalizeOtpPrefix(_otpPrefix).isEmpty) {
-      // Email Login2FA expects prefix+tail (`732-893600`). A bare 6-digit TOTP
-      // is the authenticator payload and is rejected on the email form.
-      throw const NeptunOtpException();
-    }
     var fields = Map<String, String>.from(_otpFields);
     if (fields.isEmpty) {
-      final html = await _get(otpPath);
+      final html = await _get(_otpGetPath());
       _captureOtpForm(html);
       fields = Map<String, String>.from(_otpFields);
+    }
+    final useTotp = normalizeOtpPrefix(_otpPrefix).isEmpty &&
+        !isEmailCodePhase(_phaseOf(fields));
+    if (!useTotp && normalizeOtpPrefix(_otpPrefix).isEmpty) {
+      throw const NeptunOtpException();
     }
     fields = fillLogin2FaOtpFields(
       fields: fields,
       prefix: _otpPrefix,
       tail: otp,
+      isTotp: useTotp,
     );
 
     final response = await _post(otpPath, fields, referer: '$origin$otpPath');
@@ -105,12 +122,13 @@ class EltePortalLogin {
     final previousFields = Map<String, String>.from(_otpFields);
     final previousPrefix = _otpPrefix;
     final previousHtml = _otpHtml;
+    final previousQuery = _otpLocationQuery;
     final previousSession = _hasSession;
     try {
       if (_hasSession || _otpFields.isNotEmpty) {
         try {
           await _dispatchEmailCode(force: true);
-          return _emailOtpTicket();
+          return _otpTicket(OtpChannel.email);
         } on NeptunException {
           // 2FA session died; Login then the same send-email POST.
         }
@@ -128,6 +146,7 @@ class EltePortalLogin {
       _otpFields = previousFields;
       _otpPrefix = previousPrefix;
       _otpHtml = previousHtml;
+      _otpLocationQuery = previousQuery;
       _hasSession = previousSession;
       rethrow;
     }
@@ -160,13 +179,13 @@ class EltePortalLogin {
     }
 
     final previousPrefix = _otpPrefix;
-    final button = findLogin2FaEmailSendControl(_otpHtml);
-    final fields = fillLogin2FaSendEmailFields(
-      fields: _otpFields,
-      button: button,
+    // Proven mail trigger: XxBAJNOKxX/Neptun-Mobile GetEmail=true (not Provider).
+    final fields = fillLogin2FaSendEmailFields(fields: _otpFields);
+    final response = await _post(
+      otpPath,
+      fields,
+      referer: '$origin${_otpGetPath()}',
     );
-    final path = login2FaPostPath(button?.formAction);
-    final response = await _post(path, fields, referer: '$origin$otpPath');
     await _applySendEmailResponse(response);
     if (normalizeOtpPrefix(_otpPrefix).isEmpty) {
       await _refreshOtpForm();
@@ -182,7 +201,8 @@ class EltePortalLogin {
 
   Future<void> _refreshOtpForm() async {
     try {
-      final response = await _sendGet(otpPath, referer: '$origin$loginPath');
+      final response =
+          await _sendGet(_otpGetPath(), referer: '$origin$loginPath');
       await _captureOtpResponse(response);
     } on NeptunException {
       // Keep whatever the previous response already captured.
@@ -226,6 +246,9 @@ class EltePortalLogin {
   Future<void> _captureOtpResponse(Response<dynamic> response) async {
     final status = response.statusCode ?? 0;
     final location = response.headers.value('location') ?? '';
+    if (location.isNotEmpty) {
+      _rememberOtpLocation(location);
+    }
     final html = _htmlOf(response);
     if (htmlLooksLikePasswordLogin(html) ||
         (status >= 300 &&
@@ -242,7 +265,7 @@ class EltePortalLogin {
     }
     if (_redirectsToLogin2Fa(status, location)) {
       _hasSession = true;
-      final path = _pathFromLocation(location) ?? otpPath;
+      final path = _requestPathFromLocation(location) ?? otpPath;
       final followed = await _sendGet(path, referer: '$origin$loginPath');
       final followedHtml = _htmlOf(followed);
       if (htmlLooksLikeOtp(followedHtml) || followedHtml.trim().isNotEmpty) {
@@ -251,25 +274,87 @@ class EltePortalLogin {
     }
   }
 
-  String? _pathFromLocation(String location) {
+  /// Path + query (`/Account/Login2FA?Key=…`) — Key must not be dropped.
+  String? _requestPathFromLocation(String location) {
     final trimmed = location.trim();
     if (trimmed.isEmpty) {
       return null;
     }
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return Uri.tryParse(trimmed)?.path;
+      final uri = Uri.tryParse(trimmed);
+      if (uri == null) {
+        return null;
+      }
+      return uri.hasQuery ? '${uri.path}?${uri.query}' : uri.path;
     }
-    final path = trimmed.split('?').first;
-    if (path.startsWith('/')) {
-      return path;
-    }
-    return '/$path';
+    return trimmed.startsWith('/') ? trimmed : '/$trimmed';
   }
 
-  AuthTicket _emailOtpTicket() {
+  void _rememberOtpLocation(String location) {
+    final trimmed = location.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      final uri = Uri.tryParse(trimmed);
+      if (uri != null && uri.hasQuery) {
+        _otpLocationQuery = uri.query;
+      }
+      return;
+    }
+    final q = trimmed.indexOf('?');
+    if (q >= 0 && q < trimmed.length - 1) {
+      _otpLocationQuery = trimmed.substring(q + 1);
+    }
+  }
+
+  String _otpGetPath() {
+    if (_otpLocationQuery.isEmpty) {
+      return otpPath;
+    }
+    return '$otpPath?$_otpLocationQuery';
+  }
+
+  void _mergeQueryIntoOtpFields() {
+    if (_otpLocationQuery.isEmpty) {
+      return;
+    }
+    final params = Uri.splitQueryString(_otpLocationQuery);
+    for (final name in const ['Key', 'NeptunCode']) {
+      final value = params[name] ?? params[name.toLowerCase()];
+      if (value == null || value.isEmpty) {
+        continue;
+      }
+      final existing = _fieldKeyIgnoringCase(_otpFields, name);
+      if (existing == null || _otpFields[existing]!.isEmpty) {
+        _otpFields[existing ?? name] = value;
+      }
+    }
+  }
+
+  bool _sessionSupportsTotp() {
+    final phase = _phaseOf(_otpFields).toLowerCase();
+    if (phase.contains('totp') || phase == 'requesttotp') {
+      return true;
+    }
+    final hasTotp = _fieldKeyIgnoringCase(_otpFields, 'HasTOTP');
+    if (hasTotp != null &&
+        _otpFields[hasTotp]!.toLowerCase() == 'true') {
+      return true;
+    }
+    return _fieldKeyIgnoringCase(_otpFields, 'TOTPCode') != null ||
+        _otpHtml.toLowerCase().contains('totpcode');
+  }
+
+  String _phaseOf(Map<String, String> fields) {
+    final key = _fieldKeyIgnoringCase(fields, 'Phase');
+    return key == null ? '' : fields[key]!;
+  }
+
+  AuthTicket _otpTicket(OtpChannel channel) {
     return AuthTicket(
       step: NeptunAuthStep.needsOtp,
-      otpChannel: OtpChannel.email,
+      otpChannel: channel,
       otpPrefix: _otpPrefix,
     );
   }
@@ -379,7 +464,13 @@ class EltePortalLogin {
     if (_isOtpChallenge(status, location, html)) {
       await _captureOtpResponse(response);
       _hasSession = true;
-      return _emailOtpTicket();
+      return _otpTicket(
+        normalizeOtpPrefix(_otpPrefix).isNotEmpty
+            ? OtpChannel.email
+            : (_sessionSupportsTotp()
+                ? OtpChannel.authenticator
+                : OtpChannel.unknown),
+      );
     }
 
     if (_looksLoggedIn(status, location, html)) {
@@ -403,7 +494,13 @@ class EltePortalLogin {
     if (_redirectsToLogin2Fa(status, location)) {
       await _captureOtpResponse(response);
       _hasSession = true;
-      return _emailOtpTicket();
+      return _otpTicket(
+        normalizeOtpPrefix(_otpPrefix).isNotEmpty
+            ? OtpChannel.email
+            : (_sessionSupportsTotp()
+                ? OtpChannel.authenticator
+                : OtpChannel.unknown),
+      );
     }
 
     throw const NeptunApiException('Neptun request failed.');
@@ -463,6 +560,7 @@ class EltePortalLogin {
     if (fields.isNotEmpty) {
       _otpFields = fields;
     }
+    _mergeQueryIntoOtpFields();
     final prefix = parseLogin2FaPrefix(formHtml);
     if (prefix != null && prefix.isNotEmpty) {
       _otpPrefix = prefix;
@@ -813,64 +911,51 @@ String? _fieldKeyIgnoringCase(Map<String, String> fields, String name) {
   return null;
 }
 
-/// Builds the Login2FA POST that official “E-mail code” uses to dispatch mail.
+/// Builds the Login2FA POST that dispatches the email code.
+///
+/// Matches [XxBAJNOKxX/Neptun-Mobile] `request2FAEmailCode`: keep current
+/// `Phase`, set `HasEmail=True`, clear `CodePrefix`, send `GetEmail=true`.
+/// Do not invent `Provider=Email` / `Phase=RequestEmail`.
 Map<String, String> fillLogin2FaSendEmailFields({
   required Map<String, String> fields,
   Login2FaSubmitControl? button,
 }) {
-  final next = Map<String, String>.from(fields);
-  // Do not POST an empty TOTPCode as a verify attempt while requesting email.
-  for (final key in next.keys.toList()) {
-    if (isOtpCodeFieldName(key)) {
-      next.remove(key);
+  String read(String name, [String fallback = '']) {
+    final key = _fieldKeyIgnoringCase(fields, name);
+    if (key == null) {
+      return fallback;
     }
+    return fields[key] ?? fallback;
   }
 
-  if (button != null) {
-    final target = button.setvalTarget;
-    if (target != null && target.isNotEmpty) {
-      final key = _fieldKeyIgnoringCase(next, target) ?? target;
-      next[key] = button.setvalValue ?? '';
-    }
-    if (button.name != null && button.name!.isNotEmpty) {
-      next[button.name!] = button.value;
-    }
-    // If the control only sets Provider=Email, also force an email Phase when
-    // the page is still on authenticator RequestTOTP.
-    final phaseKey = _fieldKeyIgnoringCase(next, 'Phase');
-    final phase = phaseKey == null ? '' : next[phaseKey]!;
-    if (button.name?.toLowerCase() == 'provider' &&
-        isEmailProviderValue(button.value) &&
-        !isEmailCodePhase(phase)) {
-      if (phaseKey != null) {
-        next[phaseKey] = 'RequestEmail';
-      } else {
-        next['Phase'] = 'RequestEmail';
-      }
-    }
-    return next;
+  final hasTotpRaw = read('HasTOTP');
+  final hasTotp = hasTotpRaw.toLowerCase() == 'true' ||
+      read('Phase').toLowerCase().contains('totp') ||
+      _fieldKeyIgnoringCase(fields, 'TOTPCode') != null;
+
+  // Optional DOM button may set Phase (e.g. SelectMethod → RequestEmail*),
+  // but the mail trigger itself is always GetEmail=true.
+  var phase = read('Phase', 'RequestTOTP');
+  if (button != null &&
+      button.setvalTarget != null &&
+      button.setvalTarget!.toLowerCase() == 'phase' &&
+      (button.setvalValue ?? '').isNotEmpty) {
+    phase = button.setvalValue!;
   }
 
-  for (final key in const ['Provider', 'SelectedProvider']) {
-    final existing = _fieldKeyIgnoringCase(next, key);
-    if (existing != null) {
-      next[existing] = 'Email';
-    }
-  }
-  if (_fieldKeyIgnoringCase(next, 'Provider') == null) {
-    next['Provider'] = 'Email';
-  }
-
-  final phaseKey = _fieldKeyIgnoringCase(next, 'Phase');
-  final phase = phaseKey == null ? '' : next[phaseKey]!;
-  if (!isEmailCodePhase(phase)) {
-    if (phaseKey != null) {
-      next[phaseKey] = 'RequestEmail';
-    } else {
-      next['Phase'] = 'RequestEmail';
-    }
-  }
-  return next;
+  return {
+    'Phase': phase,
+    'Rendered': read('Rendered'),
+    'NeptunCode': read('NeptunCode'),
+    'Key': read('Key'),
+    'ReturnUrl': '',
+    'HasTOTP': hasTotp ? 'True' : 'False',
+    'HasEmail': 'True',
+    'CodePrefix': '',
+    'GetEmail': 'true',
+    if (read('__RequestVerificationToken').isNotEmpty)
+      '__RequestVerificationToken': read('__RequestVerificationToken'),
+  };
 }
 
 bool htmlLooksLikePasswordLogin(String html) {
@@ -1071,47 +1156,47 @@ String otpPrefixFromPayload(Map<String, dynamic> data) {
   return '';
 }
 
-/// Builds the Login2FA POST map. Named prefix field → keep prefix, send tail
-/// in the code input. Display-only prefix (span) → concatenate into TOTPCode
-/// the way official JS does.
+/// Builds the Login2FA verify POST.
+///
+/// Evidence: Neptun-Mobile `verify2FACode` — TOTP → `Phase=RequestTOTP` +
+/// `TOTPCode`; email → `Phase=RequestEmailCode` + `EmailCode` + `CodePrefix`.
 Map<String, String> fillLogin2FaOtpFields({
   required Map<String, String> fields,
   required String prefix,
   required String tail,
+  bool isTotp = false,
 }) {
-  final next = Map<String, String>.from(fields);
+  String read(String name, [String fallback = '']) {
+    final key = _fieldKeyIgnoringCase(fields, name);
+    if (key == null) {
+      return fallback;
+    }
+    return fields[key] ?? fallback;
+  }
+
   final normalizedPrefix = normalizeOtpPrefix(prefix);
   final normalizedTail = normalizeOtpTail(tail, prefix: normalizedPrefix);
-  final composed = composeLogin2FaCode(
-    prefix: normalizedPrefix,
-    tail: normalizedTail,
-  );
+  final useTotp = isTotp || normalizedPrefix.isEmpty;
 
-  String? prefixField;
-  for (final key in next.keys) {
-    if (isOtpPrefixFieldName(key)) {
-      prefixField = key;
-      break;
-    }
-  }
-  if (prefixField != null) {
-    next[prefixField] = normalizedPrefix;
+  final next = <String, String>{
+    'Phase': useTotp ? 'RequestTOTP' : 'RequestEmailCode',
+    'Rendered': read('Rendered'),
+    'NeptunCode': read('NeptunCode'),
+    'Key': read('Key'),
+    'ReturnUrl': read('ReturnUrl'),
+    'HasTOTP': read('HasTOTP', useTotp ? 'True' : 'False'),
+    'HasEmail': read('HasEmail', useTotp ? 'False' : 'True'),
+    'CodePrefix': useTotp ? '' : normalizedPrefix,
+  };
+  final token = read('__RequestVerificationToken');
+  if (token.isNotEmpty) {
+    next['__RequestVerificationToken'] = token;
   }
 
-  final codeValue =
-      prefixField != null && normalizedPrefix.isNotEmpty
-          ? normalizedTail
-          : composed;
-
-  var wroteCode = false;
-  for (final key in next.keys.toList()) {
-    if (isOtpCodeFieldName(key)) {
-      next[key] = codeValue;
-      wroteCode = true;
-    }
-  }
-  if (!wroteCode) {
-    next['TOTPCode'] = codeValue;
+  if (useTotp) {
+    next['TOTPCode'] = normalizedTail;
+  } else {
+    next['EmailCode'] = normalizedTail;
   }
   return next;
 }

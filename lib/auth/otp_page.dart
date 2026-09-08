@@ -71,7 +71,15 @@ class _OtpPageState extends ConsumerState<OtpPage> {
   }
 
   String _hint(AppLocalizations l10n) {
-    return l10n.otpSubtitleEmail;
+    final channel = ref.read(authControllerProvider).otpChannel;
+    switch (channel) {
+      case OtpChannel.email:
+        return l10n.otpSubtitleEmail;
+      case OtpChannel.authenticator:
+        return l10n.otpSubtitleAuthenticator;
+      case OtpChannel.unknown:
+        return l10n.otpSubtitleUnknown;
+    }
   }
 
   Widget _codeField(
@@ -217,24 +225,17 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                     color: palette.muted,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  l10n.otpAuthenticatorParked,
-                  textAlign: TextAlign.center,
-                  style: KarminTypography.body(
-                    fontSize: 12,
-                    color: palette.muted,
+                if (auth.otpChannel == OtpChannel.email) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n.otpPrefixHint,
+                    textAlign: TextAlign.center,
+                    style: KarminTypography.body(
+                      fontSize: 12,
+                      color: palette.muted,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  l10n.otpPrefixHint,
-                  textAlign: TextAlign.center,
-                  style: KarminTypography.body(
-                    fontSize: 12,
-                    color: palette.muted,
-                  ),
-                ),
+                ],
                 const SizedBox(height: 24),
                 _codeField(l10n, palette, auth.otpPrefix),
                 if (error != null) ...[
@@ -247,22 +248,24 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                   busy: auth.busy,
                   onPressed: auth.busy ? null : _submit,
                 ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: canResend ? _resend : null,
-                  child: Text(
-                    cooldown > 0
-                        ? l10n.otpResendWait(cooldown)
-                        : l10n.otpResend,
-                    style: KarminTypography.body(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: canResend
-                          ? palette.accentText
-                          : palette.muted,
+                if (auth.otpChannel != OtpChannel.authenticator) ...[
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: canResend ? _resend : null,
+                    child: Text(
+                      cooldown > 0
+                          ? l10n.otpResendWait(cooldown)
+                          : l10n.otpResend,
+                      style: KarminTypography.body(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: canResend
+                            ? palette.accentText
+                            : palette.muted,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

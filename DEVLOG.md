@@ -21,8 +21,8 @@
 - Цепочка: дисклеймер → логин → 2FA → PIN → Today
 - 2FA на **каждый** новый вход в Neptun; PIN и Face ID открывают только локальный сейф
 - Пароль в Keystore / Keychain; JWT только в RAM
-- «Отправить код ещё раз» = тот же `POST /Account/Login2FA` (E-mail code / `Phase=RequestEmail` / `Provider=Email`), не повтор пароля и не GET; пауза 30 с; ошибка, если письмо не ушло
-- Если письмо не ушло при логине — всё равно открываем Verification (не оставляем на Login), чтобы можно было нажать Send code again
+- По образцу [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork): сначала `POST /Account/api/Account/Authenticate`, 2FA = тот же URL с `token` (6 цифр из Microsoft Authenticator). Письмо **не** обязательный шаг
+- MVC fallback: Login2FA; TOTP primary; опционально `GetEmail=true`; ошибка «письмо не ушло» больше не блокирует вход при authenticator
 - Debug — помеченный mock (любой логин и любой 6-значный код)
 - Live: `KARMIN_LIVE_AUTH` на устройстве; Chrome режет Neptun из‑за CORS
 - Если Keychain или Face ID зависают при старте — выходим из boot, а не крутим вечно
@@ -30,12 +30,11 @@
 
 ### 2FA
 
-- Сначала JSON `Account/Authenticate`; если ELTE не отдаёт `/ujhallgato/api/` — MVC `POST /Account/Login` → **`POST /Account/Login2FA` с E-mail code** (`Phase=RequestEmail` и/или `Provider=Email`) — пароль сам по себе письмо не шлёт
-- Пустой HTTP 400 больше не считается «неверным паролем»
-- Код из почты: префикс с сервера (`732-`) + хвост, который вводит студент
-- Authenticator / TOTP временно отключён — после пароля форсируем email-провайдер, даже если в аккаунте по умолчанию authenticator
-- Кнопка E-mail code на Potlap часто `type="button"` + `data-setval` — больше не пропускаем; 302 после пароля/send-email follow’им до HTML с префиксом
-- Живой ELTE 2FA на реальном аккаунте ещё не доказан
+- Primary: JSON Authenticate (`/Account/api/…`) + authenticator `token` (как Neptun-Mobile-fork)
+- Fallback MVC: `RequestTOTP` + `TOTPCode`; email только если пришёл `CodePrefix` после `GetEmail=true`
+- Пустой HTTP 400 на `ujhallgato` больше не считается «неверным паролем»
+- Authenticator снова включён (раньше был parked ради отладки email)
+- Живой ELTE 2FA на реальном аккаунте ещё проверяется этой IPA
 
 ### API
 

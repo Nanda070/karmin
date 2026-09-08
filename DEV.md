@@ -57,17 +57,18 @@ SDA-style JSON student web is documented as:
 
 ELTE’s **public** host does **not** serve that API. `POST …/ujhallgato/api/Account/Authenticate` is an **empty 400** (also GET 404). That empty 400 is **not** “wrong password”.
 
-**What actually logs in on ELTE:** ASP.NET MVC, browser-equivalent form POST:
+**What actually logs in (aligned with Neptun-Mobile-fork):**
 
-- `GET/POST https://neptun.elte.hu/Account/Login` — fields `LoginName` + `Password` + `__RequestVerificationToken`
-- then **`POST https://neptun.elte.hu/Account/Login2FA`** to request the **email** code (`Phase=RequestEmail` and/or `Provider=Email`, plus antiforgery). Password POST alone often lands on the authenticator / chooser page and **does not mail**. Detect Potlap `type="button"` / `<a data-setval>` E-mail controls (not only `type="submit"`). Follow 302 Location to Login2FA so the grey prefix HTML is captured. If mail fails but the 2FA cookie session is alive, still open Verification so **Send code again** works.
-- then the student types prefix+tail; Confirm is another `POST /Account/Login2FA` with `TOTPCode`
+- Primary: `POST https://neptun.elte.hu/Account/api/Account/Authenticate` — `userName`, `password`, `captcha`, `captchaIdentifier`, `token` (empty), `LCID` ([zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork) `lib/API/api_coms.dart`).
+- On `isTwoFactorRequired` → Verification with **Microsoft Authenticator** (6-digit). Confirm re-POSTs Authenticate with `token=<code>`. **No email send on this path.**
+- Fallback: MVC `GET/POST /Account/Login` (`LoginName` + `Password` + antiforgery) → Login2FA. Prefer **TOTP** (`RequestTOTP` + `TOTPCode`). Optional mail: `GetEmail=true`; mail failure must **not** block authenticator login.
+- Email confirm (only with a prefix): `RequestEmailCode` + `EmailCode` + `CodePrefix`.
 
-**Why MVC:** a JSON Authenticate stub does not dispatch the email OTP. Official “E-mail code” is the Login2FA send POST (Potlap `data-setval-target` / named `Provider`), not scraping Login2FA HTML after password.
+**Why fork JSON first:** Neptun-Mobile-fork never does Login2FA email dispatch; its working 2FA is Authenticate + `token`. Do not invent `RequestEmail` / `Provider=Email`.
 
-`LiveNeptunAuth` still **tries** JSON `Account/Authenticate` first (8s send/receive timeout). On `NeptunUnavailableException` or hang/`NeptunNetworkException` it falls through to `EltePortalLogin`. Captcha / lockout / real auth errors are **not** swallowed into that fallback.
+`LiveNeptunAuth` tries fork Absolute Authenticate first (8s timeouts), then `ujhallgato` relative, then `EltePortalLogin`. Captcha / lockout / real auth errors are **not** swallowed into that fallback.
 
-User-Agent (JSON client): `Karmin/0.1.0 (Flutter; ELTE student client)` plus `X-Requested-With: XMLHttpRequest`. MVC form posts **clear** `X-Requested-With` and send `application/x-www-form-urlencoded` — the XHR path does not mail OTP.
+User-Agent (JSON client): `Karmin/0.1.0 (Flutter; ELTE student client)`. MVC form posts clear `X-Requested-With` and send `application/x-www-form-urlencoded`.
 
 ---
 
@@ -117,11 +118,11 @@ PIN / biometrics are a **local vault** (`unlocked`, `hasPin`). They are **not** 
 
 **2FA every fresh Neptun session.** Stored password never finishes login alone.
 
-**Resend** = the same Login2FA **send-email POST** (or Login + send-email if the 2FA session died). Not a no-op GET and not password-only. Visible error if Neptun still does not show a prefix. 30s cooldown; stay on Verification.
+**Resend** = optional Login2FA `GetEmail=true` POST (or Login + GetEmail if the 2FA session died). Hidden when the channel is authenticator. 30s cooldown.
 
-**Current channel: email 2FA only.** Microsoft Authenticator / TOTP is **parked** (`otpAuthenticatorParked` copy on `/verify`). After password, Karmin **forces the email provider** on Login2FA even when the account default is authenticator. Bare 6-digit TOTP is **rejected** on the email Login2FA form (that form expects prefix+tail like `732-893600`). Do not store authenticator secrets.
+**Current channel: authenticator primary** (fork-aligned). Email is optional when `GetEmail` returns a prefix. Missing email must **not** hard-block login. Do not store authenticator secrets.
 
-**OTP UI:** grey read-only **prefix** from Login2FA HTML (`732-`) + user **tail**. Confirm POSTs prefix+tail the way the official page does (`composeLogin2FaCode` / `fillLogin2FaOtpFields`, usually `TOTPCode`). If the user pastes the full mail code, the tail normalizer strips a duplicated prefix.
+**OTP UI:** authenticator → 6 digits, no grey prefix, no “Send code again”. Email → grey **prefix** (`732-`) + tail; Confirm uses `EmailCode` / `CodePrefix` (or composed code on older forms).
 
 **401:** Dio interceptor on **non-**`Account/Authenticate` paths drops the RAM token, calls `onUnauthorized`, and **does not retry** the original request. Controller then replays password and shows OTP. Wait until OTP succeeds.
 
