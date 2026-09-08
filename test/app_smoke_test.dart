@@ -10,7 +10,7 @@ void main() {
 
     expect(find.text('Today'), findsWidgets);
     expect(find.text('Next class'), findsOneWidget);
-    expect(find.text('Analysis II'), findsOneWidget);
+    expect(find.text('Analysis II'), findsWidgets);
 
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();

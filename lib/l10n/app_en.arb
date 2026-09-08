@@ -73,5 +73,10 @@
   "demoEventProgrammingRoom": "Lágymányos 2.502",
   "demoEventExamTime": "10:00",
   "demoEventExamTitle": "Exam · Discrete math",
-  "demoEventExamRoom": "Trefort"
+  "demoEventExamRoom": "Trefort",
+  "todayQuickActions": "Quick actions",
+  "todayActionSchedule": "Schedule",
+  "todayActionSubjects": "Subjects",
+  "todayActionInbox": "Inbox",
+  "todaySchedule": "Today's schedule"
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:karmin/app/widgets/karmin_icons.dart';
 
 import 'package:karmin/app/theme.dart';
 import 'package:karmin/app/widgets/karmin_card.dart';
@@ -13,62 +14,87 @@ class InboxPage extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     return ListView(
-        padding: const EdgeInsets.only(bottom: KarminSpacing.xxl),
-        children: [
-          KarminPageHeader(
-            title: l10n.tabInbox,
-            trailing: Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Text(
-                l10n.inboxNewCount(3),
-                style: KarminTypography.body(
-                  fontSize: 13,
-                  color: KarminColors.muted,
-                ),
+      padding: const EdgeInsets.only(bottom: KarminSpacing.xxl),
+      children: [
+        KarminPageHeader(
+          title: l10n.tabInbox,
+          trailing: Container(
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: KarminColors.carmine.withValues(alpha: 0.18),
+              border: Border.all(
+                color: KarminColors.carmine.withValues(alpha: 0.4),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: KarminSpacing.pageX),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                _MessageRow(
-                  sender: l10n.demoInboxRegistrar,
-                  subject: l10n.demoInboxRegistrarSubject,
-                  time: '14:02',
-                  unread: true,
+                const Icon(
+                  KarminIcons.mail,
+                  size: 12,
+                  color: KarminColors.carmineBright,
                 ),
-                const SizedBox(height: KarminSpacing.sm),
-                _MessageRow(
-                  sender: l10n.demoInboxNeptun,
-                  subject: l10n.demoInboxNeptunSubject,
-                  time: 'Yesterday',
-                  unread: true,
-                ),
-                const SizedBox(height: KarminSpacing.sm),
-                _MessageRow(
-                  sender: l10n.demoInboxInstructor,
-                  subject: l10n.demoInboxInstructorSubject,
-                  time: 'Monday',
-                  unread: false,
+                const SizedBox(width: 5),
+                Text(
+                  l10n.inboxNewCount(3),
+                  style: KarminTypography.label(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: KarminColors.carmineBright,
+                  ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: KarminSpacing.pageX),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _MessageRow(
+                initials: 'R',
+                sender: l10n.demoInboxRegistrar,
+                subject: l10n.demoInboxRegistrarSubject,
+                time: '14:02',
+                unread: true,
+              ),
+              const SizedBox(height: KarminSpacing.sm),
+              _MessageRow(
+                initials: 'N',
+                sender: l10n.demoInboxNeptun,
+                subject: l10n.demoInboxNeptunSubject,
+                time: 'Yesterday',
+                unread: true,
+              ),
+              const SizedBox(height: KarminSpacing.sm),
+              _MessageRow(
+                initials: 'K',
+                sender: l10n.demoInboxInstructor,
+                subject: l10n.demoInboxInstructorSubject,
+                time: 'Monday',
+                unread: false,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _MessageRow extends StatelessWidget {
   const _MessageRow({
+    required this.initials,
     required this.sender,
     required this.subject,
     required this.time,
     required this.unread,
   });
 
+  final String initials;
   final String sender;
   final String subject;
   final String time;
@@ -82,18 +108,56 @@ class _MessageRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 15),
-            child: Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: unread ? KarminColors.carmine : Colors.transparent,
-                shape: BoxShape.circle,
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: unread
+                        ? [
+                            KarminColors.carmine.withValues(alpha: 0.35),
+                            KarminColors.navy,
+                          ]
+                        : [const Color(0xFF1A2438), KarminColors.navy],
+                  ),
+                  border: Border.all(
+                    color: unread
+                        ? KarminColors.carmine.withValues(alpha: 0.45)
+                        : KarminColors.hairline,
+                  ),
+                ),
+                child: Text(
+                  initials,
+                  style: KarminTypography.body(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-            ),
+              if (unread)
+                Positioned(
+                  right: -1,
+                  top: -1,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: KarminColors.carmineBright,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: KarminColors.ink, width: 2),
+                    ),
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -105,7 +169,7 @@ class _MessageRow extends StatelessWidget {
                         sender,
                         style: KarminTypography.body(
                           fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -124,6 +188,15 @@ class _MessageRow extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Icon(
+              KarminIcons.chevronRight,
+              size: 14,
+              color: KarminColors.muted.withValues(alpha: 0.6),
             ),
           ),
         ],

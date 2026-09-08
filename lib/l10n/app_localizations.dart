@@ -483,6 +483,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Trefort'**
   String get demoEventExamRoom;
+
+  /// No description provided for @todayQuickActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick actions'**
+  String get todayQuickActions;
+
+  /// No description provided for @todayActionSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get todayActionSchedule;
+
+  /// No description provided for @todayActionSubjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Subjects'**
+  String get todayActionSubjects;
+
+  /// No description provided for @todayActionInbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Inbox'**
+  String get todayActionInbox;
+
+  /// No description provided for @todaySchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s schedule'**
+  String get todaySchedule;
 }
 
 class _AppLocalizationsDelegate

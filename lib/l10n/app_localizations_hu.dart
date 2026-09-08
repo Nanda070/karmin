@@ -204,4 +204,19 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get demoEventExamRoom => 'Trefort';
+
+  @override
+  String get todayQuickActions => 'Gyors műveletek';
+
+  @override
+  String get todayActionSchedule => 'Órarend';
+
+  @override
+  String get todayActionSubjects => 'Tárgyak';
+
+  @override
+  String get todayActionInbox => 'Bejövő';
+
+  @override
+  String get todaySchedule => 'Mai órarend';
 }

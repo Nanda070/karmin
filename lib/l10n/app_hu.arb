@@ -70,5 +70,10 @@
   "demoEventProgrammingRoom": "Lágymányos 2.502",
   "demoEventExamTime": "10:00",
   "demoEventExamTitle": "Vizsga · Diszkrét mat.",
-  "demoEventExamRoom": "Trefort"
+  "demoEventExamRoom": "Trefort",
+  "todayQuickActions": "Gyors műveletek",
+  "todayActionSchedule": "Órarend",
+  "todayActionSubjects": "Tárgyak",
+  "todayActionInbox": "Bejövő",
+  "todaySchedule": "Mai órarend"
 }

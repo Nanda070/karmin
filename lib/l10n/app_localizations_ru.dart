@@ -202,4 +202,19 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get demoEventExamRoom => 'Trefort';
+
+  @override
+  String get todayQuickActions => 'Быстрые действия';
+
+  @override
+  String get todayActionSchedule => 'Расписание';
+
+  @override
+  String get todayActionSubjects => 'Предметы';
+
+  @override
+  String get todayActionInbox => 'Входящие';
+
+  @override
+  String get todaySchedule => 'Расписание на сегодня';
 }

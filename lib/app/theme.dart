@@ -218,12 +218,13 @@ abstract final class KarminTheme {
           backgroundColor: KarminColors.carmine,
           foregroundColor: KarminColors.text,
           minimumSize: const Size.fromHeight(52),
+          elevation: 0,
           shape: const RoundedRectangleBorder(
             borderRadius: KarminRadii.mdBorder,
           ),
           textStyle: KarminTypography.body(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),

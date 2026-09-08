@@ -126,7 +126,7 @@ class KarminCircleButton extends StatelessWidget {
     this.child,
     this.icon,
     this.tooltip,
-    this.size = 36,
+    this.size = 40,
     this.bordered = false,
   });
 
@@ -140,24 +140,39 @@ class KarminCircleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final button = Material(
-      color: KarminColors.navy,
-      shape: CircleBorder(
-        side: bordered
-            ? const BorderSide(color: KarminColors.hairline)
-            : BorderSide.none,
-      ),
+      color: Colors.transparent,
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onPressed,
         splashColor: KarminColors.carmine.withValues(alpha: 0.12),
-        child: SizedBox(
+        child: Ink(
           width: size,
           height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1A2438), KarminColors.navy],
+            ),
+            border: Border.all(
+              color: bordered
+                  ? KarminColors.hairline
+                  : KarminColors.hairline.withValues(alpha: 0.55),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
           child: Center(
             child: child ??
                 Icon(
                   icon,
-                  size: size * 0.5,
+                  size: size * 0.45,
                   color: KarminColors.text,
                 ),
           ),
@@ -178,11 +193,13 @@ class KarminStatChip extends StatelessWidget {
     required this.label,
     required this.value,
     this.valueColor = KarminColors.text,
+    this.icon,
   });
 
   final String label;
   final String value;
   final Color valueColor;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -190,22 +207,38 @@ class KarminStatChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(KarminSpacing.md),
         decoration: BoxDecoration(
-          color: KarminColors.surface,
           borderRadius: KarminRadii.mdBorder,
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF141A26), KarminColors.surface],
+          ),
+          border: Border.all(color: KarminColors.hairline.withValues(alpha: 0.85)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              label,
-              style: KarminTypography.label(fontSize: 11),
+            Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 12, color: KarminColors.muted),
+                  const SizedBox(width: 4),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    style: KarminTypography.label(fontSize: 11),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
               value,
               style: KarminTypography.body(
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
                 color: valueColor,
               ),
             ),

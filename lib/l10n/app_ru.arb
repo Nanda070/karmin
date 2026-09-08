@@ -70,5 +70,10 @@
   "demoEventProgrammingRoom": "Lágymányos 2.502",
   "demoEventExamTime": "10:00",
   "demoEventExamTitle": "Экзамен · Дискретная мат.",
-  "demoEventExamRoom": "Trefort"
+  "demoEventExamRoom": "Trefort",
+  "todayQuickActions": "Быстрые действия",
+  "todayActionSchedule": "Расписание",
+  "todayActionSubjects": "Предметы",
+  "todayActionInbox": "Входящие",
+  "todaySchedule": "Расписание на сегодня"
 }

@@ -203,4 +203,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get demoEventExamRoom => 'Trefort';
+
+  @override
+  String get todayQuickActions => 'Quick actions';
+
+  @override
+  String get todayActionSchedule => 'Schedule';
+
+  @override
+  String get todayActionSubjects => 'Subjects';
+
+  @override
+  String get todayActionInbox => 'Inbox';
+
+  @override
+  String get todaySchedule => 'Today\'s schedule';
 }
