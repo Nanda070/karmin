@@ -11,6 +11,7 @@ import 'package:karmin/app/widgets/karmin_icons.dart';
 import 'package:karmin/app/widgets/karmin_scaffold.dart'
     show KarminCircleButton, KarminPageHeader;
 import 'package:karmin/app/widgets/karmin_section_label.dart';
+import 'package:karmin/app/widgets/karmin_status.dart';
 import 'package:karmin/data/providers.dart';
 import 'package:karmin/data/student_repository.dart';
 import 'package:karmin/l10n/app_localizations.dart';
@@ -23,6 +24,7 @@ class SubjectPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final palette = KarminPalette.of(context);
     final snapshot =
         ref.watch(studentSnapshotProvider).valueOrNull ?? StudentSnapshot.empty();
     final subject = snapshot.subjectById(subjectId);
@@ -34,21 +36,21 @@ class SubjectPage extends ConsumerWidget {
           leading: KarminCircleButton(
             onPressed: () => context.pop(),
             icon: KarminIcons.chevronLeft,
-            size: 36,
             tooltip: l10n.tabStudy,
           ),
           title: subject?.name ?? l10n.tabStudy,
           titleStyle: KarminTypography.display(
             fontSize: 22,
             fontWeight: FontWeight.w600,
+            color: palette.text,
           ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: KarminSpacing.pageX),
           child: subject == null
-              ? Text(
-                  l10n.studyEmpty,
-                  style: KarminTypography.body(color: KarminColors.muted),
+              ? KarminEmptyState(
+                  message: l10n.studyEmpty,
+                  icon: KarminIcons.book,
                 )
               : _SubjectBody(subject: subject, snapshot: snapshot),
         ),
@@ -102,12 +104,9 @@ class _SubjectBody extends ConsumerWidget {
         KarminSectionLabel(l10n.subjectExams),
         const SizedBox(height: KarminSpacing.sm),
         if (exams.isEmpty)
-          Text(
-            l10n.subjectEmptyExams,
-            style: KarminTypography.body(
-              fontSize: 13,
-              color: KarminColors.muted,
-            ),
+          KarminEmptyState(
+            message: l10n.subjectEmptyExams,
+            icon: KarminIcons.exam,
           )
         else
           for (final exam in exams) ...[
@@ -127,14 +126,21 @@ class _Fact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     return Row(
       children: [
         Expanded(
-          child: Text(label, style: KarminTypography.label(fontSize: 12)),
+          child: Text(
+            label,
+            style: KarminTypography.label(fontSize: 12, color: palette.muted),
+          ),
         ),
         Text(
           value,
-          style: KarminTypography.body(fontWeight: FontWeight.w600),
+          style: KarminTypography.body(
+            fontWeight: FontWeight.w600,
+            color: palette.text,
+          ),
         ),
       ],
     );
@@ -149,17 +155,18 @@ class _ExamLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final palette = KarminPalette.of(context);
     final when = exam.start == null
         ? '—'
         : DateFormat('EEE · MMM d · HH:mm').format(exam.start!);
     return KarminCard(
       accentBar: true,
-      accentBarColor: KarminColors.carmine,
+      accentBarColor: palette.carmine,
       radius: KarminRadii.md,
       padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
       child: Row(
         children: [
-          Icon(KarminIcons.exam, size: 16, color: KarminColors.carmineBright),
+          Icon(KarminIcons.exam, size: 16, color: palette.accentText),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -167,14 +174,17 @@ class _ExamLine extends StatelessWidget {
               children: [
                 Text(
                   exam.subjectName,
-                  style: KarminTypography.body(fontWeight: FontWeight.w600),
+                  style: KarminTypography.body(
+                    fontWeight: FontWeight.w600,
+                    color: palette.text,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   when,
                   style: KarminTypography.body(
                     fontSize: 12,
-                    color: KarminColors.muted,
+                    color: palette.muted,
                   ),
                 ),
               ],
@@ -184,9 +194,7 @@ class _ExamLine extends StatelessWidget {
             exam.signedUp ? l10n.studyAlreadySigned : l10n.studySignUp,
             style: KarminTypography.label(
               fontSize: 11,
-              color: exam.signedUp
-                  ? KarminColors.muted
-                  : KarminColors.carmineBright,
+              color: exam.signedUp ? palette.muted : palette.accentText,
             ),
           ),
         ],

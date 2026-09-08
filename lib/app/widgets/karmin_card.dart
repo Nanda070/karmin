@@ -14,7 +14,7 @@ class KarminCard extends StatelessWidget {
     this.radius = KarminRadii.lg,
     this.onTap,
     this.accentBar,
-    this.accentBarColor = KarminColors.steel,
+    this.accentBarColor,
   });
 
   final Widget child;
@@ -24,10 +24,12 @@ class KarminCard extends StatelessWidget {
   final double radius;
   final VoidCallback? onTap;
   final bool? accentBar;
-  final Color accentBarColor;
+  final Color? accentBarColor;
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
+    final barColor = accentBarColor ?? palette.steel;
     final showBar = accentBar == true;
     final borderRadius = BorderRadius.circular(radius);
 
@@ -46,8 +48,8 @@ class KarminCard extends StatelessWidget {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          accentBarColor,
-                          accentBarColor.withValues(alpha: 0.35),
+                          barColor,
+                          barColor.withValues(alpha: 0.35),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(2),
@@ -63,26 +65,22 @@ class KarminCard extends StatelessWidget {
 
     final decoration = BoxDecoration(
       borderRadius: borderRadius,
-      gradient: const LinearGradient(
+      gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          Color(0xFF141A26),
-          KarminColors.surface,
-          Color(0xFF0C1018),
-        ],
-        stops: [0.0, 0.45, 1.0],
+        colors: [palette.surfaceHi, palette.surface, palette.surfaceLo],
+        stops: const [0.0, 0.45, 1.0],
       ),
       border: variant == KarminCardVariant.surface
           ? null
           : Border.all(
-              color: KarminColors.hairline.withValues(alpha: 0.85),
+              color: palette.hairline.withValues(alpha: 0.85),
               width: 1,
             ),
       boxShadow: variant == KarminCardVariant.elevated
           ? [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.28),
+                color: palette.shadow,
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -101,8 +99,8 @@ class KarminCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: borderRadius,
-          splashColor: KarminColors.carmine.withValues(alpha: 0.08),
-          highlightColor: KarminColors.navy.withValues(alpha: 0.4),
+          splashColor: palette.carmine.withValues(alpha: 0.08),
+          highlightColor: palette.field.withValues(alpha: 0.4),
           child: card,
         ),
       );

@@ -12,7 +12,7 @@
 
 | Layer | Role |
 |---|---|
-| `lib/app/` | Bootstrap, theme, ThemeMode, router |
+| `lib/app/` | Bootstrap, theme, `KarminPalette` ThemeExtension, ThemeMode, router, shared widgets (including `KarminStatusBanner`) |
 | `lib/auth/` | Session, disclaimer, login, OTP, PIN, unlock, lifecycle lock |
 | `lib/api/` | Dio client, `NeptunAuthApi`, `NeptunStudentApi`, DTOs, typed exceptions |
 | `lib/data/` | JSON cache + `StudentRepository` (Isar deferred) |
@@ -37,3 +37,8 @@ Stage 3 extras (subjects, messages, exams, profile) are fetched in the same refr
 Exam signup is a POST with `{ examId }` (unproven on ELTE). 401 still drops JWT and does not retry. Inbox mark-read updates the cached unread count so Today’s chip stays in sync.
 
 See [PLAN.md](PLAN.md) §3–4 and [API.md](API.md).
+
+## Theme
+
+Dark is default (`KarminPalette.dark`: ink `#07080C`). Light is complementary cream (`KarminPalette.light`: paper `#F4EFE6`), not Material white. Widgets read `KarminPalette.of(context)` — do not hardcode `KarminColors` in feature screens. Settings ThemeMode (System / Dark / Light) selects `KarminTheme.light()` / `dark()`.
+

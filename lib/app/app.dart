@@ -55,8 +55,7 @@ class _KarminAppState extends ConsumerState<KarminApp>
       theme: KarminTheme.light(),
       darkTheme: KarminTheme.dark(),
       themeMode: themeMode,
-      // GoogleFonts styles are inherit:false; Material lerp between light/dark
-      // throws if ThemeData slots are not twins. Instant swap until Stage 4.
+      // GoogleFonts inherit:false — skip Material lerp between light/dark.
       themeAnimationDuration: Duration.zero,
       routerConfig: router,
       locale: const Locale('en'),

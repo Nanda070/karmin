@@ -28,7 +28,7 @@ Karmin signs into the official ELTE Neptun student API with **your** Neptun code
 | Inbox | Read-only messages and threads |
 | Settings | Language, Face ID, PIN, notifications, privacy / disclaimer |
 
-**Status:** Stages 0–3 are implemented in code (auth, cached Today/Calendar, Study/Inbox, exam confirm). Debug builds use a labeled mock (any non-empty credentials, then any 6-digit code) plus demo-quality Study/Inbox fixtures. Live ELTE: `flutter run --dart-define=KARMIN_LIVE_AUTH=true` on a **device** (Chrome CORS will block the API). Do not claim live 2FA, JSON field names, or exam signup are proven without a real account. Light theme is planned (Settings control exists); the look is still dark-first. Stage 4 is harden + light pass + closed beta.
+**Status:** Stages 0–4 polish are implemented in code (auth, cached reads, Study/Inbox, light theme + empty/error widgets). Debug builds use a labeled mock (any non-empty credentials, then any 6-digit code) plus demo-quality Study/Inbox fixtures. Live ELTE: `flutter run --dart-define=KARMIN_LIVE_AUTH=true` on a **device** (Chrome CORS will block the API). Do not claim live 2FA, JSON field names, or exam signup are proven without a real account. Light theme is cream paper (`#F4EFE6`), not generic white; Dark remains default.
 
 Screenshots will land here once a live device pass exists. Until then, see the [Figma file](https://www.figma.com/design/Iuxf0sbisHaOwxn6Vkcgdg).
 
@@ -66,7 +66,7 @@ Targets: Android, iOS, and web (web is for UI preview; v1 distribution is mobile
 
 - Software: [MIT](LICENSE) — Copyright © 2026 Cheterin / cheterin.online — provided **AS IS**
 - Product disclaimer: [docs/DISCLAIMER.md](docs/DISCLAIMER.md)
-- Privacy stub: [docs/PRIVACY.md](docs/PRIVACY.md)
+- Privacy: [docs/PRIVACY.md](docs/PRIVACY.md)
 - ELTE API base (referential): `https://neptun.elte.hu/ujhallgato/api/`
 
 If ELTE or SDA asks that distribution stop, we stop and record it in the changelog.

@@ -28,6 +28,7 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final palette = KarminPalette.of(context);
     final auth = ref.watch(authControllerProvider);
     final themeMode = ref.watch(themeModeControllerProvider);
     final snapshot =
@@ -60,8 +61,7 @@ class SettingsPage extends ConsumerWidget {
                 KarminCircleButton(
                   onPressed: () => context.pop(),
                   icon: KarminIcons.chevronLeft,
-                  size: 36,
-                  tooltip: 'Back',
+                  tooltip: l10n.settingsBack,
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -69,6 +69,7 @@ class SettingsPage extends ConsumerWidget {
                   style: KarminTypography.display(
                     fontSize: 22,
                     fontWeight: FontWeight.w600,
+                    color: palette.text,
                   ),
                 ),
               ],
@@ -94,17 +95,20 @@ class SettingsPage extends ConsumerWidget {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              KarminColors.carmine.withValues(alpha: 0.45),
-                              KarminColors.navy,
+                              palette.carmine.withValues(alpha: 0.45),
+                              palette.field,
                             ],
                           ),
                           border: Border.all(
-                            color: KarminColors.carmine.withValues(alpha: 0.4),
+                            color: palette.carmine.withValues(alpha: 0.4),
                           ),
                         ),
                         child: Text(
                           initial,
-                          style: KarminTypography.title(fontSize: 20),
+                          style: KarminTypography.title(
+                            fontSize: 20,
+                            color: palette.text,
+                          ),
                         ),
                       ),
                       const SizedBox(width: KarminSpacing.md),
@@ -114,14 +118,17 @@ class SettingsPage extends ConsumerWidget {
                           children: [
                             Text(
                               name,
-                              style: KarminTypography.title(fontSize: 16),
+                              style: KarminTypography.title(
+                                fontSize: 16,
+                                color: palette.text,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               code,
                               style: KarminTypography.body(
                                 fontSize: 12,
-                                color: KarminColors.muted,
+                                color: palette.muted,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -129,7 +136,7 @@ class SettingsPage extends ConsumerWidget {
                               training,
                               style: KarminTypography.body(
                                 fontSize: 12,
-                                color: KarminColors.muted,
+                                color: palette.muted,
                               ),
                             ),
                           ],
@@ -138,7 +145,7 @@ class SettingsPage extends ConsumerWidget {
                       Icon(
                         KarminIcons.verified,
                         size: 18,
-                        color: KarminColors.steel,
+                        color: palette.steel,
                       ),
                     ],
                   ),
@@ -196,17 +203,17 @@ class SettingsPage extends ConsumerWidget {
                 TextButton.icon(
                   onPressed: () =>
                       ref.read(authControllerProvider.notifier).signOut(),
-                  icon: const Icon(
+                  icon: Icon(
                     KarminIcons.logout,
                     size: 16,
-                    color: KarminColors.carmineBright,
+                    color: palette.accentText,
                   ),
                   label: Text(
                     l10n.settingsSignOut,
                     style: KarminTypography.body(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: KarminColors.carmineBright,
+                      color: palette.accentText,
                     ),
                   ),
                 ),
@@ -226,15 +233,16 @@ class _SettingsIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     return Container(
       width: 34,
       height: 34,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        color: KarminColors.navy,
-        border: Border.all(color: KarminColors.hairline),
+        color: palette.field,
+        border: Border.all(color: palette.hairline),
       ),
-      child: Icon(icon, size: 15, color: KarminColors.steel),
+      child: Icon(icon, size: 15, color: palette.steel),
     );
   }
 }

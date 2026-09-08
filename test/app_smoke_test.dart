@@ -74,6 +74,11 @@ void main() {
     expect(find.text('Adnan Huseynli'), findsOneWidget);
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.text('Theme'), findsOneWidget);
+    expect(find.text('Dark, light, or match the device.'), findsOneWidget);
+
+    await tester.tap(find.text('Theme'));
+    await tester.pumpAndSettle();
+    expect(find.text('Light'), findsOneWidget);
   });
 
   test('l10n English template loads', () {

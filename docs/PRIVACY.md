@@ -22,4 +22,5 @@ Karmin is unofficial and not affiliated with ELTE or Neptun. Neptun’s own priv
 
 Contact: [https://cheterin.online](https://cheterin.online)
 
-Full checklist: [PLAN.md](PLAN.md) §6. Finalize wording in Stage 4. This is not legal advice.
+Full checklist: [PLAN.md](PLAN.md) §6. This is not legal advice. Wording frozen for Stage 4 polish; counsel still reviews before any group beta.
+

@@ -10,23 +10,29 @@ class KarminMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [KarminColors.carmineBright, KarminColors.carmine],
+    final palette = KarminPalette.of(context);
+    return Semantics(
+      image: true,
+      label: 'Karmin',
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [palette.carmineBright, palette.carmine],
+          ),
         ),
-      ),
-      child: Text(
-        'K',
-        style: KarminTypography.display(
-          fontSize: letterSize,
-          fontWeight: FontWeight.w600,
+        child: Text(
+          'K',
+          style: KarminTypography.display(
+            fontSize: letterSize,
+            fontWeight: FontWeight.w600,
+            color: palette.onCarmine,
+          ),
         ),
       ),
     );
@@ -41,16 +47,17 @@ class AuthBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     return Container(
       width: size,
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: KarminColors.navy,
-        border: Border.all(color: KarminColors.hairline),
+        color: palette.field,
+        border: Border.all(color: palette.hairline),
       ),
-      child: Icon(icon, size: 24, color: KarminColors.carmineBright),
+      child: Icon(icon, size: 24, color: palette.accentText),
     );
   }
 }

@@ -79,6 +79,7 @@ class _UnlockPageState extends ConsumerState<UnlockPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final palette = KarminPalette.of(context);
     final auth = ref.watch(authControllerProvider);
     final locked = auth.pinIsLocked;
     final remaining = locked
@@ -103,13 +104,16 @@ class _UnlockPageState extends ConsumerState<UnlockPage> {
               l10n.appTitle,
               style: KarminTypography.body(
                 fontSize: 14,
-                color: KarminColors.muted,
+                color: palette.muted,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               l10n.unlockTitle,
-              style: KarminTypography.display(fontSize: 28),
+              style: KarminTypography.display(
+                fontSize: 28,
+                color: palette.text,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -118,8 +122,8 @@ class _UnlockPageState extends ConsumerState<UnlockPage> {
               style: KarminTypography.body(
                 fontSize: 13,
                 color: copy.wrong || copy.locked
-                    ? KarminColors.carmineBright
-                    : KarminColors.muted,
+                    ? palette.accentText
+                    : palette.muted,
               ),
             ),
             const SizedBox(height: 20),

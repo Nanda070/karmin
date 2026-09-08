@@ -16,12 +16,13 @@ class KarminSegmented extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: KarminColors.surface,
+        color: palette.surface,
         borderRadius: KarminRadii.mdBorder,
-        border: Border.all(color: KarminColors.hairline),
+        border: Border.all(color: palette.hairline),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -53,28 +54,37 @@ class _Segment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: selected ? KarminColors.navy : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: selected
-                ? Border.all(color: KarminColors.hairline)
-                : Border.all(color: Colors.transparent),
-          ),
-          child: Text(
-            label,
-            style: KarminTypography.body(
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-              color: selected ? KarminColors.text : KarminColors.muted,
+    final palette = KarminPalette.of(context);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 36),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              curve: Curves.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: selected ? palette.field : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                border: selected
+                    ? Border.all(color: palette.hairline)
+                    : Border.all(color: Colors.transparent),
+              ),
+              child: Text(
+                label,
+                style: KarminTypography.body(
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  color: selected ? palette.text : palette.muted,
+                ),
+              ),
             ),
           ),
         ),

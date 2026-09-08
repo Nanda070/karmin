@@ -16,31 +16,38 @@ class KarminFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: KarminRadii.smBorder,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: selected
-                ? KarminColors.navy
-                : KarminColors.surface,
-            borderRadius: KarminRadii.smBorder,
-            border: Border.all(
-              color: selected ? KarminColors.steel : KarminColors.hairline,
-              width: 1,
-            ),
-          ),
-          child: Text(
-            label,
-            style: KarminTypography.label(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: selected ? KarminColors.text : KarminColors.muted,
+    final palette = KarminPalette.of(context);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: KarminRadii.smBorder,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 36),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              curve: Curves.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: selected ? palette.field : palette.surface,
+                borderRadius: KarminRadii.smBorder,
+                border: Border.all(
+                  color: selected ? palette.steel : palette.hairline,
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                label,
+                style: KarminTypography.label(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: selected ? palette.text : palette.muted,
+                ),
+              ),
             ),
           ),
         ),

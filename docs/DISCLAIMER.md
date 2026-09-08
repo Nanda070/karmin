@@ -12,6 +12,6 @@ Cheterin does **not** claim trademark permission from ELTE or Neptun. “Neptun�
 - Prefer the official Neptun web client when required by university rules.
 - If ELTE or SDA asks that distribution stop, stop and document it.
 
-In-app first-run Disclaimer (blocking) ships in Stage 1 before any network auth.
+In-app first-run Disclaimer (blocking) ships before any network auth.
 
-This document is not legal advice. Stub wording — finalize in Stage 4.
+This document is not legal advice. Wording frozen for Stage 4 polish; counsel still reviews before any group beta.

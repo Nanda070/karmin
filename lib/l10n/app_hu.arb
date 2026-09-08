@@ -113,6 +113,31 @@
   "calendarEmpty": "Nincs megjeleníthető esemény.",
   "dataError": "A Neptun most nem frissíthető.",
   "dataCached": "Az utoljára mentett adatok.",
+  "dataRetry": "Újra",
+  "dataOffline": "A Neptun nem elérhető.",
+  "pinDotsLabel": "{filled} / {max} számjegy megadva",
+  "@pinDotsLabel": {
+    "placeholders": {
+      "filled": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "pinBackspace": "Utolsó számjegy törlése",
+  "pinDigit": "{digit}",
+  "@pinDigit": {
+    "placeholders": {
+      "digit": {
+        "type": "String"
+      }
+    }
+  },
+  "loginShowPassword": "Jelszó megjelenítése",
+  "loginHidePassword": "Jelszó elrejtése",
+  "settingsBack": "Vissza",
   "relativeMinutes": "{minutes} perc múlva",
   "@relativeMinutes": {
     "placeholders": {
@@ -147,7 +172,7 @@
   "settingsThemeDark": "Sötét",
   "settingsThemeLight": "Világos",
   "settingsThemeSystem": "Rendszer",
-  "settingsThemeHint": "A világos kinézet egy későbbi csiszoláskor jön.",
+  "settingsThemeHint": "Sötét, világos, vagy a rendszer szerint.",
   "settingsOff": "Ki",
   "settingsFaceIdUnavailable": "Nem elérhető",
   "studyEmpty": "Ehhez a félévhez még nincsenek tárgyak.",

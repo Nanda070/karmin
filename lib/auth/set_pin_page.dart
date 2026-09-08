@@ -72,6 +72,7 @@ class _SetPinPageState extends ConsumerState<SetPinPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final palette = KarminPalette.of(context);
     final auth = ref.watch(authControllerProvider);
 
     return SecureAuthScaffold(
@@ -86,13 +87,16 @@ class _SetPinPageState extends ConsumerState<SetPinPage> {
               l10n.appTitle,
               style: KarminTypography.body(
                 fontSize: 14,
-                color: KarminColors.muted,
+                color: palette.muted,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               _confirming ? l10n.setPinConfirmTitle : l10n.setPinTitle,
-              style: KarminTypography.display(fontSize: 28),
+              style: KarminTypography.display(
+                fontSize: 28,
+                color: palette.text,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -104,9 +108,7 @@ class _SetPinPageState extends ConsumerState<SetPinPage> {
               textAlign: TextAlign.center,
               style: KarminTypography.body(
                 fontSize: 13,
-                color: _mismatch
-                    ? KarminColors.carmineBright
-                    : KarminColors.muted,
+                color: _mismatch ? palette.accentText : palette.muted,
               ),
             ),
             const SizedBox(height: 20),
@@ -119,9 +121,12 @@ class _SetPinPageState extends ConsumerState<SetPinPage> {
                 onChanged: (value) => setState(() => _enableBio = value),
                 title: Text(
                   l10n.setPinEnableBio,
-                  style: KarminTypography.body(fontSize: 14),
+                  style: KarminTypography.body(
+                    fontSize: 14,
+                    color: palette.text,
+                  ),
                 ),
-                activeThumbColor: KarminColors.carmineBright,
+                activeThumbColor: palette.carmineBright,
               ),
             ],
           ],

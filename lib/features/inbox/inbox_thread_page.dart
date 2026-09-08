@@ -9,6 +9,7 @@ import 'package:karmin/app/widgets/karmin_card.dart';
 import 'package:karmin/app/widgets/karmin_icons.dart';
 import 'package:karmin/app/widgets/karmin_scaffold.dart'
     show KarminCircleButton, KarminPageHeader;
+import 'package:karmin/app/widgets/karmin_status.dart';
 import 'package:karmin/data/providers.dart';
 import 'package:karmin/data/student_repository.dart';
 import 'package:karmin/l10n/app_localizations.dart';
@@ -34,6 +35,7 @@ class _InboxThreadPageState extends ConsumerState<InboxThreadPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final palette = KarminPalette.of(context);
     final snapshot =
         ref.watch(studentSnapshotProvider).valueOrNull ?? StudentSnapshot.empty();
     final header = snapshot.messageById(widget.messageId);
@@ -46,7 +48,6 @@ class _InboxThreadPageState extends ConsumerState<InboxThreadPage> {
           leading: KarminCircleButton(
             onPressed: () => context.pop(),
             icon: KarminIcons.chevronLeft,
-            size: 36,
             tooltip: l10n.tabInbox,
           ),
           title: header?.sender ?? l10n.tabInbox,
@@ -54,31 +55,30 @@ class _InboxThreadPageState extends ConsumerState<InboxThreadPage> {
           titleStyle: KarminTypography.display(
             fontSize: 22,
             fontWeight: FontWeight.w600,
+            color: palette.text,
           ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: KarminSpacing.pageX),
           child: posts.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.only(top: 24),
+            loading: () => Padding(
+              padding: const EdgeInsets.only(top: 24),
               child: Center(
                 child: CircularProgressIndicator(
-                  color: KarminColors.carmineBright,
+                  color: palette.carmineBright,
                 ),
               ),
             ),
-            error: (error, _) => Text(
-              l10n.dataError,
-              style: KarminTypography.body(color: KarminColors.muted),
+            error: (error, _) => KarminStatusBanner(
+              message: l10n.dataError,
+              onRetry: () => ref.invalidate(_threadProvider(widget.messageId)),
+              retryLabel: l10n.dataRetry,
             ),
             data: (items) {
               if (items.isEmpty) {
-                return Text(
-                  header?.preview ?? l10n.inboxThreadEmpty,
-                  style: KarminTypography.body(
-                    fontSize: 13,
-                    color: KarminColors.muted,
-                  ),
+                return KarminEmptyState(
+                  message: header?.preview ?? l10n.inboxThreadEmpty,
+                  icon: KarminIcons.mail,
                 );
               }
               return Column(
@@ -98,6 +98,7 @@ class _InboxThreadPageState extends ConsumerState<InboxThreadPage> {
                                   style: KarminTypography.body(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
+                                    color: palette.text,
                                   ),
                                 ),
                               ),
@@ -105,14 +106,20 @@ class _InboxThreadPageState extends ConsumerState<InboxThreadPage> {
                                 Text(
                                   DateFormat('MMM d · HH:mm')
                                       .format(items[i].sentAt!),
-                                  style: KarminTypography.label(fontSize: 11),
+                                  style: KarminTypography.label(
+                                    fontSize: 11,
+                                    color: palette.muted,
+                                  ),
                                 ),
                             ],
                           ),
                           const SizedBox(height: 10),
                           Text(
                             items[i].body,
-                            style: KarminTypography.body(fontSize: 14),
+                            style: KarminTypography.body(
+                              fontSize: 14,
+                              color: palette.text,
+                            ),
                           ),
                         ],
                       ),

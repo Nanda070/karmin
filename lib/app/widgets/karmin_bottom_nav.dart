@@ -24,17 +24,18 @@ class KarminBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     final bottom = MediaQuery.paddingOf(context).bottom;
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: KarminColors.ink.withValues(alpha: 0.94),
-        border: const Border(
-          top: BorderSide(color: KarminColors.hairline, width: 0.5),
+        color: palette.page.withValues(alpha: 0.94),
+        border: Border(
+          top: BorderSide(color: palette.hairline, width: 0.5),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
+            color: palette.shadow,
             blurRadius: 24,
             offset: const Offset(0, -4),
           ),
@@ -83,7 +84,8 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? KarminColors.carmineBright : KarminColors.muted;
+    final palette = KarminPalette.of(context);
+    final color = selected ? palette.accentText : palette.muted;
 
     return Semantics(
       button: true,
@@ -108,14 +110,14 @@ class _NavItem extends StatelessWidget {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          KarminColors.carmine.withValues(alpha: 0.28),
-                          KarminColors.carmine.withValues(alpha: 0.08),
+                          palette.carmine.withValues(alpha: 0.28),
+                          palette.carmine.withValues(alpha: 0.08),
                         ],
                       )
                     : null,
                 border: selected
                     ? Border.all(
-                        color: KarminColors.carmine.withValues(alpha: 0.35),
+                        color: palette.carmine.withValues(alpha: 0.35),
                       )
                     : null,
               ),

@@ -12,6 +12,7 @@ import 'package:karmin/app/widgets/karmin_icons.dart';
 import 'package:karmin/app/widgets/karmin_primary_button.dart';
 import 'package:karmin/app/widgets/karmin_scaffold.dart' show KarminPageHeader;
 import 'package:karmin/app/widgets/karmin_section_label.dart';
+import 'package:karmin/app/widgets/karmin_status.dart';
 import 'package:karmin/data/providers.dart';
 import 'package:karmin/data/student_repository.dart';
 import 'package:karmin/l10n/app_localizations.dart';
@@ -22,6 +23,7 @@ class StudyPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final palette = KarminPalette.of(context);
     final async = ref.watch(studentSnapshotProvider);
     final snapshot = async.valueOrNull ?? StudentSnapshot.empty();
     final gpa = snapshot.dashboard.gpaLabel ?? '—';
@@ -38,10 +40,13 @@ class StudyPage extends ConsumerWidget {
     final canSignUp = exam != null && exam.canSignUp && exam.id.isNotEmpty;
     final alreadySigned = exam?.signedUp == true;
 
+    Future<void> refresh() =>
+        ref.read(studentSnapshotProvider.notifier).refresh();
+
     return RefreshIndicator(
-      color: KarminColors.carmineBright,
-      backgroundColor: KarminColors.navy,
-      onRefresh: () => ref.read(studentSnapshotProvider.notifier).refresh(),
+      color: palette.carmineBright,
+      backgroundColor: palette.field,
+      onRefresh: refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: KarminSpacing.xxl),
@@ -51,7 +56,7 @@ class StudyPage extends ConsumerWidget {
             trailing: Icon(
               KarminIcons.study,
               size: 20,
-              color: KarminColors.muted,
+              color: palette.muted,
             ),
           ),
           Padding(
@@ -60,12 +65,10 @@ class StudyPage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (snapshot.errorMessage != null) ...[
-                  Text(
-                    snapshot.fromCache ? l10n.dataCached : l10n.dataError,
-                    style: KarminTypography.body(
-                      fontSize: 12,
-                      color: KarminColors.muted,
-                    ),
+                  KarminStatusBanner.fromSnapshot(
+                    snapshot: snapshot,
+                    l10n: l10n,
+                    onRetry: refresh,
                   ),
                   const SizedBox(height: KarminSpacing.sm),
                 ],
@@ -92,12 +95,9 @@ class StudyPage extends ConsumerWidget {
                 KarminSectionLabel(l10n.studySubjects),
                 const SizedBox(height: KarminSpacing.sm),
                 if (snapshot.subjects.isEmpty)
-                  Text(
-                    l10n.studyEmpty,
-                    style: KarminTypography.body(
-                      fontSize: 13,
-                      color: KarminColors.muted,
-                    ),
+                  KarminEmptyState(
+                    message: l10n.studyEmpty,
+                    icon: KarminIcons.book,
                   )
                 else
                   for (var i = 0; i < snapshot.subjects.length; i++) ...[
@@ -123,17 +123,17 @@ class StudyPage extends ConsumerWidget {
                             height: 34,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(10),
-                              color: KarminColors.carmine.withValues(alpha: 0.18),
+                              color: palette.carmine.withValues(alpha: 0.18),
                               border: Border.all(
-                                color: KarminColors.carmine.withValues(
+                                color: palette.carmine.withValues(
                                   alpha: 0.35,
                                 ),
                               ),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               KarminIcons.exam,
                               size: 16,
-                              color: KarminColors.carmineBright,
+                              color: palette.accentText,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -143,7 +143,10 @@ class StudyPage extends ConsumerWidget {
                               children: [
                                 Text(
                                   l10n.studyUpcomingExam,
-                                  style: KarminTypography.label(fontSize: 11),
+                                  style: KarminTypography.label(
+                                    fontSize: 11,
+                                    color: palette.muted,
+                                  ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
@@ -151,6 +154,7 @@ class StudyPage extends ConsumerWidget {
                                   style: KarminTypography.body(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
+                                    color: palette.text,
                                   ),
                                 ),
                               ],
@@ -175,7 +179,7 @@ class StudyPage extends ConsumerWidget {
                           l10n.studySignUpUnavailable,
                           style: KarminTypography.body(
                             fontSize: 11,
-                            color: KarminColors.muted,
+                            color: palette.muted,
                           ),
                         ),
                       ],
@@ -201,7 +205,7 @@ class StudyPage extends ConsumerWidget {
         : DateFormat('EEE · MMM d · HH:mm').format(exam.start!);
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: KarminColors.surface,
+      backgroundColor: KarminPalette.of(context).surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -214,14 +218,17 @@ class StudyPage extends ConsumerWidget {
             children: [
               Text(
                 l10n.studySignUpConfirmTitle(exam.subjectName),
-                style: KarminTypography.title(fontSize: 18),
+                style: KarminTypography.title(
+                  fontSize: 18,
+                  color: KarminPalette.of(sheetContext).text,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 l10n.studySignUpConfirmBody(date),
                 style: KarminTypography.body(
                   fontSize: 13,
-                  color: KarminColors.muted,
+                  color: KarminPalette.of(sheetContext).muted,
                 ),
               ),
               const SizedBox(height: 20),
@@ -234,7 +241,9 @@ class StudyPage extends ConsumerWidget {
                 onPressed: () => Navigator.of(sheetContext).pop(false),
                 child: Text(
                   l10n.studyCancel,
-                  style: KarminTypography.body(color: KarminColors.muted),
+                  style: KarminTypography.body(
+                    color: KarminPalette.of(sheetContext).muted,
+                  ),
                 ),
               ),
             ],
@@ -278,6 +287,7 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     return KarminCard(
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -285,9 +295,15 @@ class _StatCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 14, color: KarminColors.carmineBright),
+              Icon(icon, size: 14, color: palette.accentText),
               const SizedBox(width: 6),
-              Text(label, style: KarminTypography.label(fontSize: 11)),
+              Text(
+                label,
+                style: KarminTypography.label(
+                  fontSize: 11,
+                  color: palette.muted,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -296,6 +312,7 @@ class _StatCard extends StatelessWidget {
             style: KarminTypography.display(
               fontSize: 26,
               fontWeight: FontWeight.w600,
+              color: palette.text,
             ),
           ),
         ],
@@ -312,12 +329,12 @@ class _SubjectRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     return KarminCard(
       onTap: onTap,
       accentBar: true,
-      accentBarColor: subject.grade != null
-          ? KarminColors.steel
-          : KarminColors.carmineBright,
+      accentBarColor:
+          subject.grade != null ? palette.steel : palette.carmineBright,
       radius: KarminRadii.md,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       child: Row(
@@ -327,13 +344,13 @@ class _SubjectRow extends StatelessWidget {
             height: 34,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              color: KarminColors.navy,
-              border: Border.all(color: KarminColors.hairline),
+              color: palette.field,
+              border: Border.all(color: palette.hairline),
             ),
             child: Icon(
               _iconFor(subject.name),
               size: 15,
-              color: KarminColors.steel,
+              color: palette.steel,
             ),
           ),
           const SizedBox(width: 12),
@@ -343,7 +360,10 @@ class _SubjectRow extends StatelessWidget {
               children: [
                 Text(
                   subject.name,
-                  style: KarminTypography.body(fontWeight: FontWeight.w500),
+                  style: KarminTypography.body(
+                    fontWeight: FontWeight.w500,
+                    color: palette.text,
+                  ),
                 ),
                 if (subject.code != null) ...[
                   const SizedBox(height: 2),
@@ -351,7 +371,7 @@ class _SubjectRow extends StatelessWidget {
                     subject.code!,
                     style: KarminTypography.body(
                       fontSize: 11,
-                      color: KarminColors.muted,
+                      color: palette.muted,
                     ),
                   ),
                 ],
@@ -362,16 +382,17 @@ class _SubjectRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1A2438), KarminColors.navy],
+              gradient: LinearGradient(
+                colors: [palette.fieldHi, palette.field],
               ),
-              border: Border.all(color: KarminColors.hairline),
+              border: Border.all(color: palette.hairline),
             ),
             child: Text(
               subject.gradeLabel,
               style: KarminTypography.body(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
+                color: palette.text,
               ),
             ),
           ),

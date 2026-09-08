@@ -694,6 +694,54 @@ abstract class AppLocalizations {
   /// **'Showing last saved data.'**
   String get dataCached;
 
+  /// No description provided for @dataRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get dataRetry;
+
+  /// No description provided for @dataOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach Neptun.'**
+  String get dataOffline;
+
+  /// No description provided for @pinDotsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{filled} of {max} digits entered'**
+  String pinDotsLabel(int filled, int max);
+
+  /// No description provided for @pinBackspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete last digit'**
+  String get pinBackspace;
+
+  /// No description provided for @pinDigit.
+  ///
+  /// In en, this message translates to:
+  /// **'Digit {digit}'**
+  String pinDigit(String digit);
+
+  /// No description provided for @loginShowPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get loginShowPassword;
+
+  /// No description provided for @loginHidePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get loginHidePassword;
+
+  /// No description provided for @settingsBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get settingsBack;
+
   /// No description provided for @relativeMinutes.
   ///
   /// In en, this message translates to:
@@ -817,7 +865,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsThemeHint.
   ///
   /// In en, this message translates to:
-  /// **'Light look comes in a later polish pass.'**
+  /// **'Dark, light, or match the device.'**
   String get settingsThemeHint;
 
   /// No description provided for @settingsOff.

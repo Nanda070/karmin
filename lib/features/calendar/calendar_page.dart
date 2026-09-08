@@ -9,6 +9,7 @@ import 'package:karmin/app/widgets/karmin_filter_chip.dart';
 import 'package:karmin/app/widgets/karmin_icons.dart';
 import 'package:karmin/app/widgets/karmin_scaffold.dart' show KarminPageHeader;
 import 'package:karmin/app/widgets/karmin_segmented.dart';
+import 'package:karmin/app/widgets/karmin_status.dart';
 import 'package:karmin/data/providers.dart';
 import 'package:karmin/data/student_repository.dart';
 import 'package:karmin/l10n/app_localizations.dart';
@@ -42,14 +43,17 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final palette = KarminPalette.of(context);
     final async = ref.watch(studentSnapshotProvider);
     final snapshot = async.valueOrNull ?? StudentSnapshot.empty();
     final visible = _visibleEvents(snapshot);
+    Future<void> refresh() =>
+        ref.read(studentSnapshotProvider.notifier).refresh();
 
     return RefreshIndicator(
-      color: KarminColors.carmineBright,
-      backgroundColor: KarminColors.navy,
-      onRefresh: () => ref.read(studentSnapshotProvider.notifier).refresh(),
+      color: palette.carmineBright,
+      backgroundColor: palette.field,
+      onRefresh: refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: KarminSpacing.xxl),
@@ -59,7 +63,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
             trailing: Icon(
               KarminIcons.calendarRange,
               size: 20,
-              color: KarminColors.muted,
+              color: palette.muted,
             ),
           ),
           Padding(
@@ -68,12 +72,10 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (snapshot.errorMessage != null) ...[
-                  Text(
-                    snapshot.fromCache ? l10n.dataCached : l10n.dataError,
-                    style: KarminTypography.body(
-                      fontSize: 12,
-                      color: KarminColors.muted,
-                    ),
+                  KarminStatusBanner.fromSnapshot(
+                    snapshot: snapshot,
+                    l10n: l10n,
+                    onRetry: refresh,
                   ),
                   const SizedBox(height: KarminSpacing.sm),
                 ],
@@ -124,12 +126,9 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                 ),
                 const SizedBox(height: KarminSpacing.lg),
                 if (visible.isEmpty)
-                  Text(
-                    l10n.calendarEmpty,
-                    style: KarminTypography.body(
-                      fontSize: 13,
-                      color: KarminColors.muted,
-                    ),
+                  KarminEmptyState(
+                    message: l10n.calendarEmpty,
+                    icon: KarminIcons.calendar,
                   )
                 else
                   for (var i = 0; i < visible.length; i++) ...[
@@ -140,8 +139,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                       room: visible[i].room ?? '—',
                       professor: visible[i].person ?? '—',
                       accent: visible[i].isExam
-                          ? KarminColors.carmine
-                          : KarminColors.steel,
+                          ? palette.carmine
+                          : palette.steel,
                       isExam: visible[i].isExam,
                     ),
                   ],
@@ -201,50 +200,59 @@ class _DayCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 40,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          gradient: selected
-              ? LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    KarminColors.carmine.withValues(alpha: 0.35),
-                    KarminColors.navy,
-                  ],
-                )
-              : null,
-          border: Border.all(
-            color: selected
-                ? KarminColors.carmine.withValues(alpha: 0.55)
-                : Colors.transparent,
+    final palette = KarminPalette.of(context);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$weekday $day',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 48),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: 40,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: selected
+                  ? LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        palette.carmine.withValues(alpha: 0.35),
+                        palette.field,
+                      ],
+                    )
+                  : null,
+              border: Border.all(
+                color: selected
+                    ? palette.carmine.withValues(alpha: 0.55)
+                    : Colors.transparent,
+              ),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  weekday,
+                  style: KarminTypography.label(
+                    fontSize: 10,
+                    color: selected ? palette.text : palette.muted,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  day,
+                  style: KarminTypography.body(
+                    fontSize: 14,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected ? palette.text : palette.muted,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-            Text(
-              weekday,
-              style: KarminTypography.label(
-                fontSize: 10,
-                color: selected ? KarminColors.text : KarminColors.muted,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              day,
-              style: KarminTypography.body(
-                fontSize: 14,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? KarminColors.text : KarminColors.muted,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -285,7 +293,13 @@ class _EventCard extends StatelessWidget {
                 color: accent,
               ),
               const SizedBox(width: 6),
-              Text(time, style: KarminTypography.label(fontSize: 11)),
+              Text(
+                time,
+                style: KarminTypography.label(
+                  fontSize: 11,
+                  color: KarminPalette.of(context).muted,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -294,6 +308,7 @@ class _EventCard extends StatelessWidget {
             style: KarminTypography.body(
               fontSize: 15,
               fontWeight: FontWeight.w600,
+              color: KarminPalette.of(context).text,
             ),
           ),
           const SizedBox(height: 10),
@@ -322,7 +337,7 @@ class _IconMeta extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: KarminColors.muted),
+          Icon(icon, size: 12, color: KarminPalette.of(context).muted),
           const SizedBox(width: 4),
           Flexible(
             child: Text(
@@ -330,7 +345,7 @@ class _IconMeta extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: KarminTypography.body(
                 fontSize: 12,
-                color: KarminColors.muted,
+                color: KarminPalette.of(context).muted,
               ),
             ),
           ),

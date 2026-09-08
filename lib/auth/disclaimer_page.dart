@@ -15,6 +15,7 @@ class DisclaimerPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final palette = KarminPalette.of(context);
 
     return SecureAuthScaffold(
       body: ListView(
@@ -25,14 +26,17 @@ class DisclaimerPage extends ConsumerWidget {
           Text(
             l10n.disclaimerTitle,
             textAlign: TextAlign.center,
-            style: KarminTypography.display(fontSize: 28),
+            style: KarminTypography.display(
+              fontSize: 28,
+              color: palette.text,
+            ),
           ),
           const SizedBox(height: 20),
           Text(
             l10n.disclaimerBody,
             style: KarminTypography.body(
               fontSize: 14,
-              color: KarminColors.muted,
+              color: palette.muted,
               height: 1.45,
             ),
           ),

@@ -27,6 +27,7 @@ class KarminListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     return KarminCard(
       variant:
           outlined ? KarminCardVariant.outlined : KarminCardVariant.surface,
@@ -52,6 +53,7 @@ class KarminListRow extends StatelessWidget {
                       KarminTypography.body(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
+                        color: palette.text,
                       ),
                 ),
                 if (subtitle != null) ...[
@@ -60,7 +62,7 @@ class KarminListRow extends StatelessWidget {
                     subtitle!,
                     style: KarminTypography.body(
                       fontSize: 12,
-                      color: KarminColors.muted,
+                      color: palette.muted,
                     ),
                   ),
                 ],
@@ -73,7 +75,7 @@ class KarminListRow extends StatelessWidget {
               style: trailingStyle ??
                   KarminTypography.body(
                     fontSize: 13,
-                    color: KarminColors.muted,
+                    color: palette.muted,
                   ),
               child: trailing!,
             ),

@@ -14,6 +14,7 @@ class KarminSectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     return Padding(
       padding: padding,
       child: Text(
@@ -21,7 +22,7 @@ class KarminSectionLabel extends StatelessWidget {
         style: KarminTypography.label(
           fontSize: 13,
           fontWeight: FontWeight.w500,
-          color: KarminColors.muted,
+          color: palette.muted,
         ),
       ),
     );

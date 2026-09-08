@@ -318,6 +318,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dataCached => 'Showing last saved data.';
 
   @override
+  String get dataRetry => 'Try again';
+
+  @override
+  String get dataOffline => 'Can\'t reach Neptun.';
+
+  @override
+  String pinDotsLabel(int filled, int max) {
+    return '$filled of $max digits entered';
+  }
+
+  @override
+  String get pinBackspace => 'Delete last digit';
+
+  @override
+  String pinDigit(String digit) {
+    return 'Digit $digit';
+  }
+
+  @override
+  String get loginShowPassword => 'Show password';
+
+  @override
+  String get loginHidePassword => 'Hide password';
+
+  @override
+  String get settingsBack => 'Back';
+
+  @override
   String relativeMinutes(int minutes) {
     return 'in $minutes min';
   }
@@ -383,7 +411,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsThemeSystem => 'System';
 
   @override
-  String get settingsThemeHint => 'Light look comes in a later polish pass.';
+  String get settingsThemeHint => 'Dark, light, or match the device.';
 
   @override
   String get settingsOff => 'Off';

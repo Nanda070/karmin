@@ -9,6 +9,7 @@ import 'package:karmin/api/neptun_client.dart';
 import 'package:karmin/app/theme.dart';
 import 'package:karmin/app/widgets/karmin_icons.dart';
 import 'package:karmin/app/widgets/karmin_primary_button.dart';
+import 'package:karmin/app/widgets/karmin_status.dart';
 import 'package:karmin/auth/auth_models.dart';
 import 'package:karmin/auth/providers.dart';
 import 'package:karmin/auth/widgets/auth_text_field.dart';
@@ -99,6 +100,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final palette = KarminPalette.of(context);
     final auth = ref.watch(authControllerProvider);
     final error = _errorText(l10n, auth.errorMessage);
     final cooldown = auth.otpResendSecondsRemaining();
@@ -118,7 +120,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
         SnackBar(
           content: Text(l10n.otpResent),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: KarminColors.navy,
+          backgroundColor: palette.field,
         ),
       );
     });
@@ -141,13 +143,16 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                   l10n.appTitle,
                   style: KarminTypography.body(
                     fontSize: 14,
-                    color: KarminColors.muted,
+                    color: palette.muted,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   l10n.otpTitle,
-                  style: KarminTypography.display(fontSize: 28),
+                  style: KarminTypography.display(
+                    fontSize: 28,
+                    color: palette.text,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -155,13 +160,14 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                   textAlign: TextAlign.center,
                   style: KarminTypography.body(
                     fontSize: 13,
-                    color: KarminColors.muted,
+                    color: palette.muted,
                   ),
                 ),
                 const SizedBox(height: 24),
                 AuthTextField(
                   controller: _otp,
                   hint: l10n.otpCodeHint,
+                  semanticsLabel: l10n.otpCodeHint,
                   icon: KarminIcons.key,
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.done,
@@ -173,14 +179,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 12),
-                  Text(
-                    error,
-                    textAlign: TextAlign.center,
-                    style: KarminTypography.body(
-                      fontSize: 13,
-                      color: KarminColors.carmineBright,
-                    ),
-                  ),
+                  KarminInlineError(error),
                 ],
                 const SizedBox(height: 20),
                 KarminPrimaryButton(
@@ -199,8 +198,8 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: canResend
-                          ? KarminColors.carmineBright
-                          : KarminColors.muted,
+                          ? palette.accentText
+                          : palette.muted,
                     ),
                   ),
                 ),

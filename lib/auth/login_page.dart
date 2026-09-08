@@ -7,6 +7,7 @@ import 'package:karmin/api/neptun_client.dart';
 import 'package:karmin/app/theme.dart';
 import 'package:karmin/app/widgets/karmin_icons.dart';
 import 'package:karmin/app/widgets/karmin_primary_button.dart';
+import 'package:karmin/app/widgets/karmin_status.dart';
 import 'package:karmin/auth/providers.dart';
 import 'package:karmin/auth/widgets/auth_text_field.dart';
 import 'package:karmin/auth/widgets/karmin_mark.dart';
@@ -63,6 +64,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final palette = KarminPalette.of(context);
     final auth = ref.watch(authControllerProvider);
     final error = _errorText(l10n, auth.errorMessage);
     final captcha = auth.errorMessage == const NeptunCaptchaException().message;
@@ -79,14 +81,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 const SizedBox(height: 8),
                 Text(
                   l10n.appTitle,
-                  style: KarminTypography.display(fontSize: 34),
+                  style: KarminTypography.display(
+                    fontSize: 34,
+                    color: palette.text,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   l10n.loginSubtitle,
                   style: KarminTypography.body(
                     fontSize: 13,
-                    color: KarminColors.muted,
+                    color: palette.muted,
                   ),
                 ),
                 if (auth.usingDebugAuth) ...[
@@ -96,7 +101,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     textAlign: TextAlign.center,
                     style: KarminTypography.body(
                       fontSize: 12,
-                      color: KarminColors.carmineBright,
+                      color: palette.accentText,
                     ),
                   ),
                 ],
@@ -121,14 +126,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 12),
-                  Text(
-                    error,
-                    textAlign: TextAlign.center,
-                    style: KarminTypography.body(
-                      fontSize: 13,
-                      color: KarminColors.carmineBright,
-                    ),
-                  ),
+                  KarminInlineError(error),
                 ],
                 if (captcha) ...[
                   TextButton(
@@ -151,7 +149,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   textAlign: TextAlign.center,
                   style: KarminTypography.body(
                     fontSize: 12,
-                    color: KarminColors.muted,
+                    color: palette.muted,
                   ),
                 ),
               ],

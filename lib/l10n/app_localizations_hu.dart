@@ -320,6 +320,34 @@ class AppLocalizationsHu extends AppLocalizations {
   String get dataCached => 'Az utoljára mentett adatok.';
 
   @override
+  String get dataRetry => 'Újra';
+
+  @override
+  String get dataOffline => 'A Neptun nem elérhető.';
+
+  @override
+  String pinDotsLabel(int filled, int max) {
+    return '$filled / $max számjegy megadva';
+  }
+
+  @override
+  String get pinBackspace => 'Utolsó számjegy törlése';
+
+  @override
+  String pinDigit(String digit) {
+    return '$digit';
+  }
+
+  @override
+  String get loginShowPassword => 'Jelszó megjelenítése';
+
+  @override
+  String get loginHidePassword => 'Jelszó elrejtése';
+
+  @override
+  String get settingsBack => 'Vissza';
+
+  @override
   String relativeMinutes(int minutes) {
     return '$minutes perc múlva';
   }
@@ -385,8 +413,7 @@ class AppLocalizationsHu extends AppLocalizations {
   String get settingsThemeSystem => 'Rendszer';
 
   @override
-  String get settingsThemeHint =>
-      'A világos kinézet egy későbbi csiszoláskor jön.';
+  String get settingsThemeHint => 'Sötét, világos, vagy a rendszer szerint.';
 
   @override
   String get settingsOff => 'Ki';

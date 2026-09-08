@@ -36,4 +36,6 @@ abstract final class KarminIcons {
   static const IconData shield = Icons.shield_outlined;
   static const IconData key = Icons.key_outlined;
   static const IconData palette = Icons.palette_outlined;
+  static const IconData warning = Icons.warning_amber_rounded;
+  static const IconData history = Icons.history_rounded;
 }

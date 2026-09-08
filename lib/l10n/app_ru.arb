@@ -113,6 +113,31 @@
   "calendarEmpty": "Нет событий для показа.",
   "dataError": "Не удалось обновить данные Neptun.",
   "dataCached": "Показаны последние сохранённые данные.",
+  "dataRetry": "Повторить",
+  "dataOffline": "Не удаётся связаться с Neptun.",
+  "pinDotsLabel": "Введено {filled} из {max} цифр",
+  "@pinDotsLabel": {
+    "placeholders": {
+      "filled": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "pinBackspace": "Удалить последнюю цифру",
+  "pinDigit": "Цифра {digit}",
+  "@pinDigit": {
+    "placeholders": {
+      "digit": {
+        "type": "String"
+      }
+    }
+  },
+  "loginShowPassword": "Показать пароль",
+  "loginHidePassword": "Скрыть пароль",
+  "settingsBack": "Назад",
   "relativeMinutes": "через {minutes} мин",
   "@relativeMinutes": {
     "placeholders": {
@@ -147,7 +172,7 @@
   "settingsThemeDark": "Тёмная",
   "settingsThemeLight": "Светлая",
   "settingsThemeSystem": "Системная",
-  "settingsThemeHint": "Светлый вид появится в более поздней полировке.",
+  "settingsThemeHint": "Тёмная, светлая или как на устройстве.",
   "settingsOff": "Выкл",
   "settingsFaceIdUnavailable": "Недоступно",
   "studyEmpty": "Пока нет предметов в этом семестре.",

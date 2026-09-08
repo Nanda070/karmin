@@ -116,6 +116,31 @@
   "calendarEmpty": "No events to show.",
   "dataError": "Can't refresh from Neptun.",
   "dataCached": "Showing last saved data.",
+  "dataRetry": "Try again",
+  "dataOffline": "Can't reach Neptun.",
+  "pinDotsLabel": "{filled} of {max} digits entered",
+  "@pinDotsLabel": {
+    "placeholders": {
+      "filled": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "pinBackspace": "Delete last digit",
+  "pinDigit": "Digit {digit}",
+  "@pinDigit": {
+    "placeholders": {
+      "digit": {
+        "type": "String"
+      }
+    }
+  },
+  "loginShowPassword": "Show password",
+  "loginHidePassword": "Hide password",
+  "settingsBack": "Back",
   "relativeMinutes": "in {minutes} min",
   "@relativeMinutes": {
     "placeholders": {
@@ -150,7 +175,7 @@
   "settingsThemeDark": "Dark",
   "settingsThemeLight": "Light",
   "settingsThemeSystem": "System",
-  "settingsThemeHint": "Light look comes in a later polish pass.",
+  "settingsThemeHint": "Dark, light, or match the device.",
   "settingsOff": "Off",
   "settingsFaceIdUnavailable": "Unavailable",
   "studyEmpty": "No subjects for this term yet.",

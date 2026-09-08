@@ -316,6 +316,34 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dataCached => 'Показаны последние сохранённые данные.';
 
   @override
+  String get dataRetry => 'Повторить';
+
+  @override
+  String get dataOffline => 'Не удаётся связаться с Neptun.';
+
+  @override
+  String pinDotsLabel(int filled, int max) {
+    return 'Введено $filled из $max цифр';
+  }
+
+  @override
+  String get pinBackspace => 'Удалить последнюю цифру';
+
+  @override
+  String pinDigit(String digit) {
+    return 'Цифра $digit';
+  }
+
+  @override
+  String get loginShowPassword => 'Показать пароль';
+
+  @override
+  String get loginHidePassword => 'Скрыть пароль';
+
+  @override
+  String get settingsBack => 'Назад';
+
+  @override
   String relativeMinutes(int minutes) {
     return 'через $minutes мин';
   }
@@ -381,8 +409,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsThemeSystem => 'Системная';
 
   @override
-  String get settingsThemeHint =>
-      'Светлый вид появится в более поздней полировке.';
+  String get settingsThemeHint => 'Тёмная, светлая или как на устройстве.';
 
   @override
   String get settingsOff => 'Выкл';

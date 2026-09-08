@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:karmin/app/theme.dart';
 
-/// AppBar-less page chrome with ink→navy atmosphere and safe padding.
+/// AppBar-less page chrome with ink→navy / paper→field atmosphere.
 class KarminScaffold extends StatelessWidget {
   const KarminScaffold({
     super.key,
@@ -20,28 +20,33 @@ class KarminScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
+    final overlay = palette.isDark
+        ? SystemUiOverlayStyle.light.copyWith(
+            statusBarColor: Colors.transparent,
+            systemNavigationBarColor: palette.page,
+            systemNavigationBarIconBrightness: Brightness.light,
+          )
+        : SystemUiOverlayStyle.dark.copyWith(
+            statusBarColor: Colors.transparent,
+            systemNavigationBarColor: palette.page,
+            systemNavigationBarIconBrightness: Brightness.dark,
+          );
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(
-        statusBarColor: Colors.transparent,
-        systemNavigationBarColor: KarminColors.ink,
-        systemNavigationBarIconBrightness: Brightness.light,
-      ),
+      value: overlay,
       child: Scaffold(
-        backgroundColor: KarminColors.ink,
+        backgroundColor: palette.page,
         resizeToAvoidBottomInset: resizeToAvoidBottomInset,
         floatingActionButton: floatingActionButton,
         bottomNavigationBar: bottomNavigationBar,
         body: DecoratedBox(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                KarminColors.ink,
-                Color(0xFF0C1018),
-                KarminColors.navy,
-              ],
-              stops: [0.0, 0.55, 1.0],
+              colors: [palette.page, palette.pageMid, palette.pageEnd],
+              stops: const [0.0, 0.55, 1.0],
             ),
           ),
           child: SafeArea(
@@ -73,6 +78,7 @@ class KarminPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         KarminSpacing.pageX,
@@ -97,6 +103,7 @@ class KarminPageHeader extends StatelessWidget {
                       KarminTypography.display(
                         fontSize: 28,
                         fontWeight: FontWeight.w600,
+                        color: palette.text,
                       ),
                 ),
                 if (subtitle != null) ...[
@@ -105,7 +112,7 @@ class KarminPageHeader extends StatelessWidget {
                     subtitle!,
                     style: KarminTypography.body(
                       fontSize: 13,
-                      color: KarminColors.muted,
+                      color: palette.muted,
                     ),
                   ),
                 ],
@@ -126,7 +133,7 @@ class KarminCircleButton extends StatelessWidget {
     this.child,
     this.icon,
     this.tooltip,
-    this.size = 40,
+    this.size = 48,
     this.bordered = false,
   });
 
@@ -139,42 +146,48 @@ class KarminCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final button = Material(
-      color: Colors.transparent,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onPressed,
-        splashColor: KarminColors.carmine.withValues(alpha: 0.12),
-        child: Ink(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1A2438), KarminColors.navy],
-            ),
-            border: Border.all(
-              color: bordered
-                  ? KarminColors.hairline
-                  : KarminColors.hairline.withValues(alpha: 0.55),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+    final palette = KarminPalette.of(context);
+    final visual = size < KarminSpacing.tap ? KarminSpacing.tap : size;
+    final button = Semantics(
+      button: true,
+      label: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          splashColor: palette.carmine.withValues(alpha: 0.12),
+          child: Ink(
+            width: visual,
+            height: visual,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [palette.fieldHi, palette.field],
               ),
-            ],
-          ),
-          child: Center(
-            child: child ??
-                Icon(
-                  icon,
-                  size: size * 0.45,
-                  color: KarminColors.text,
+              border: Border.all(
+                color: bordered
+                    ? palette.hairline
+                    : palette.hairline.withValues(alpha: 0.55),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: palette.shadow,
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
+              ],
+            ),
+            child: Center(
+              child: child ??
+                  Icon(
+                    icon,
+                    size: visual * 0.42,
+                    color: palette.text,
+                  ),
+            ),
           ),
         ),
       ),
@@ -192,28 +205,29 @@ class KarminStatChip extends StatelessWidget {
     super.key,
     required this.label,
     required this.value,
-    this.valueColor = KarminColors.text,
+    this.valueColor,
     this.icon,
   });
 
   final String label;
   final String value;
-  final Color valueColor;
+  final Color? valueColor;
   final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(KarminSpacing.md),
         decoration: BoxDecoration(
           borderRadius: KarminRadii.mdBorder,
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF141A26), KarminColors.surface],
+            colors: [palette.surfaceHi, palette.surface],
           ),
-          border: Border.all(color: KarminColors.hairline.withValues(alpha: 0.85)),
+          border: Border.all(color: palette.hairline.withValues(alpha: 0.85)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -221,13 +235,16 @@ class KarminStatChip extends StatelessWidget {
             Row(
               children: [
                 if (icon != null) ...[
-                  Icon(icon, size: 12, color: KarminColors.muted),
+                  Icon(icon, size: 12, color: palette.muted),
                   const SizedBox(width: 4),
                 ],
                 Flexible(
                   child: Text(
                     label,
-                    style: KarminTypography.label(fontSize: 11),
+                    style: KarminTypography.label(
+                      fontSize: 11,
+                      color: palette.muted,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -239,7 +256,7 @@ class KarminStatChip extends StatelessWidget {
               style: KarminTypography.body(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: valueColor,
+                color: valueColor ?? palette.text,
               ),
             ),
           ],

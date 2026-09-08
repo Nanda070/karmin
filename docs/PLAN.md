@@ -20,16 +20,17 @@ Last updated: 2026-09-08
 | **Stage 1 — Auth** | **Done in code** — live `Authenticate` + debug mock; not claimed proven on a real ELTE account |
 | **Stage 2 — Cached reads** | **Done in code** — calendar/dashboard/unread + OTP resend-via-relogin. Isar deferred (JSON cache). Local notifications still deferred. Live ELTE JSON unproven. |
 | **Stage 3 — Study + Inbox** | **Done in code** — subjects/grades/GPA/credits, inbox list + thread + mark-read, Settings from `UserInfo`, exam signup confirm + `SignUpForExam`. Live payloads best-effort / unproven. |
-| **UI visual system** | **Done** — Figma + Flutter widgets are the source of truth (not a future polish pass) |
+| **Stage 4 — Harden** | **In progress in code** — shared empty/error/cached banners, a11y labels, full light theme pass. Figma light frames pending (file is View-only). Android Gradle / notifications / TestFlight APK not in this slice. |
+| **UI visual system** | **Done** — Figma + Flutter widgets are the source of truth (not a future polish pass). Light tokens now applied in Flutter. |
 | Web platform (`web/`) | Added alongside iOS/Android (dev/preview; v1 ship target remains mobile) |
 | Platforms | Android, iOS, web scaffold. **Android Gradle tree is incomplete** in this checkout (blocker for on-device APK). |
 | Live Neptun auth | Implemented (`LiveNeptunAuth`) + labeled debug/mock. CORS blocks live from Chrome/web. Do not claim ELTE 2FA works until proven on a device with a real account. |
-| Light theme | **Planned, not shipped** — tokens locked; ThemeMode hook in Settings; full pass in Stage 4 |
-| **Next** | Prove Stage 1–3 on a real ELTE account (2FA, calendar/study/inbox JSON field names, exam POST body) |
+| Light theme | **Shipped in Flutter** — Settings System / Dark / Light restyles all 7 screens + shell via `KarminPalette`. Cream paper `#F4EFE6`, not Material white. Figma light frames still pending. |
+| **Next** | Prove Stage 1–3 on a real ELTE account (2FA, calendar/study/inbox JSON field names, exam POST body). Complete Android Gradle + FLAG_SECURE channel before sideload APK. |
 
 Stage 0 exit criteria met: English Today matching the locked dark visual contract, gear → Settings, l10n EN/HU/RU, `NeptunClient` skeleton, secure storage + PIN helpers, doc stubs, MIT license under Cheterin. Luxury UI redesign shipped in Figma (7 screens + Components) and Flutter (`flutter analyze` clean; tests pass).
 
-**Locked (2026-09-08):** every fresh Neptun authentication requires an interactive one-time code (email **or** authenticator). Stored password never completes login alone. Light theme is in scope for a later polish pass; dark remains default.
+**Locked (2026-09-08):** every fresh Neptun authentication requires an interactive one-time code (email **or** authenticator). Stored password never completes login alone. Dark remains default; light is a complementary Karmin cream theme (Stage 4 Flutter pass shipped; Figma light frames pending).
 
 ---
 
@@ -411,9 +412,9 @@ Brand string: **Karmin** (ASCII, no accent). Owner: Cheterin / cheterin.online.
 
 Atmosphere: ink → navy page gradient. Cards (`KarminCard`): hairline borders, quiet surface gradients, optional carmine/steel accent bar. Primary CTA (`KarminPrimaryButton`): carmine gradient.
 
-**Theme (locked decision, not fully shipped):** Dark is default and first-class. Light is **in scope** — complementary Karmin tokens, not a generic Material light. ThemeMode infrastructure (System / Dark / Light) may start in Settings during Auth. The full light pass over all 7 screens + Figma light frames is **Stage 4**. Until then, switching ThemeMode may only affect Material chrome; widgets still read dark tokens.
+**Theme (locked):** Dark is default and first-class. Light is complementary Karmin cream (not generic Material white). Settings System / Dark / Light restyles chrome via `KarminPalette` (`lib/app/theme.dart`). Figma still has dark frames only — light frames pending.
 
-| Light token | Value (planned) |
+| Light token | Value |
 |---|---|
 | Paper / cream page | `#F4EFE6` |
 | Surface | `#FFFCF8` |
@@ -459,7 +460,7 @@ Do not invent extra tabs. Do not add a floating compose button.
 ### 8.4 Remaining UI (not a redesign)
 
 - **Stage 1:** implement Login, Disclaimer, Verification (2FA), Set PIN, Unlock against Figma 01/02 + the 02b contract (behavior + FLAG_SECURE). ThemeMode preference can be stored and exposed in Settings.
-- **Stage 4:** empty / error / offline banners; TalkBack/VoiceOver labels and carmine contrast (§7.10); **full light theme pass** (all 7 screens + Figma light frames) using the tokens in §8.1.
+- **Stage 4:** empty / error / offline banners (`KarminStatusBanner`, `KarminEmptyState`); TalkBack/VoiceOver labels and carmine contrast (§7.10); **full light theme pass in Flutter** (all 7 screens + shell). **Figma light frames still pending** (KARMIN file is View-only from this agent). Android Gradle + local notifications + TestFlight APK are **not** in this polish slice.
 - Web stays a preview scaffold; v1 ship target is mobile.
 - No Lucide migration, no extra motion system (nav already animates the active pill).
 
@@ -503,7 +504,7 @@ List + thread. Read-only. Unread dots.
 
 ### 9.8 Settings
 
-Profile (name, code, training if API gives it), Language, **Theme (System / Dark / Light)**, Face ID, Change PIN, Notifications (class & exam), Privacy, Disclaimer, Sign out. Theme control can ship in Stage 1 as a preference; the light look itself is Stage 4.
+Profile (name, code, training if API gives it), Language, **Theme (System / Dark / Light)**, Face ID, Change PIN, Notifications (class & exam), Privacy, Disclaimer, Sign out. Theme control and the light look are both shipped (Stage 4 Flutter pass). Figma light frames still pending.
 
 ### 9.9 Notifications
 
@@ -603,14 +604,23 @@ Shipped in this pass:
 
 **Debug vs live:** same switch as Stage 1–2. Chrome/web stays on labeled `DebugNeptunStudentApi` (CORS).
 
-### Stage 4 — Harden + closed beta (4–6 days)
+### Stage 4 — Harden + closed beta (4–6 days) — **POLISH IN CODE; BETA NOT SHIPPED**
 
-- Empty/error/offline banners.
-- Accessibility pass on Login, Verification, Unlock, tabs.
-- **Light theme pass:** apply §8.1 light tokens across all 7 screens; add Figma light frames; Settings System / Dark / Light actually restyles chrome (not only the preference).
-- Internal TestFlight + APK.
-- Privacy/Disclaimer finalized.
-- Live smoke script (manual checklist).
+Shipped in this pass:
+
+- Shared empty / error / last-cached banners (`KarminStatusBanner`, `KarminEmptyState`, `KarminInlineError`) on Today, Calendar, Study, Inbox, Auth.
+- Accessibility: 48pt tap targets on icon buttons, Semantics on tabs / PIN keypad / OTP / password toggle, live-region errors, carmine contrast via `accentText` (bright on dark, carmine on cream).
+- **Light theme pass in Flutter:** `KarminPalette` ThemeExtension; Settings System / Dark / Light restyles all 7 screens + shell + cards + primary button. Cream paper, not Material white. Dark remains default.
+- Privacy / Disclaimer wording frozen (still not legal advice). Manual smoke checklist in `docs/SMOKE.md`.
+
+**Not in this slice:**
+
+- Figma light frames (file access is View-only; still pending).
+- Local notifications (`flutter_local_notifications`) — still deferred; cache is ready.
+- Completing the Android Gradle tree / `MainActivity` FLAG_SECURE channel / sideload APK / TestFlight.
+- Live ELTE proof (same gate as Stages 1–3).
+
+**Exit (not met):** invite-only APK + TestFlight after Android tree + live smoke on a real account.
 
 ### After v1 (not scheduled)
 
@@ -714,7 +724,7 @@ License decided: **MIT** under Cheterin.
 
 1. **Stage 1–3 live** on a device (`KARMIN_LIVE_AUTH=true`): confirm calendar/study/inbox JSON keys; prove 2FA + resend-via-relogin; capture `SignUpForExam` body before trusting signup.  
 2. Fill `docs/legal/SOURCES.md` after personally opening ELTE Neptun terms.  
-3. Treat Figma + Flutter widgets as the locked visual contract; English + Karmin + gear → Settings.  
+3. Figma light frames (when write access exists); Android Gradle + FLAG_SECURE `MainActivity` before sideload.  
 4. If ELTE or SDA asks to stop distribution — stop, note in CHANGELOG, contact via cheterin.online.
 
 ---

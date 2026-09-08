@@ -8,6 +8,7 @@ import 'package:karmin/app/theme.dart';
 import 'package:karmin/app/widgets/karmin_card.dart';
 import 'package:karmin/app/widgets/karmin_icons.dart';
 import 'package:karmin/app/widgets/karmin_scaffold.dart' show KarminPageHeader;
+import 'package:karmin/app/widgets/karmin_status.dart';
 import 'package:karmin/data/providers.dart';
 import 'package:karmin/data/student_repository.dart';
 import 'package:karmin/l10n/app_localizations.dart';
@@ -18,14 +19,17 @@ class InboxPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final palette = KarminPalette.of(context);
     final async = ref.watch(studentSnapshotProvider);
     final snapshot = async.valueOrNull ?? StudentSnapshot.empty();
     final unread = snapshot.unreadCount;
+    Future<void> refresh() =>
+        ref.read(studentSnapshotProvider.notifier).refresh();
 
     return RefreshIndicator(
-      color: KarminColors.carmineBright,
-      backgroundColor: KarminColors.navy,
-      onRefresh: () => ref.read(studentSnapshotProvider.notifier).refresh(),
+      color: palette.carmineBright,
+      backgroundColor: palette.field,
+      onRefresh: refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: KarminSpacing.xxl),
@@ -37,18 +41,18 @@ class InboxPage extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
-                color: KarminColors.carmine.withValues(alpha: 0.18),
+                color: palette.carmine.withValues(alpha: 0.18),
                 border: Border.all(
-                  color: KarminColors.carmine.withValues(alpha: 0.4),
+                  color: palette.carmine.withValues(alpha: 0.4),
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     KarminIcons.mail,
                     size: 12,
-                    color: KarminColors.carmineBright,
+                    color: palette.accentText,
                   ),
                   const SizedBox(width: 5),
                   Text(
@@ -56,7 +60,7 @@ class InboxPage extends ConsumerWidget {
                     style: KarminTypography.label(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: KarminColors.carmineBright,
+                      color: palette.accentText,
                     ),
                   ),
                 ],
@@ -69,22 +73,17 @@ class InboxPage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (snapshot.errorMessage != null) ...[
-                  Text(
-                    snapshot.fromCache ? l10n.dataCached : l10n.dataError,
-                    style: KarminTypography.body(
-                      fontSize: 12,
-                      color: KarminColors.muted,
-                    ),
+                  KarminStatusBanner.fromSnapshot(
+                    snapshot: snapshot,
+                    l10n: l10n,
+                    onRetry: refresh,
                   ),
                   const SizedBox(height: KarminSpacing.sm),
                 ],
                 if (snapshot.messages.isEmpty)
-                  Text(
-                    l10n.inboxEmpty,
-                    style: KarminTypography.body(
-                      fontSize: 13,
-                      color: KarminColors.muted,
-                    ),
+                  KarminEmptyState(
+                    message: l10n.inboxEmpty,
+                    icon: KarminIcons.mail,
                   )
                 else
                   for (var i = 0; i < snapshot.messages.length; i++) ...[
@@ -141,6 +140,7 @@ class _MessageRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     final unread = message.unread;
     return KarminCard(
       onTap: onTap,
@@ -163,15 +163,15 @@ class _MessageRow extends StatelessWidget {
                     end: Alignment.bottomRight,
                     colors: unread
                         ? [
-                            KarminColors.carmine.withValues(alpha: 0.35),
-                            KarminColors.navy,
+                            palette.carmine.withValues(alpha: 0.35),
+                            palette.field,
                           ]
-                        : [const Color(0xFF1A2438), KarminColors.navy],
+                        : [palette.fieldHi, palette.field],
                   ),
                   border: Border.all(
                     color: unread
-                        ? KarminColors.carmine.withValues(alpha: 0.45)
-                        : KarminColors.hairline,
+                        ? palette.carmine.withValues(alpha: 0.45)
+                        : palette.hairline,
                   ),
                 ),
                 child: Text(
@@ -179,6 +179,7 @@ class _MessageRow extends StatelessWidget {
                   style: KarminTypography.body(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
+                    color: palette.text,
                   ),
                 ),
               ),
@@ -190,9 +191,9 @@ class _MessageRow extends StatelessWidget {
                     width: 10,
                     height: 10,
                     decoration: BoxDecoration(
-                      color: KarminColors.carmineBright,
+                      color: palette.carmineBright,
                       shape: BoxShape.circle,
-                      border: Border.all(color: KarminColors.ink, width: 2),
+                      border: Border.all(color: palette.page, width: 2),
                     ),
                   ),
                 ),
@@ -211,12 +212,16 @@ class _MessageRow extends StatelessWidget {
                         style: KarminTypography.body(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
+                          color: palette.text,
                         ),
                       ),
                     ),
                     Text(
                       timeLabel,
-                      style: KarminTypography.label(fontSize: 11),
+                      style: KarminTypography.label(
+                        fontSize: 11,
+                        color: palette.muted,
+                      ),
                     ),
                   ],
                 ),
@@ -225,7 +230,7 @@ class _MessageRow extends StatelessWidget {
                   message.subject,
                   style: KarminTypography.body(
                     fontSize: 12,
-                    color: KarminColors.muted,
+                    color: palette.muted,
                   ),
                 ),
               ],
@@ -237,7 +242,7 @@ class _MessageRow extends StatelessWidget {
             child: Icon(
               KarminIcons.chevronRight,
               size: 14,
-              color: KarminColors.muted.withValues(alpha: 0.6),
+              color: palette.muted.withValues(alpha: 0.6),
             ),
           ),
         ],

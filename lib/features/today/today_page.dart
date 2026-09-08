@@ -9,6 +9,7 @@ import 'package:karmin/app/widgets/karmin_icons.dart';
 import 'package:karmin/app/widgets/karmin_scaffold.dart'
     show KarminCircleButton, KarminPageHeader, KarminStatChip;
 import 'package:karmin/app/widgets/karmin_section_label.dart';
+import 'package:karmin/app/widgets/karmin_status.dart';
 import 'package:karmin/auth/providers.dart';
 import 'package:karmin/data/providers.dart';
 import 'package:karmin/data/student_repository.dart';
@@ -20,6 +21,7 @@ class TodayPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final palette = KarminPalette.of(context);
     final now = DateTime.now();
     final dateLine = DateFormat('EEEE · MMM d').format(now);
     final auth = ref.watch(authControllerProvider);
@@ -36,11 +38,13 @@ class TodayPage extends ConsumerWidget {
         ? '—'
         : DateFormat('E HH:mm').format(exam.start);
     final messagesLabel = unread > 0 ? l10n.inboxNewCount(unread) : '—';
+    Future<void> refresh() =>
+        ref.read(studentSnapshotProvider.notifier).refresh();
 
     return RefreshIndicator(
-      color: KarminColors.carmineBright,
-      backgroundColor: KarminColors.navy,
-      onRefresh: () => ref.read(studentSnapshotProvider.notifier).refresh(),
+      color: palette.carmineBright,
+      backgroundColor: palette.field,
+      onRefresh: refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: KarminSpacing.xxl),
@@ -53,11 +57,13 @@ class TodayPage extends ConsumerWidget {
               children: [
                 KarminCircleButton(
                   onPressed: () => context.push('/settings'),
+                  tooltip: l10n.profilePlaceholder,
                   child: Text(
                     initial,
                     style: KarminTypography.body(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
+                      color: palette.text,
                     ),
                   ),
                 ),
@@ -77,12 +83,10 @@ class TodayPage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (snapshot.errorMessage != null) ...[
-                  Text(
-                    snapshot.fromCache ? l10n.dataCached : l10n.dataError,
-                    style: KarminTypography.body(
-                      fontSize: 12,
-                      color: KarminColors.muted,
-                    ),
+                  KarminStatusBanner.fromSnapshot(
+                    snapshot: snapshot,
+                    l10n: l10n,
+                    onRetry: refresh,
                   ),
                   const SizedBox(height: KarminSpacing.sm),
                 ],
@@ -90,7 +94,7 @@ class TodayPage extends ConsumerWidget {
                 KarminCard(
                   variant: KarminCardVariant.elevated,
                   accentBar: true,
-                  accentBarColor: KarminColors.carmineBright,
+                  accentBarColor: palette.carmineBright,
                   padding: const EdgeInsets.fromLTRB(14, 16, 16, 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,14 +104,14 @@ class TodayPage extends ConsumerWidget {
                           Icon(
                             KarminIcons.sparkles,
                             size: 12,
-                            color: KarminColors.carmineBright,
+                            color: palette.accentText,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             l10n.nextClassLabel,
                             style: KarminTypography.label(
                               fontSize: 11,
-                              color: KarminColors.carmineBright,
+                              color: palette.accentText,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -116,7 +120,10 @@ class TodayPage extends ConsumerWidget {
                       const SizedBox(height: 8),
                       Text(
                         next?.title ?? l10n.todayEmptyNext,
-                        style: KarminTypography.title(fontSize: 20),
+                        style: KarminTypography.title(
+                          fontSize: 20,
+                          color: palette.text,
+                        ),
                       ),
                       if (next != null) ...[
                         const SizedBox(height: 10),
@@ -145,7 +152,7 @@ class TodayPage extends ConsumerWidget {
                     KarminStatChip(
                       label: l10n.chipExam,
                       value: examLabel,
-                      valueColor: KarminColors.carmineBright,
+                      valueColor: palette.accentText,
                       icon: KarminIcons.exam,
                     ),
                     const SizedBox(width: KarminSpacing.sm),
@@ -190,12 +197,9 @@ class TodayPage extends ConsumerWidget {
                 KarminSectionLabel(l10n.todaySchedule),
                 const SizedBox(height: KarminSpacing.sm),
                 if (todayEvents.isEmpty)
-                  Text(
-                    l10n.todayEmptySchedule,
-                    style: KarminTypography.body(
-                      fontSize: 13,
-                      color: KarminColors.muted,
-                    ),
+                  KarminEmptyState(
+                    message: l10n.todayEmptySchedule,
+                    icon: KarminIcons.calendar,
                   )
                 else
                   for (var i = 0; i < todayEvents.length; i++) ...[
@@ -205,8 +209,8 @@ class TodayPage extends ConsumerWidget {
                       title: todayEvents[i].title,
                       room: todayEvents[i].room ?? '—',
                       accent: todayEvents[i].isExam
-                          ? KarminColors.carmine
-                          : KarminColors.steel,
+                          ? palette.carmine
+                          : palette.steel,
                       isExam: todayEvents[i].isExam,
                     ),
                   ],
@@ -235,23 +239,24 @@ class _MetaChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: KarminColors.navy.withValues(alpha: 0.7),
+        color: palette.field.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: KarminColors.hairline.withValues(alpha: 0.7)),
+        border: Border.all(color: palette.hairline.withValues(alpha: 0.7)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: KarminColors.muted),
+          Icon(icon, size: 12, color: palette.muted),
           const SizedBox(width: 5),
           Text(
             text,
             style: KarminTypography.body(
               fontSize: 12,
-              color: KarminColors.muted,
+              color: palette.muted,
             ),
           ),
         ],
@@ -273,6 +278,7 @@ class _QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     return Expanded(
       child: KarminCard(
         onTap: onTap,
@@ -289,15 +295,15 @@ class _QuickAction extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    KarminColors.carmine.withValues(alpha: 0.22),
-                    KarminColors.navy,
+                    palette.carmine.withValues(alpha: 0.22),
+                    palette.field,
                   ],
                 ),
                 border: Border.all(
-                  color: KarminColors.carmine.withValues(alpha: 0.25),
+                  color: palette.carmine.withValues(alpha: 0.25),
                 ),
               ),
-              child: Icon(icon, size: 16, color: KarminColors.carmineBright),
+              child: Icon(icon, size: 16, color: palette.accentText),
             ),
             const SizedBox(height: 8),
             Text(
@@ -306,7 +312,7 @@ class _QuickAction extends StatelessWidget {
               style: KarminTypography.label(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: KarminColors.text,
+                color: palette.text,
               ),
             ),
           ],
@@ -333,6 +339,7 @@ class _ScheduleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = KarminPalette.of(context);
     return KarminCard(
       accentBar: true,
       accentBarColor: accent,
@@ -347,7 +354,7 @@ class _ScheduleRow extends StatelessWidget {
               style: KarminTypography.label(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: KarminColors.text,
+                color: palette.text,
               ),
             ),
           ),
@@ -360,6 +367,7 @@ class _ScheduleRow extends StatelessWidget {
                   style: KarminTypography.body(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
+                    color: palette.text,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -368,7 +376,7 @@ class _ScheduleRow extends StatelessWidget {
                     Icon(
                       isExam ? KarminIcons.exam : KarminIcons.mapPin,
                       size: 12,
-                      color: KarminColors.muted,
+                      color: palette.muted,
                     ),
                     const SizedBox(width: 4),
                     Flexible(
@@ -376,7 +384,7 @@ class _ScheduleRow extends StatelessWidget {
                         room,
                         style: KarminTypography.body(
                           fontSize: 12,
-                          color: KarminColors.muted,
+                          color: palette.muted,
                         ),
                       ),
                     ),
@@ -388,7 +396,7 @@ class _ScheduleRow extends StatelessWidget {
           Icon(
             KarminIcons.chevronRight,
             size: 16,
-            color: KarminColors.muted.withValues(alpha: 0.7),
+            color: palette.muted.withValues(alpha: 0.7),
           ),
         ],
       ),
