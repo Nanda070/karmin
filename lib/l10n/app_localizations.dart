@@ -1,0 +1,522 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart' as intl;
+
+import 'app_localizations_en.dart';
+import 'app_localizations_hu.dart';
+import 'app_localizations_ru.dart';
+
+// ignore_for_file: type=lint
+
+/// Callers can lookup localized strings with an instance of AppLocalizations
+/// returned by `AppLocalizations.of(context)`.
+///
+/// Applications need to include `AppLocalizations.delegate()` in their app's
+/// `localizationDelegates` list, and the locales they support in the app's
+/// `supportedLocales` list. For example:
+///
+/// ```dart
+/// import 'l10n/app_localizations.dart';
+///
+/// return MaterialApp(
+///   localizationsDelegates: AppLocalizations.localizationsDelegates,
+///   supportedLocales: AppLocalizations.supportedLocales,
+///   home: MyApplicationHome(),
+/// );
+/// ```
+///
+/// ## Update pubspec.yaml
+///
+/// Please make sure to update your pubspec.yaml to include the following
+/// packages:
+///
+/// ```yaml
+/// dependencies:
+///   # Internationalization support.
+///   flutter_localizations:
+///     sdk: flutter
+///   intl: any # Use the pinned version from flutter_localizations
+///
+///   # Rest of dependencies
+/// ```
+///
+/// ## iOS Applications
+///
+/// iOS applications define key application metadata, including supported
+/// locales, in an Info.plist file that is built into the application bundle.
+/// To configure the locales supported by your app, you’ll need to edit this
+/// file.
+///
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// Then, in the Project Navigator, open the Info.plist file under the Runner
+/// project’s Runner folder.
+///
+/// Next, select the Information Property List item, select Add Item from the
+/// Editor menu, then select Localizations from the pop-up menu.
+///
+/// Select and expand the newly-created Localizations item then, for each
+/// locale your application supports, add a new item and select the locale
+/// you wish to add from the pop-up menu in the Value field. This list should
+/// be consistent with the languages listed in the AppLocalizations.supportedLocales
+/// property.
+abstract class AppLocalizations {
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+
+  final String localeName;
+
+  static AppLocalizations of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
+  }
+
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
+
+  /// A list of this localizations delegate along with the default localizations
+  /// delegates.
+  ///
+  /// Returns a list of localizations delegates containing this delegate along with
+  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
+  /// and GlobalWidgetsLocalizations.delegate.
+  ///
+  /// Additional delegates can be added by appending to this list in
+  /// MaterialApp. This list does not have to be used at all if a custom list
+  /// of delegates is preferred or required.
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
+
+  /// A list of this localizations delegate's supported locales.
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('hu'),
+    Locale('ru'),
+  ];
+
+  /// App brand name
+  ///
+  /// In en, this message translates to:
+  /// **'Karmin'**
+  String get appTitle;
+
+  /// No description provided for @tabToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get tabToday;
+
+  /// No description provided for @tabCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get tabCalendar;
+
+  /// No description provided for @tabStudy.
+  ///
+  /// In en, this message translates to:
+  /// **'Study'**
+  String get tabStudy;
+
+  /// No description provided for @tabInbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Inbox'**
+  String get tabInbox;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @todayPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Today — content coming soon'**
+  String get todayPlaceholder;
+
+  /// No description provided for @calendarPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar — content coming soon'**
+  String get calendarPlaceholder;
+
+  /// No description provided for @studyPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Study — content coming soon'**
+  String get studyPlaceholder;
+
+  /// No description provided for @inboxPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Inbox — content coming soon'**
+  String get inboxPlaceholder;
+
+  /// No description provided for @profilePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Student'**
+  String get profilePlaceholder;
+
+  /// No description provided for @profileSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile details will appear after sign-in'**
+  String get profileSubtitle;
+
+  /// No description provided for @settingsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences will appear here in a later stage.'**
+  String get settingsEmptyHint;
+
+  /// No description provided for @nextClassLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Next class'**
+  String get nextClassLabel;
+
+  /// No description provided for @demoNextClassTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Analysis II'**
+  String get demoNextClassTitle;
+
+  /// No description provided for @demoNextClassMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'D 3-510 · in 12 min'**
+  String get demoNextClassMeta;
+
+  /// No description provided for @chipExam.
+  ///
+  /// In en, this message translates to:
+  /// **'Exam'**
+  String get chipExam;
+
+  /// No description provided for @chipMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get chipMessages;
+
+  /// No description provided for @chipGpa.
+  ///
+  /// In en, this message translates to:
+  /// **'GPA'**
+  String get chipGpa;
+
+  /// No description provided for @demoExamTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Thu 10:00'**
+  String get demoExamTime;
+
+  /// No description provided for @demoMessagesNew.
+  ///
+  /// In en, this message translates to:
+  /// **'3 new'**
+  String get demoMessagesNew;
+
+  /// No description provided for @demoGpa.
+  ///
+  /// In en, this message translates to:
+  /// **'4.32'**
+  String get demoGpa;
+
+  /// No description provided for @calendarWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get calendarWeek;
+
+  /// No description provided for @calendarList.
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get calendarList;
+
+  /// No description provided for @filterClass.
+  ///
+  /// In en, this message translates to:
+  /// **'Class'**
+  String get filterClass;
+
+  /// No description provided for @filterExam.
+  ///
+  /// In en, this message translates to:
+  /// **'Exam'**
+  String get filterExam;
+
+  /// No description provided for @filterTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get filterTask;
+
+  /// No description provided for @filterOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'Online'**
+  String get filterOnline;
+
+  /// No description provided for @studySubjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Subjects'**
+  String get studySubjects;
+
+  /// No description provided for @studyCredits.
+  ///
+  /// In en, this message translates to:
+  /// **'Credits'**
+  String get studyCredits;
+
+  /// No description provided for @studyUpcomingExam.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming exam'**
+  String get studyUpcomingExam;
+
+  /// No description provided for @studySignUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign up'**
+  String get studySignUp;
+
+  /// No description provided for @demoCredits.
+  ///
+  /// In en, this message translates to:
+  /// **'27 / 30'**
+  String get demoCredits;
+
+  /// No description provided for @demoSubjectAnalysis.
+  ///
+  /// In en, this message translates to:
+  /// **'Analysis II'**
+  String get demoSubjectAnalysis;
+
+  /// No description provided for @demoSubjectProgramming.
+  ///
+  /// In en, this message translates to:
+  /// **'Programming'**
+  String get demoSubjectProgramming;
+
+  /// No description provided for @demoSubjectEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'English practice'**
+  String get demoSubjectEnglish;
+
+  /// No description provided for @demoExamLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Discrete math · Thu 10:00'**
+  String get demoExamLine;
+
+  /// No description provided for @inboxNewCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} new'**
+  String inboxNewCount(int count);
+
+  /// No description provided for @demoInboxRegistrar.
+  ///
+  /// In en, this message translates to:
+  /// **'Registrar'**
+  String get demoInboxRegistrar;
+
+  /// No description provided for @demoInboxRegistrarSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Exam period schedule'**
+  String get demoInboxRegistrarSubject;
+
+  /// No description provided for @demoInboxNeptun.
+  ///
+  /// In en, this message translates to:
+  /// **'Neptun'**
+  String get demoInboxNeptun;
+
+  /// No description provided for @demoInboxNeptunSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'New grade: Analysis II'**
+  String get demoInboxNeptunSubject;
+
+  /// No description provided for @demoInboxInstructor.
+  ///
+  /// In en, this message translates to:
+  /// **'Instructor · Kovacs'**
+  String get demoInboxInstructor;
+
+  /// No description provided for @demoInboxInstructorSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Consultation on Thursday'**
+  String get demoInboxInstructorSubject;
+
+  /// No description provided for @settingsLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get settingsLanguage;
+
+  /// No description provided for @settingsLanguageValue.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get settingsLanguageValue;
+
+  /// No description provided for @settingsFaceId.
+  ///
+  /// In en, this message translates to:
+  /// **'Face ID'**
+  String get settingsFaceId;
+
+  /// No description provided for @settingsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get settingsOn;
+
+  /// No description provided for @settingsPin.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN'**
+  String get settingsPin;
+
+  /// No description provided for @settingsChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get settingsChange;
+
+  /// No description provided for @settingsNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get settingsNotifications;
+
+  /// No description provided for @settingsNotificationsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Class & exam'**
+  String get settingsNotificationsValue;
+
+  /// No description provided for @settingsSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get settingsSignOut;
+
+  /// No description provided for @demoProfileName.
+  ///
+  /// In en, this message translates to:
+  /// **'Adnan Huseynli'**
+  String get demoProfileName;
+
+  /// No description provided for @demoProfileCode.
+  ///
+  /// In en, this message translates to:
+  /// **'ABC123 · IK / ELTE'**
+  String get demoProfileCode;
+
+  /// No description provided for @demoProfileProgram.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer Science BSc'**
+  String get demoProfileProgram;
+
+  /// No description provided for @demoEventAnalysisTime.
+  ///
+  /// In en, this message translates to:
+  /// **'8:00–10:00'**
+  String get demoEventAnalysisTime;
+
+  /// No description provided for @demoEventAnalysisRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'D 3-510'**
+  String get demoEventAnalysisRoom;
+
+  /// No description provided for @demoEventProgrammingTime.
+  ///
+  /// In en, this message translates to:
+  /// **'10:15–12:00'**
+  String get demoEventProgrammingTime;
+
+  /// No description provided for @demoEventProgrammingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Programming'**
+  String get demoEventProgrammingTitle;
+
+  /// No description provided for @demoEventProgrammingRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Lágymányos 2.502'**
+  String get demoEventProgrammingRoom;
+
+  /// No description provided for @demoEventExamTime.
+  ///
+  /// In en, this message translates to:
+  /// **'10:00'**
+  String get demoEventExamTime;
+
+  /// No description provided for @demoEventExamTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Exam · Discrete math'**
+  String get demoEventExamTitle;
+
+  /// No description provided for @demoEventExamRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Trefort'**
+  String get demoEventExamRoom;
+}
+
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
+  const _AppLocalizationsDelegate();
+
+  @override
+  Future<AppLocalizations> load(Locale locale) {
+    return SynchronousFuture<AppLocalizations>(lookupAppLocalizations(locale));
+  }
+
+  @override
+  bool isSupported(Locale locale) =>
+      <String>['en', 'hu', 'ru'].contains(locale.languageCode);
+
+  @override
+  bool shouldReload(_AppLocalizationsDelegate old) => false;
+}
+
+AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'en':
+      return AppLocalizationsEn();
+    case 'hu':
+      return AppLocalizationsHu();
+    case 'ru':
+      return AppLocalizationsRu();
+  }
+
+  throw FlutterError(
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
+}
