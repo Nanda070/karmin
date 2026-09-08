@@ -2,16 +2,16 @@
 
 **Owner:** Nanda / Cheterin Group. Unofficial; not affiliated with ELTE or Neptun.
 
-Base (student reads): `https://neptun.elte.hu/Account/api/` (fork institute `…/Account` + `/api/`). Authenticate is **always** absolute `https://neptun.elte.hu/Account/api/Account/Authenticate` (`postUri` — never `baseUrl + api/Account/…`). Legacy `ujhallgato/api` unused for student reads. Live login: fork JSON Authenticate for **both** password and OTP (no MVC mix). Optional email resend still uses MVC Login2FA.
+Base (student reads): `https://neptun.elte.hu/Account/api/` (fork institute `…/Account` + `/api/`). JSON Authenticate is still probed at absolute `https://neptun.elte.hu/Account/api/Account/Authenticate` (`postUri`). **Live ELTE does not serve that controller** (dummy POST → empty HTTP 400, GET → HTML 404). Password login that reaches Verification is Potlap MVC `GET+POST /Account/Login` then `/Account/Login2FA`. Legacy `ujhallgato/api` unused. Optional email resend still uses MVC Login2FA.
 
-Authenticate headers: first password POST is Safari/XHR (Accept + Origin + Referer + `X-Requested-With`) + `Content-Type: application/json` (+ fork `devicecookie` when present); always strip `Authorization`. Fork 1038 fallback keeps a dart:io User-Agent (never empty). Student GETs keep User-Agent `Karmin/0.1.0` + `X-Requested-With`.
+Authenticate JSON probe headers: `Content-Type: application/json` (no charset) + dart:io User-Agent (+ fork `devicecookie` when present); strip `Authorization`. MVC Login uses Safari-like headers + antiforgery. Student GETs keep User-Agent `Karmin/0.1.0` + `X-Requested-With`.
 
-JWT: RAM only. **Real** Authenticate `accessToken` → `Authorization: Bearer` on student GETs only. MVC placeholder `elte-portal-session` is **not** sent as Bearer and blocks student GETs with an honest portal-session error. 401 on a non-auth path drops a real JWT and does **not** retry until OTP succeeds. HTML/maintenance bodies → `NeptunMaintenanceException` (with HTTP status). Login/OTP reject → `HTTP <status>` + short Neptun text (never the opaque “sign on the website” string without status).
+JWT: RAM only. **Real** Authenticate `accessToken` → `Authorization: Bearer` on student GETs only. MVC placeholder `elte-portal-session` is **not** sent as Bearer and blocks student GETs with an honest portal-session error. 401 on a non-auth path drops a real JWT and does **not** retry until OTP succeeds. HTML/maintenance bodies → `NeptunMaintenanceException` (with HTTP status). Login/OTP reject → `HTTP <status>` + short Neptun text or `empty body` (never the opaque “sign on the website” string without status).
 
 | Dart method | Path | Stage | Write? | Notes |
 |---|---|---|---|---|
-| `submitPassword` | JSON `POST /Account/api/Account/Authenticate` `{ userName, password, captcha:"", captchaIdentifier:"", token:"", LCID }` | 1 | yes | First POST **LCID 1033 + Safari/XHR**. Fork 1038 only after a retryable 400. Generic 400 is **not** invalid credentials and includes HTTP status. **No** MVC fallback on ELTE live. |
-| `submitOtp` | same Authenticate URL with `token=<bare 6 digits>` + device cookie | 1 | yes | Same channel as password; reuses the LCID/headers that reached Verification. Never compose email prefix. Failures include HTTP status in the message. |
+| `submitPassword` | One JSON probe `POST /Account/api/Account/Authenticate` `{ userName, password, captcha:"", captchaIdentifier:"", token:"", LCID }`; on empty 400 / HTML 404 → **MVC** `GET+POST /Account/Login` | 1 | yes | JSON 202/JWT stays on Authenticate. ELTE live uses MVC (antiforgery). Generic 400 is **not** invalid credentials. |
+| `submitOtp` | JSON `token=<bare 6 digits>` if JSON 2FA pending; else MVC `POST /Account/Login2FA` `TOTPCode` | 1 | yes | Never compose email prefix on Authenticator. After MVC success, one JSON upgrade attempt for JWT (ignored if still 400). Failures include HTTP status. |
 | `reset` | clears JSON 2FA pending + device cookie + portal cookies | — | — | Called from `AuthController.signOut`. |
 | `resendEmailCode` | **`POST /Account/Login2FA` + `GetEmail=true`** (or Login + GetEmail) | 1–2 | yes | Optional email path only. Visible error if no prefix. |
 | `getCalendarEvents` | `GET Calendar/GetCalendarEvents` | 2 | no | Query: `startDate` / `endDate` plus display flags. Parser best-effort. Live ELTE keys unconfirmed. |

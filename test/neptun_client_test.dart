@@ -182,7 +182,7 @@ void main() {
       xhr.add(options.headers['X-Requested-With']?.toString());
       final map = asAuthBody(options.data);
       tokens.add('${map['token'] ?? ''}');
-      expect(map['LCID'], 1033);
+      expect(map['LCID'], 1038);
       if ('${map['token'] ?? ''}'.isEmpty) {
         return jsonBody(202, {
           'data': {'isTwoFactorRequired': true},
@@ -220,7 +220,7 @@ void main() {
     expect(tokens, ['', '654321']);
     // Stale JWT must not ride along on Authenticate.
     expect(authHeaders, everyElement(isNull));
-    expect(xhr, everyElement('XMLHttpRequest'));
+    expect(xhr, everyElement(isNull));
     expect(contentTypes, everyElement(Headers.jsonContentType));
   });
 

@@ -41,8 +41,8 @@ class NeptunClient {
           final authCall = isAuthenticateUri(options.uri) ||
               options.path.contains('Account/Authenticate');
           // Authenticate: never send Bearer (stale JWT 401s OTP). Header
-          // profile is `rich` (Safari/XHR, first password POST) or `fork`
-          // (Content-Type + dart:io UA). Extra headers / stale JWT 401 OTP.
+          // profile is fork-minimal (Content-Type + dart:io UA). Extra
+          // Safari/XHR headers do not make ELTE's missing JSON API exist.
           if (authCall) {
             applyAuthenticateRequestHeaders(options);
           } else if (hasRealJwt) {
@@ -258,11 +258,11 @@ void applyEltePortalBrowserHeaders(RequestOptions options) {
 /// Extra key on Authenticate [RequestOptions]: `'fork'` (default) or `'rich'`.
 const String authenticateHeaderProfileExtra = 'karminAuthenticateProfile';
 
-/// dart:io `http.Request` always sends a User-Agent. Stripping it ( +5 / +6
-/// "fork" profile) is not fork-accurate and some fronts answer HTTP 400.
+/// dart:io `http.Request` always sends a User-Agent.
 const String forkAuthenticateUserAgent = 'Dart/3.5 (dart:io)';
 
-/// Fork-minimal Authenticate headers, or Safari/XHR (first password POST).
+/// Fork-minimal Authenticate headers. Optional `'rich'` keeps Safari/XHR for
+/// tests; live password uses fork then MVC Login, not a header retry.
 void applyAuthenticateRequestHeaders(RequestOptions options) {
   // Always strip Bearer on Authenticate — stale JWT 401s the OTP step.
   options.headers.remove('Authorization');

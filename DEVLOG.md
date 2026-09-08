@@ -6,6 +6,14 @@
 
 ## 8 сентября 2026 г.
 
+### Auth / password HTTP 400 (`0.1.0+8`)
+
+- Живой dummy `POST …/Account/api/Account/Authenticate` (fork JSON) → **пустой HTTP 400**, GET того же URL → HTML 404. Это не LCID и не Safari: на публичном ELTE **нет** JSON Authenticate (у Óbuda тот же DTO даёт JSON 500, не 400)
+- Вход, который раньше доходил до Verification: MVC `GET+POST /Account/Login` (antiforgery + cookies) → `/Account/Login2FA` с цифрами Microsoft Authenticator в `TOTPCode`, без префикса `732-`
+- Один JSON-зонд оставлен (на случай 202/JWT). Пустой 400 сразу MVC, без перебора 1033/1038
+- Ошибки: HTTP статус + `empty body`, если тело пустое
+- IPA `0.1.0+8`
+
 ### Auth / password HTTP 400 (`0.1.0+7`)
 
 - **`0.1.0+6` ломал парольный шаг:** первый POST был `LCID:1038` + обрезка UA/Accept → ELTE отвечал HTTP 400; generic 400 считался fatal и не доходил до 1033 / Safari

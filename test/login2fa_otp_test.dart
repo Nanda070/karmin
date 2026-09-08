@@ -346,7 +346,7 @@ void main() {
         final map = asAuthBody(options.data);
         final token = '${map['token'] ?? ''}';
         expect(map.containsKey('lcid'), isFalse);
-        expect(map['LCID'], 1033);
+        expect(map['LCID'], 1038);
         if (token.isEmpty) {
           return jsonBody(202, {
             'data': {
