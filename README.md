@@ -62,8 +62,11 @@ Live ELTE on a device: `flutter run --dart-define=KARMIN_LIVE_AUTH=true` (or ins
 
 ### Docs
 
+**Developers:** start with [DEV.md](DEV.md) (single map — stack, auth, build).
+
 | Doc | Purpose |
 |---|---|
+| [DEV.md](DEV.md) | Developer onboarding (the map) |
 | [docs/PLAN.md](docs/PLAN.md) | Full product & stage plan |
 | [docs/IOS_SIDELLOAD.md](docs/IOS_SIDELLOAD.md) | Free iPhone install (no $99 account) |
 | [docs/ANDROID_BUILD.md](docs/ANDROID_BUILD.md) | Windows APK + optional emulator (no Android phone) |
@@ -140,6 +143,8 @@ flutter run
 ```
 
 **Основной тест — iPhone**, не Android. На Windows IPA не собирается. Бесплатная установка: [docs/IOS_SIDELLOAD.md](docs/IOS_SIDELLOAD.md) (`online.cheterin.karmin`). Android здесь — эмулятор / CI. Live Neptun: `--dart-define=KARMIN_LIVE_AUTH=true` или release IPA.
+
+**Разработчикам:** сначала [DEV.md](DEV.md) (один файл — стек, вход, сборка).
 
 ### Лицензия и правовые тексты
 
