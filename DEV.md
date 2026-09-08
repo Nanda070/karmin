@@ -65,7 +65,7 @@ The legacy public path `https://neptun.elte.hu/ujhallgato/api/` is a **stub** (G
 
 **Why fork JSON first:** Neptun-Mobile-fork never does Login2FA email dispatch; its working 2FA is Authenticate + `token`. Do not invent `RequestEmail` / `Provider=Email`.
 
-`LiveNeptunAuth` tries fork Absolute Authenticate first (8s timeouts), then relative `Account/Authenticate` on the same `Account/api` base, then `EltePortalLogin`. JSON `/Account/api/…` keeps the app User-Agent (not Safari MVC headers). Captcha / lockout / real auth errors are **not** swallowed into that fallback.
+`LiveNeptunAuth` POSTs Authenticate only via absolute `NeptunClient.authenticateUrl` (`dio.postUri`, 8s timeouts) so the student `baseUrl` (`…/Account/api/`) cannot double `/api/`. Then `EltePortalLogin` MVC fallback. No Bearer on Authenticate. JSON `/Account/api/…` keeps the app User-Agent (not Safari MVC headers). Captcha / lockout / real auth errors are **not** swallowed into that fallback.
 
 User-Agent (JSON client): `Karmin/0.1.0 (Flutter; ELTE student client)`. MVC form posts clear `X-Requested-With` and send `application/x-www-form-urlencoded`.
 

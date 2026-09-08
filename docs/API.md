@@ -2,11 +2,11 @@
 
 **Owner:** Nanda / Cheterin Group. Unofficial; not affiliated with ELTE or Neptun.
 
-Base: `https://neptun.elte.hu/Account/api/` (fork institute + `/api/`, same as Neptun-Mobile-fork). Legacy `ujhallgato/api` is unused for student reads (public stub). Live login: fork JSON `POST …/Account/api/Account/Authenticate` first, then relative Authenticate on the same base, then MVC `POST /Account/Login` → `/Account/Login2FA`.
+Base (student reads): `https://neptun.elte.hu/Account/api/` (fork institute `…/Account` + `/api/`). Authenticate is **always** absolute `https://neptun.elte.hu/Account/api/Account/Authenticate` (`postUri` — never `baseUrl + api/Account/…`). Legacy `ujhallgato/api` unused for student reads. Live login: fork JSON Authenticate, then MVC `POST /Account/Login` → `/Account/Login2FA`.
 
-User-Agent: `Karmin/0.1.0 (Flutter; ELTE student client)` plus `X-Requested-With: XMLHttpRequest` on JSON auth (not Safari MVC headers).
+User-Agent: `Karmin/0.1.0 (Flutter; ELTE student client)` plus `X-Requested-With: XMLHttpRequest` on JSON auth (not Safari MVC headers). Authenticate strips `Authorization`.
 
-JWT: RAM only. **Real** Authenticate `accessToken` → `Authorization: Bearer`. MVC placeholder `elte-portal-session` is **not** sent as Bearer and blocks student GETs with an honest portal-session error. 401 on a non-auth path drops a real JWT and does **not** retry until OTP succeeds. HTML/maintenance bodies → `NeptunMaintenanceException`.
+JWT: RAM only. **Real** Authenticate `accessToken` → `Authorization: Bearer` on student GETs only. MVC placeholder `elte-portal-session` is **not** sent as Bearer and blocks student GETs with an honest portal-session error. 401 on a non-auth path drops a real JWT and does **not** retry until OTP succeeds. HTML/maintenance bodies → `NeptunMaintenanceException`.
 
 | Dart method | Path | Stage | Write? | Notes |
 |---|---|---|---|---|

@@ -82,7 +82,7 @@ Live ELTE on a device: `flutter run --dart-define=KARMIN_LIVE_AUTH=true` (or ins
 - Software: [MIT](LICENSE) — Copyright © 2026 Nanda / Cheterin Group — provided **AS IS**
 - Product disclaimer: [docs/DISCLAIMER.md](docs/DISCLAIMER.md)
 - Privacy: [docs/PRIVACY.md](docs/PRIVACY.md)
-- ELTE API base: `https://neptun.elte.hu/Account/api/` (fork-aligned; not `ujhallgato`)
+- ELTE API base: `https://neptun.elte.hu/Account/api/` (fork-aligned; not `ujhallgato`); Authenticate absolute `…/Account/api/Account/Authenticate`
 
 If ELTE or SDA asks that distribution stop, we stop and record it in the changelog.
 

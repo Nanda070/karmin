@@ -310,7 +310,7 @@ class DebugNeptunAuth implements NeptunAuthApi {
 }
 
 /// Live login aligned with [zoligamer/Neptun-Mobile-fork]:
-/// `POST {origin}/Account/api/Account/Authenticate` then 2FA via `token`.
+/// `POST {institute}/api/Account/Authenticate` then 2FA via `token`.
 /// MVC `/Account/Login` is only a fallback; email send is never a hard blocker.
 class LiveNeptunAuth implements NeptunAuthApi {
   LiveNeptunAuth(this._client) : _portal = EltePortalLogin(_client);
@@ -323,9 +323,10 @@ class LiveNeptunAuth implements NeptunAuthApi {
   /// start of every [submitPassword] (unlock / 401 re-login must keep context).
   var _jsonTwoFactorPending = false;
 
-  /// Fork ELTE institute URL → Authenticate under `/Account/api/…`.
-  static const String forkAuthenticateUrl =
-      '${EltePortalLogin.origin}/Account/api/Account/Authenticate';
+  /// Fork ELTE: `{instituteBase}/api/Account/Authenticate`.
+  /// Kept absolute so Dio's student [NeptunClient.baseUrl] (`…/Account/api/`)
+  /// cannot double `/api/` if a relative `api/Account/…` path is ever used.
+  static const String forkAuthenticateUrl = NeptunClient.authenticateUrl;
 
   static const _authHeaders = {
     'Content-Type': 'application/json',
@@ -358,10 +359,9 @@ class LiveNeptunAuth implements NeptunAuthApi {
     // must not make [submitOtp] abandon the fork Authenticate `token` path.
     _portal.clear();
 
-    // 1) Fork modern JSON (primary).
+    // Fork modern JSON only (absolute URI — never relative under Account/api).
     try {
-      final ticket = await _authenticateAbsolute(
-        forkAuthenticateUrl,
+      final ticket = await _authenticate(
         authenticateJsonBody(
           userName: code,
           password: password,
@@ -388,42 +388,10 @@ class LiveNeptunAuth implements NeptunAuthApi {
     } on NeptunAuthException {
       rethrow;
     } on NeptunException {
-      // Fall through to relative Account/api / MVC.
-    }
-
-    // 2) Relative JSON on the same Account/api base (same as fork after
-    //    institute URL is set). Usually redundant with step 1.
-    try {
-      final ticket = await _authenticateRelative(
-        authenticateJsonBody(
-          userName: code,
-          password: password,
-          lcid: lcid,
-        ),
-      );
-      if (ticket.step == NeptunAuthStep.authenticated) {
-        _jsonTwoFactorPending = false;
-        return ticket;
-      }
-      if (ticket.step == NeptunAuthStep.needsOtp) {
-        _jsonTwoFactorPending = true;
-        return const AuthTicket(
-          step: NeptunAuthStep.needsOtp,
-          otpChannel: OtpChannel.authenticator,
-          otpPrefix: '',
-        );
-      }
-    } on NeptunCaptchaException {
-      rethrow;
-    } on NeptunLockoutException {
-      rethrow;
-    } on NeptunAuthException {
-      rethrow;
-    } on NeptunException {
       // MVC fallback.
     }
 
-    // 3) ASP.NET MVC Login2FA — prefer authenticator; email is optional (resend).
+    // ASP.NET MVC Login2FA — prefer authenticator; email is optional (resend).
     // Only clear JSON pending after MVC owns the 2FA session (preserve flag if
     // portal throws so OTP can still retry fork Authenticate).
     final portalTicket = await _portal.submitPassword(
@@ -458,8 +426,7 @@ class LiveNeptunAuth implements NeptunAuthApi {
         otp: token,
       );
       try {
-        final ticket =
-            await _authenticateAbsolute(forkAuthenticateUrl, payload);
+        final ticket = await _authenticate(payload);
         if (ticket.step == NeptunAuthStep.authenticated) {
           _jsonTwoFactorPending = false;
           _portal.clear();
@@ -470,26 +437,9 @@ class LiveNeptunAuth implements NeptunAuthApi {
       } on NeptunAuthException {
         throw const NeptunOtpException();
       } on NeptunUnavailableException {
-        // try relative / portal
+        // try portal
       } on NeptunException {
-        // try relative / portal
-      }
-
-      try {
-        final ticket = await _authenticateRelative(payload);
-        if (ticket.step == NeptunAuthStep.authenticated) {
-          _jsonTwoFactorPending = false;
-          _portal.clear();
-        }
-        return ticket;
-      } on NeptunAuthException {
-        // Give MVC portal a chance when a Login2FA session exists.
-      } on NeptunUnavailableException {
-        // Give MVC portal a chance when a Login2FA session exists.
-      } on NeptunOtpException {
-        if (!_portal.hasSession) {
-          rethrow;
-        }
+        // try portal
       }
     }
 
@@ -512,40 +462,12 @@ class LiveNeptunAuth implements NeptunAuthApi {
     );
   }
 
-  Future<AuthTicket> _authenticateAbsolute(
-    String url,
-    Map<String, dynamic> payload,
-  ) async {
+  /// Absolute `postUri` — bypasses Dio [NeptunClient.baseUrl] merge entirely.
+  Future<AuthTicket> _authenticate(Map<String, dynamic> payload) async {
+    final uri = Uri.parse(forkAuthenticateUrl);
     try {
-      final response = await _client.dio.post<dynamic>(
-        url,
-        data: payload,
-        options: Options(
-          headers: _authHeaders,
-          validateStatus: (status) => status != null && status < 500,
-          sendTimeout: const Duration(seconds: 8),
-          receiveTimeout: const Duration(seconds: 8),
-        ),
-      );
-      return parseAuthenticateResponse(
-        statusCode: response.statusCode,
-        data: response.data,
-      );
-    } on DioException catch (error) {
-      if (error.response != null) {
-        return parseAuthenticateResponse(
-          statusCode: error.response!.statusCode,
-          data: error.response!.data,
-        );
-      }
-      throw mapDioException(error);
-    }
-  }
-
-  Future<AuthTicket> _authenticateRelative(Map<String, dynamic> payload) async {
-    try {
-      final response = await _client.dio.post<dynamic>(
-        'Account/Authenticate',
+      final response = await _client.dio.postUri<dynamic>(
+        uri,
         data: payload,
         options: Options(
           headers: _authHeaders,

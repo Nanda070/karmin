@@ -121,6 +121,87 @@ void main() {
     expect(NeptunClient.baseUrl, 'https://neptun.elte.hu/Account/api/');
   });
 
+  test('Authenticate URL matches fork institute + /api/Account/Authenticate', () {
+    expect(
+      NeptunClient.instituteBaseUrl,
+      'https://neptun.elte.hu/Account',
+    );
+    expect(
+      NeptunClient.authenticateUrl,
+      'https://neptun.elte.hu/Account/api/Account/Authenticate',
+    );
+    expect(
+      LiveNeptunAuth.forkAuthenticateUrl,
+      NeptunClient.authenticateUrl,
+    );
+    // Relative student-style path under Account/api is correct.
+    expect(
+      NeptunClient.resolveAgainstBase('Account/Authenticate').toString(),
+      'https://neptun.elte.hu/Account/api/Account/Authenticate',
+    );
+    // Wrong fork-style relative under api base would double /api/.
+    expect(
+      NeptunClient.resolveAgainstBase('api/Account/Authenticate').toString(),
+      'https://neptun.elte.hu/Account/api/api/Account/Authenticate',
+    );
+    expect(
+      NeptunClient.authenticateUrl.contains('/api/api/'),
+      isFalse,
+    );
+  });
+
+  test('password + OTP Authenticate use absolute fork URL, bare token, no Bearer',
+      () async {
+    final urls = <String>[];
+    final tokens = <String>[];
+    final authHeaders = <String?>[];
+    final adapter = ScriptedAdapter((options) {
+      urls.add(options.uri.toString());
+      authHeaders.add(options.headers['Authorization']?.toString());
+      final data = options.data;
+      final map = data is Map
+          ? data.map((k, v) => MapEntry('$k', v))
+          : <String, dynamic>{};
+      tokens.add('${map['token'] ?? ''}');
+      if ('${map['token'] ?? ''}'.isEmpty) {
+        return jsonBody(202, {
+          'data': {'isTwoFactorRequired': true},
+        });
+      }
+      return jsonBody(200, {
+        'data': {'accessToken': 'jwt-otp'},
+      });
+    });
+    final client = clientWith(adapter)..setAccessToken('stale-jwt');
+    final auth = LiveNeptunAuth(client);
+    final first = await auth.submitPassword(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1038,
+    );
+    expect(first.step, NeptunAuthStep.needsOtp);
+    expect(auth.jsonTwoFactorPending, isTrue);
+
+    final done = await auth.submitOtp(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1038,
+      otp: '654321',
+    );
+    expect(done.accessToken, 'jwt-otp');
+    expect(urls, hasLength(2));
+    expect(
+      urls,
+      everyElement(
+        'https://neptun.elte.hu/Account/api/Account/Authenticate',
+      ),
+    );
+    expect(urls.any((u) => u.contains('/api/api/')), isFalse);
+    expect(tokens, ['', '654321']);
+    // Stale JWT must not ride along on Authenticate.
+    expect(authHeaders, everyElement(isNull));
+  });
+
   test('HTML maintenance body maps to NeptunMaintenanceException', () {
     final error = DioException(
       requestOptions: RequestOptions(

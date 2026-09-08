@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:karmin/api/dtos/json_util.dart';
 import 'package:karmin/api/exceptions.dart';
@@ -37,16 +38,23 @@ class NeptunClient {
       InterceptorsWrapper(
         onRequest: (options, handler) {
           applyEltePortalBrowserHeaders(options);
-          // Never send the MVC placeholder as Bearer — it 401s every GET and
-          // falsely triggers the OTP unlock loop.
-          if (hasRealJwt) {
+          final authCall = isAuthenticateUri(options.uri) ||
+              options.path.contains('Account/Authenticate');
+          // Fork Authenticate never sends Bearer (password or OTP `token`).
+          // A leftover JWT would make Neptun reject a valid Authenticator code.
+          if (authCall) {
+            options.headers.remove('Authorization');
+          } else if (hasRealJwt) {
+            // Never send the MVC placeholder as Bearer — it 401s every GET and
+            // falsely triggers the OTP unlock loop.
             options.headers['Authorization'] = 'Bearer $_accessToken';
           }
           handler.next(options);
         },
         onError: (error, handler) {
-          final path = error.requestOptions.path;
-          final isAuth = path.contains('Account/Authenticate');
+          final options = error.requestOptions;
+          final isAuth = isAuthenticateUri(options.uri) ||
+              options.path.contains('Account/Authenticate');
           if (error.response?.statusCode == 401 &&
               !isAuth &&
               hasRealJwt) {
@@ -59,8 +67,19 @@ class NeptunClient {
     );
   }
 
-  /// Same host as fork Authenticate / calendar / messages.
-  static const String baseUrl = 'https://neptun.elte.hu/Account/api/';
+  /// Fork institute URL (`universityNameUrlPairs.json` ELTE entry).
+  /// Authenticate / calendar paths are `$instituteBaseUrl/api/…`.
+  static const String instituteBaseUrl = 'https://neptun.elte.hu/Account';
+
+  /// Student JSON host = institute + `/api/` (calendar, messages, …).
+  /// Do **not** append another `api/` segment onto this for Authenticate.
+  static const String baseUrl = '$instituteBaseUrl/api/';
+
+  /// Fork formula: `{instituteBase}/api/Account/Authenticate`.
+  /// Always prefer this absolute URL — never `baseUrl + 'api/Account/…'`
+  /// (that doubles `/api/`).
+  static const String authenticateUrl =
+      '$instituteBaseUrl/api/Account/Authenticate';
 
   /// Legacy SDA path — public ELTE does not serve student JSON here.
   static const String legacyUjhallgatoBaseUrl =
@@ -68,6 +87,20 @@ class NeptunClient {
 
   /// MVC cookie login placeholder — not a real Bearer JWT.
   static const String portalSessionToken = 'elte-portal-session';
+
+  /// True when [uri] is the fork Authenticate endpoint (password or OTP).
+  static bool isAuthenticateUri(Uri uri) {
+    final path = uri.path.toLowerCase();
+    return path.endsWith('/account/authenticate') ||
+        path.endsWith('/account/api/account/authenticate');
+  }
+
+  /// Resolve how Dio would hit Authenticate given [baseUrl] + a relative path.
+  /// Used in tests to prove we never produce `/api/api/Account/Authenticate`.
+  @visibleForTesting
+  static Uri resolveAgainstBase(String path) {
+    return RequestOptions(path: path, baseUrl: baseUrl).uri;
+  }
 
   static const String userAgent =
       'Karmin/0.1.0 (Flutter; ELTE student client)';

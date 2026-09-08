@@ -513,6 +513,7 @@ void main() {
     final adapter = ScriptedAdapter((options) {
       if (options.uri.toString().contains('Account/Authenticate')) {
         jsonCalls += 1;
+        // First password: JSON 202. Second password: JSON miss → MVC.
         if (jsonCalls == 1) {
           return jsonBody(202, {'isTwoFactorRequired': true});
         }
