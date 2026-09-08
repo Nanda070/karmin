@@ -1,133 +1,178 @@
 import 'package:flutter/material.dart';
-import 'package:karmin/app/widgets/karmin_icons.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
+import 'package:karmin/api/dtos/calendar_event.dart';
 import 'package:karmin/app/theme.dart';
 import 'package:karmin/app/widgets/karmin_card.dart';
 import 'package:karmin/app/widgets/karmin_filter_chip.dart';
+import 'package:karmin/app/widgets/karmin_icons.dart';
 import 'package:karmin/app/widgets/karmin_scaffold.dart' show KarminPageHeader;
 import 'package:karmin/app/widgets/karmin_segmented.dart';
+import 'package:karmin/data/providers.dart';
+import 'package:karmin/data/student_repository.dart';
 import 'package:karmin/l10n/app_localizations.dart';
 
-class CalendarPage extends StatefulWidget {
+class CalendarPage extends ConsumerStatefulWidget {
   const CalendarPage({super.key});
 
   @override
-  State<CalendarPage> createState() => _CalendarPageState();
+  ConsumerState<CalendarPage> createState() => _CalendarPageState();
 }
 
-class _CalendarPageState extends State<CalendarPage> {
+class _CalendarPageState extends ConsumerState<CalendarPage> {
   int _mode = 0;
-  int _dayIndex = 0;
+  late DateTime _weekStart;
+  late int _dayIndex;
   final Set<String> _filters = {'class', 'exam'};
 
-  static const _days = [
-    ('M', '8'),
-    ('T', '9'),
-    ('W', '10'),
-    ('Th', '11'),
-    ('F', '12'),
-    ('S', '13'),
-    ('Su', '14'),
-  ];
+  static const _weekdayLetters = ['M', 'T', 'W', 'Th', 'F', 'S', 'Su'];
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    _weekStart = today.subtract(Duration(days: today.weekday - 1));
+    _dayIndex = today.weekday - 1;
+  }
+
+  DateTime get _selectedDay => _weekStart.add(Duration(days: _dayIndex));
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final async = ref.watch(studentSnapshotProvider);
+    final snapshot = async.valueOrNull ?? StudentSnapshot.empty();
+    final visible = _visibleEvents(snapshot);
 
-    return ListView(
-      padding: const EdgeInsets.only(bottom: KarminSpacing.xxl),
-      children: [
-        KarminPageHeader(
-          title: l10n.tabCalendar,
-          trailing: Icon(
-            KarminIcons.calendarRange,
-            size: 20,
-            color: KarminColors.muted,
+    return RefreshIndicator(
+      color: KarminColors.carmineBright,
+      backgroundColor: KarminColors.navy,
+      onRefresh: () => ref.read(studentSnapshotProvider.notifier).refresh(),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: KarminSpacing.xxl),
+        children: [
+          KarminPageHeader(
+            title: l10n.tabCalendar,
+            trailing: Icon(
+              KarminIcons.calendarRange,
+              size: 20,
+              color: KarminColors.muted,
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: KarminSpacing.pageX),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              KarminSegmented(
-                labels: [l10n.calendarWeek, l10n.calendarList],
-                index: _mode,
-                onChanged: (i) => setState(() => _mode = i),
-              ),
-              const SizedBox(height: KarminSpacing.lg),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  for (var i = 0; i < _days.length; i++)
-                    _DayCell(
-                      weekday: _days[i].$1,
-                      day: _days[i].$2,
-                      selected: i == _dayIndex,
-                      onTap: () => setState(() => _dayIndex = i),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: KarminSpacing.pageX),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (snapshot.errorMessage != null) ...[
+                  Text(
+                    snapshot.fromCache ? l10n.dataCached : l10n.dataError,
+                    style: KarminTypography.body(
+                      fontSize: 12,
+                      color: KarminColors.muted,
                     ),
+                  ),
+                  const SizedBox(height: KarminSpacing.sm),
                 ],
-              ),
-              const SizedBox(height: KarminSpacing.lg),
-              Wrap(
-                spacing: KarminSpacing.sm,
-                runSpacing: KarminSpacing.sm,
-                children: [
-                  KarminFilterChip(
-                    label: l10n.filterClass,
-                    selected: _filters.contains('class'),
-                    onTap: () => _toggleFilter('class'),
-                  ),
-                  KarminFilterChip(
-                    label: l10n.filterExam,
-                    selected: _filters.contains('exam'),
-                    onTap: () => _toggleFilter('exam'),
-                  ),
-                  KarminFilterChip(
-                    label: l10n.filterTask,
-                    selected: _filters.contains('task'),
-                    onTap: () => _toggleFilter('task'),
-                  ),
-                  KarminFilterChip(
-                    label: l10n.filterOnline,
-                    selected: _filters.contains('online'),
-                    onTap: () => _toggleFilter('online'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: KarminSpacing.lg),
-              if (_filters.contains('class') || _filters.isEmpty) ...[
-                _EventCard(
-                  time: l10n.demoEventAnalysisTime,
-                  title: l10n.demoSubjectAnalysis,
-                  room: l10n.demoEventAnalysisRoom,
-                  professor: 'Dr. Nagy',
-                  accent: KarminColors.steel,
+                KarminSegmented(
+                  labels: [l10n.calendarWeek, l10n.calendarList],
+                  index: _mode,
+                  onChanged: (i) => setState(() => _mode = i),
                 ),
-                const SizedBox(height: KarminSpacing.sm),
-                _EventCard(
-                  time: l10n.demoEventProgrammingTime,
-                  title: l10n.demoEventProgrammingTitle,
-                  room: l10n.demoEventProgrammingRoom,
-                  professor: 'Kovács Péter',
-                  accent: KarminColors.steel,
+                const SizedBox(height: KarminSpacing.lg),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    for (var i = 0; i < 7; i++)
+                      _DayCell(
+                        weekday: _weekdayLetters[i],
+                        day: '${_weekStart.add(Duration(days: i)).day}',
+                        selected: i == _dayIndex,
+                        onTap: () => setState(() => _dayIndex = i),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: KarminSpacing.sm),
+                const SizedBox(height: KarminSpacing.lg),
+                Wrap(
+                  spacing: KarminSpacing.sm,
+                  runSpacing: KarminSpacing.sm,
+                  children: [
+                    KarminFilterChip(
+                      label: l10n.filterClass,
+                      selected: _filters.contains('class'),
+                      onTap: () => _toggleFilter('class'),
+                    ),
+                    KarminFilterChip(
+                      label: l10n.filterExam,
+                      selected: _filters.contains('exam'),
+                      onTap: () => _toggleFilter('exam'),
+                    ),
+                    KarminFilterChip(
+                      label: l10n.filterTask,
+                      selected: _filters.contains('task'),
+                      onTap: () => _toggleFilter('task'),
+                    ),
+                    KarminFilterChip(
+                      label: l10n.filterOnline,
+                      selected: _filters.contains('online'),
+                      onTap: () => _toggleFilter('online'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: KarminSpacing.lg),
+                if (visible.isEmpty)
+                  Text(
+                    l10n.calendarEmpty,
+                    style: KarminTypography.body(
+                      fontSize: 13,
+                      color: KarminColors.muted,
+                    ),
+                  )
+                else
+                  for (var i = 0; i < visible.length; i++) ...[
+                    if (i > 0) const SizedBox(height: KarminSpacing.sm),
+                    _EventCard(
+                      time: _timeLabel(visible[i]),
+                      title: visible[i].title,
+                      room: visible[i].room ?? '—',
+                      professor: visible[i].person ?? '—',
+                      accent: visible[i].isExam
+                          ? KarminColors.carmine
+                          : KarminColors.steel,
+                      isExam: visible[i].isExam,
+                    ),
+                  ],
               ],
-              if (_filters.contains('exam') || _filters.isEmpty)
-                _EventCard(
-                  time: l10n.demoEventExamTime,
-                  title: l10n.demoEventExamTitle,
-                  room: l10n.demoEventExamRoom,
-                  professor: 'Exam hall',
-                  accent: KarminColors.carmine,
-                  isExam: true,
-                ),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
+  }
+
+  List<CalendarEvent> _visibleEvents(StudentSnapshot snapshot) {
+    final source = _mode == 0
+        ? snapshot.eventsOn(_selectedDay)
+        : snapshot.events
+            .where(
+              (event) =>
+                  !event.start.isBefore(_weekStart) &&
+                  event.start.isBefore(_weekStart.add(const Duration(days: 7))),
+            )
+            .toList();
+    return source.where((event) => event.matchesFilters(_filters)).toList();
+  }
+
+  String _timeLabel(CalendarEvent event) {
+    final start = DateFormat('H:mm').format(event.start);
+    final end = DateFormat('H:mm').format(event.end);
+    if (event.isExam) {
+      return start;
+    }
+    return '$start–$end';
   }
 
   void _toggleFilter(String key) {

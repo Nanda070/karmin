@@ -75,5 +75,79 @@
   "todayActionSchedule": "Órarend",
   "todayActionSubjects": "Tárgyak",
   "todayActionInbox": "Bejövő",
-  "todaySchedule": "Mai órarend"
+  "todaySchedule": "Mai órarend",
+  "disclaimerTitle": "Nem hivatalos kliens",
+  "disclaimerBody": "A Karmin a Cheterin nem hivatalos terméke. Nem áll kapcsolatban az ELTE-vel vagy a Neptun üzemeltetőjével, és azok nem támogatják.\n\nA Neptun-jelszó a telefon biztonságos tárolójában marad, hogy Face ID-val vagy PIN-nel feloldhasd. Minden új Neptun-munkamenethez egyszeri kód kell e-mailből vagy hitelesítő alkalmazásból. A Karmin nem üzemeltet szervert.\n\nSaját felelősségre használod. Ha az egyetem előírja, használd a hivatalos Neptun webes felületet.",
+  "disclaimerUnderstand": "Értem",
+  "disclaimerOfficialNeptun": "Hivatalos Neptun",
+  "loginSubtitle": "ELTE Neptun",
+  "loginNeptunCode": "Neptun kód",
+  "loginPassword": "Jelszó",
+  "loginSignIn": "Bejelentkezés",
+  "loginKeystoreHint": "Első belépés. A jelszó a Keystore-ban marad.",
+  "loginDebugBanner": "Fejlesztői belépés — nem a Neptunhoz kapcsolódik. Bármely nem üres adat, majd bármely 6 számjegyű kód.",
+  "loginErrorEmpty": "Add meg a Neptun kódot és a jelszót.",
+  "loginErrorBadCredentials": "A Neptun elutasította ezeket az adatokat.",
+  "loginErrorNetwork": "A Neptun nem elérhető.",
+  "loginErrorCaptcha": "A Neptun captchát kér. Lépj be egyszer a weben, majd próbáld újra.",
+  "loginOpenWebsite": "Neptun weboldal megnyitása",
+  "otpTitle": "Ellenőrzés",
+  "otpSubtitleEmail": "Add meg az e-mailben kapott egyszeri kódot.",
+  "otpSubtitleAuthenticator": "Add meg a hitelesítő alkalmazás egyszeri kódját.",
+  "otpSubtitleUnknown": "Add meg az e-mailben vagy a hitelesítő alkalmazásban kapott kódot.",
+  "otpCodeHint": "Egyszeri kód",
+  "otpConfirm": "Megerősítés",
+  "otpResend": "Kód küldése újra",
+  "otpResendWait": "Újra {seconds} mp múlva",
+  "@otpResendWait": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "otpResent": "Új kódot kértünk.",
+  "otpError": "A Neptun elutasította ezt a kódot.",
+  "todayEmptyNext": "Nincs következő óra",
+  "todayEmptySchedule": "Ma nincs semmi a naptárban.",
+  "calendarEmpty": "Nincs megjeleníthető esemény.",
+  "dataError": "A Neptun most nem frissíthető.",
+  "dataCached": "Az utoljára mentett adatok.",
+  "relativeMinutes": "{minutes} perc múlva",
+  "@relativeMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeNow": "most",
+  "setPinTitle": "PIN beállítása",
+  "setPinConfirmTitle": "PIN megerősítése",
+  "setPinSubtitle": "Válassz egy 6 jegyű PIN-t a Karmin feloldásához.",
+  "setPinConfirmSubtitle": "Add meg még egyszer ugyanazt a PIN-t.",
+  "setPinMismatch": "A PIN-ek nem egyeznek. Próbáld újra.",
+  "setPinEnableBio": "Feloldás Face ID / ujjlenyomattal",
+  "unlockTitle": "Feloldás",
+  "unlockSubtitle": "Face ID vagy 6 jegyű PIN",
+  "unlockSubtitlePinOnly": "Add meg a 6 jegyű PIN-t",
+  "unlockSignOut": "Kijelentkezés",
+  "unlockWrongPin": "Hibás PIN",
+  "unlockLocked": "Túl sok próbálkozás. Újra {seconds} mp múlva.",
+  "@unlockLocked": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "unlockUseBiometrics": "Face ID használata",
+  "unlockBiometricReason": "Karmin feloldása",
+  "settingsTheme": "Téma",
+  "settingsThemeDark": "Sötét",
+  "settingsThemeLight": "Világos",
+  "settingsThemeSystem": "Rendszer",
+  "settingsThemeHint": "A világos kinézet egy későbbi csiszoláskor jön.",
+  "settingsOff": "Ki",
+  "settingsFaceIdUnavailable": "Nem elérhető"
 }

@@ -15,20 +15,20 @@ Dark, minimal Flutter app for students who want Today, calendar, grades, exams, 
 
 ### What it is
 
-Karmin signs into the official ELTE Neptun student API with **your** Neptun code and password, then keeps credentials on-device (OS Keystore / Keychain) so Face ID or a 6-digit PIN can unlock the app. There is **no Cheterin backend** in v1 — academic data stays on the phone.
+Karmin signs into the official ELTE Neptun student API with **your** Neptun code, password, and a **one-time code** (email or authenticator — required on every fresh login). Credentials stay on-device (OS Keystore / Keychain) so Face ID or a 6-digit PIN can unlock the **local** vault. PIN does not skip Neptun 2FA. There is **no Cheterin backend** in v1 — academic data stays on the phone.
 
 ### Features (v1 scope)
 
 | Area | Plan |
 |---|---|
-| Auth | Login, disclaimer, set PIN, biometric unlock, lifecycle lock |
+| Auth | Disclaimer, login, **2FA**, set PIN, biometric unlock, lifecycle lock |
 | Today | Next class, exam chip, unread, GPA |
 | Calendar | Week / list, filters (class, exam, task, online) |
 | Study | Subjects, grades, credits, exam signup with double confirm |
 | Inbox | Read-only messages and threads |
 | Settings | Language, Face ID, PIN, notifications, privacy / disclaimer |
 
-**Status:** Stage 0 (foundation + UI polish) is done. **Stage 1 — Auth** is next. Live Neptun calls are not wired yet.
+**Status:** Stage 2 cached reads are in progress (calendar / dashboard / unread + OTP resend-via-relogin). Stage 1 auth is implemented in code. Debug builds use a labeled mock login (any non-empty credentials, then any 6-digit code) and demo calendar fixtures. Live ELTE: `flutter run --dart-define=KARMIN_LIVE_AUTH=true` on a **device** (Chrome CORS will block the API). Do not claim live 2FA is proven without a real account. Light theme is planned (Settings control exists); the look is still dark-first.
 
 Screenshots will land here once Stage 1–2 UI is stable. Until then, see the [Figma file](https://www.figma.com/design/Iuxf0sbisHaOwxn6Vkcgdg).
 
@@ -37,8 +37,8 @@ Screenshots will land here once Stage 1–2 UI is stable. Until then, see the [F
 - Flutter / Dart
 - `dio`, `flutter_riverpod`, `go_router`
 - `flutter_secure_storage`, `local_auth`
-- `google_fonts` (Inter), gen-l10n (EN / HU / RU)
-- Local cache planned: Isar (Stage 2)
+- `google_fonts` (Fraunces + Plus Jakarta Sans), gen-l10n (EN / HU / RU)
+- Local cache: SharedPreferences JSON (Stage 2). Isar planned if codegen is viable.
 
 ### Getting started
 
@@ -93,20 +93,20 @@ If ELTE or SDA asks that distribution stop, we stop and record it in the changel
 
 | Область | План |
 |---|---|
-| Вход | Логин, дисклеймер, PIN, Face ID / отпечаток, блокировка при уходе в фон |
+| Вход | Дисклеймер, логин, **2FA**, PIN, Face ID, блокировка при уходе в фон |
 | Today | Следующая пара, экзамен, непрочитанные, GPA |
 | Календарь | Неделя / список, фильтры |
 | Учёба | Предметы, оценки, запись на экзамен с двойным подтверждением |
 | Входящие | Только чтение |
 | Настройки | Язык, биометрия, PIN, уведомления, privacy / disclaimer |
 
-**Статус:** Stage 0 (фундамент + UI) готов. Дальше — **Stage 1 Auth**. Живых запросов к Neptun пока нет.
+**Статус:** Stage 2 (календарь / дашборд / «отправить ещё раз код» через повторный логин) в работе. Stage 1 auth есть в коде. Debug — помеченный mock. Живой ELTE 2FA не считаем доказанным без реального аккаунта. Светлая тема запланирована; по умолчанию тёмная.
 
 Скриншоты появятся после стабилизации Stage 1–2. Макеты: [Figma](https://www.figma.com/design/Iuxf0sbisHaOwxn6Vkcgdg).
 
 ### Стек
 
-Flutter / Dart · `dio` · Riverpod · go_router · secure storage · local_auth · Inter · gen-l10n · Isar (Stage 2).
+Flutter / Dart · `dio` · Riverpod · go_router · secure storage · local_auth · Fraunces + Plus Jakarta Sans · gen-l10n · JSON-кэш (Isar позже).
 
 ### Запуск
 

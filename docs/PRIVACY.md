@@ -5,7 +5,7 @@
 
 **Short notice (English source):**
 
-Karmin stores your Neptun password in the secure hardware-backed store of this phone so you can unlock with Face ID or PIN. Karmin does not run a server. ELTE and Neptun remain responsible for the data they hold.
+Karmin stores your Neptun password in the secure hardware-backed store of this phone so you can unlock with Face ID or PIN. Every new Neptun session still requires a one-time code from your email or authenticator app. Karmin does not run a server. ELTE and Neptun remain responsible for the data they hold.
 
 ## Summary
 

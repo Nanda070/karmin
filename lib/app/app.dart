@@ -4,21 +4,60 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:karmin/app/router.dart';
 import 'package:karmin/app/theme.dart';
+import 'package:karmin/app/theme_mode_controller.dart';
+import 'package:karmin/auth/providers.dart';
 import 'package:karmin/l10n/app_localizations.dart';
 
-class KarminApp extends ConsumerWidget {
+class KarminApp extends ConsumerStatefulWidget {
   const KarminApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<KarminApp> createState() => _KarminAppState();
+}
+
+class _KarminAppState extends ConsumerState<KarminApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final auth = ref.read(authControllerProvider.notifier);
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+        auth.onAppPaused();
+      case AppLifecycleState.resumed:
+        auth.onAppResumed();
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
+    final themeMode = ref.watch(themeModeControllerProvider);
 
     return MaterialApp.router(
       title: 'Karmin',
       debugShowCheckedModeBanner: false,
-      theme: KarminTheme.dark(),
+      theme: KarminTheme.light(),
       darkTheme: KarminTheme.dark(),
-      themeMode: ThemeMode.dark,
+      themeMode: themeMode,
+      // GoogleFonts styles are inherit:false; Material lerp between light/dark
+      // throws if ThemeData slots are not twins. Instant swap until Stage 4.
+      themeAnimationDuration: Duration.zero,
       routerConfig: router,
       locale: const Locale('en'),
       supportedLocales: AppLocalizations.supportedLocales,

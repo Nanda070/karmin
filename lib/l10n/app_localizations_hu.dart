@@ -219,4 +219,178 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get todaySchedule => 'Mai órarend';
+
+  @override
+  String get disclaimerTitle => 'Nem hivatalos kliens';
+
+  @override
+  String get disclaimerBody =>
+      'A Karmin a Cheterin nem hivatalos terméke. Nem áll kapcsolatban az ELTE-vel vagy a Neptun üzemeltetőjével, és azok nem támogatják.\n\nA Neptun-jelszó a telefon biztonságos tárolójában marad, hogy Face ID-val vagy PIN-nel feloldhasd. Minden új Neptun-munkamenethez egyszeri kód kell e-mailből vagy hitelesítő alkalmazásból. A Karmin nem üzemeltet szervert.\n\nSaját felelősségre használod. Ha az egyetem előírja, használd a hivatalos Neptun webes felületet.';
+
+  @override
+  String get disclaimerUnderstand => 'Értem';
+
+  @override
+  String get disclaimerOfficialNeptun => 'Hivatalos Neptun';
+
+  @override
+  String get loginSubtitle => 'ELTE Neptun';
+
+  @override
+  String get loginNeptunCode => 'Neptun kód';
+
+  @override
+  String get loginPassword => 'Jelszó';
+
+  @override
+  String get loginSignIn => 'Bejelentkezés';
+
+  @override
+  String get loginKeystoreHint =>
+      'Első belépés. A jelszó a Keystore-ban marad.';
+
+  @override
+  String get loginDebugBanner =>
+      'Fejlesztői belépés — nem a Neptunhoz kapcsolódik. Bármely nem üres adat, majd bármely 6 számjegyű kód.';
+
+  @override
+  String get loginErrorEmpty => 'Add meg a Neptun kódot és a jelszót.';
+
+  @override
+  String get loginErrorBadCredentials =>
+      'A Neptun elutasította ezeket az adatokat.';
+
+  @override
+  String get loginErrorNetwork => 'A Neptun nem elérhető.';
+
+  @override
+  String get loginErrorCaptcha =>
+      'A Neptun captchát kér. Lépj be egyszer a weben, majd próbáld újra.';
+
+  @override
+  String get loginOpenWebsite => 'Neptun weboldal megnyitása';
+
+  @override
+  String get otpTitle => 'Ellenőrzés';
+
+  @override
+  String get otpSubtitleEmail => 'Add meg az e-mailben kapott egyszeri kódot.';
+
+  @override
+  String get otpSubtitleAuthenticator =>
+      'Add meg a hitelesítő alkalmazás egyszeri kódját.';
+
+  @override
+  String get otpSubtitleUnknown =>
+      'Add meg az e-mailben vagy a hitelesítő alkalmazásban kapott kódot.';
+
+  @override
+  String get otpCodeHint => 'Egyszeri kód';
+
+  @override
+  String get otpConfirm => 'Megerősítés';
+
+  @override
+  String get otpResend => 'Kód küldése újra';
+
+  @override
+  String otpResendWait(int seconds) {
+    return 'Újra $seconds mp múlva';
+  }
+
+  @override
+  String get otpResent => 'Új kódot kértünk.';
+
+  @override
+  String get otpError => 'A Neptun elutasította ezt a kódot.';
+
+  @override
+  String get todayEmptyNext => 'Nincs következő óra';
+
+  @override
+  String get todayEmptySchedule => 'Ma nincs semmi a naptárban.';
+
+  @override
+  String get calendarEmpty => 'Nincs megjeleníthető esemény.';
+
+  @override
+  String get dataError => 'A Neptun most nem frissíthető.';
+
+  @override
+  String get dataCached => 'Az utoljára mentett adatok.';
+
+  @override
+  String relativeMinutes(int minutes) {
+    return '$minutes perc múlva';
+  }
+
+  @override
+  String get relativeNow => 'most';
+
+  @override
+  String get setPinTitle => 'PIN beállítása';
+
+  @override
+  String get setPinConfirmTitle => 'PIN megerősítése';
+
+  @override
+  String get setPinSubtitle =>
+      'Válassz egy 6 jegyű PIN-t a Karmin feloldásához.';
+
+  @override
+  String get setPinConfirmSubtitle => 'Add meg még egyszer ugyanazt a PIN-t.';
+
+  @override
+  String get setPinMismatch => 'A PIN-ek nem egyeznek. Próbáld újra.';
+
+  @override
+  String get setPinEnableBio => 'Feloldás Face ID / ujjlenyomattal';
+
+  @override
+  String get unlockTitle => 'Feloldás';
+
+  @override
+  String get unlockSubtitle => 'Face ID vagy 6 jegyű PIN';
+
+  @override
+  String get unlockSubtitlePinOnly => 'Add meg a 6 jegyű PIN-t';
+
+  @override
+  String get unlockSignOut => 'Kijelentkezés';
+
+  @override
+  String get unlockWrongPin => 'Hibás PIN';
+
+  @override
+  String unlockLocked(int seconds) {
+    return 'Túl sok próbálkozás. Újra $seconds mp múlva.';
+  }
+
+  @override
+  String get unlockUseBiometrics => 'Face ID használata';
+
+  @override
+  String get unlockBiometricReason => 'Karmin feloldása';
+
+  @override
+  String get settingsTheme => 'Téma';
+
+  @override
+  String get settingsThemeDark => 'Sötét';
+
+  @override
+  String get settingsThemeLight => 'Világos';
+
+  @override
+  String get settingsThemeSystem => 'Rendszer';
+
+  @override
+  String get settingsThemeHint =>
+      'A világos kinézet egy későbbi csiszoláskor jön.';
+
+  @override
+  String get settingsOff => 'Ki';
+
+  @override
+  String get settingsFaceIdUnavailable => 'Nem elérhető';
 }

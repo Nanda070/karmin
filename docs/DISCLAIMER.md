@@ -7,7 +7,7 @@
 Cheterin does **not** claim trademark permission from ELTE or Neptun. “Neptun” appears only to name the system the app connects to.
 
 - You use Karmin at your own risk.
-- Your Neptun password is stored in this device’s secure store (OS Keystore / Keychain) so Face ID / PIN unlock can re-authenticate. Cheterin does not operate a server that receives your password in v1.
+- Your Neptun password is stored in this device’s secure store (OS Keystore / Keychain) so Face ID / PIN can open the local vault. A new Neptun session still needs a one-time code (email or authenticator). Cheterin does not operate a server that receives your password in v1.
 - Exam signup (when enabled) is **your** action toward Neptun; double-confirm in the app does not shift responsibility.
 - Prefer the official Neptun web client when required by university rules.
 - If ELTE or SDA asks that distribution stop, stop and document it.

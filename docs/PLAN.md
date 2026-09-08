@@ -17,13 +17,18 @@ Last updated: 2026-09-08
 | Item | Status |
 |---|---|
 | **Stage 0 — Foundation** | **Done** |
+| **Stage 1 — Auth** | **Done in code** — live `Authenticate` + debug mock; not claimed proven on a real ELTE account |
+| **Stage 2 — Cached reads** | **In progress (this pass)** — client + calendar/dashboard reads + OTP resend-via-relogin. Isar deferred (JSON cache). Local notifications deferred. |
 | **UI visual system** | **Done** — Figma + Flutter widgets are the source of truth (not a future polish pass) |
 | Web platform (`web/`) | Added alongside iOS/Android (dev/preview; v1 ship target remains mobile) |
-| Platforms | Android, iOS, web scaffold |
-| Live Neptun auth | **Not started** |
-| **Next** | **Stage 1 — Auth** |
+| Platforms | Android, iOS, web scaffold. **Android Gradle tree is incomplete** in this checkout (blocker for on-device APK). |
+| Live Neptun auth | Implemented (`LiveNeptunAuth`) + labeled debug/mock. CORS blocks live from Chrome/web. Do not claim ELTE 2FA works until proven on a device with a real account. |
+| Light theme | **Planned, not shipped** — tokens locked; ThemeMode hook in Settings; full pass in Stage 4 |
+| **Next** | Prove Stage 1–2 on a real ELTE account (2FA every login, calendar JSON field names) |
 
 Stage 0 exit criteria met: English Today matching the locked dark visual contract, gear → Settings, l10n EN/HU/RU, `NeptunClient` skeleton, secure storage + PIN helpers, doc stubs, MIT license under Cheterin. Luxury UI redesign shipped in Figma (7 screens + Components) and Flutter (`flutter analyze` clean; tests pass).
+
+**Locked (2026-09-08):** every fresh Neptun authentication requires an interactive one-time code (email **or** authenticator). Stored password never completes login alone. Light theme is in scope for a later polish pass; dark remains default.
 
 ---
 
@@ -35,10 +40,11 @@ It is **not** an ELTE product, **not** a SDA Informatika product, and **not** a 
 
 ### 1.1 Goals
 
-- One first login, then Face ID / 6-digit PIN.
+- One first login (password **and** 2FA), then Face ID / 6-digit PIN as a **local** lock.
+- Every new Neptun JWT requires a fresh OTP. PIN/biometrics never skip Neptun 2FA.
 - Today and calendar feel instant (local cache, then refresh).
 - Exam signup with an explicit double confirm.
-- UI follows the locked Figma + Flutter visual system (Karmin, English).
+- UI follows the locked Figma + Flutter visual system (Karmin, English). Dark is default; light is planned.
 
 ### 1.2 Non-goals (v1 and “never” unless the product contract changes)
 
@@ -50,7 +56,7 @@ It is **not** an ELTE product, **not** a SDA Informatika product, and **not** a 
 | MeetStreet, finances, compose mail | Out of v1 |
 | Request-form wizard | v1.1 at earliest |
 | Public Play Store / App Store | Policy and ToS risk |
-| Light theme, widgets, Watch | Explicitly cut for v1 |
+| Home-screen widgets, Watch | Explicitly cut for v1 |
 | Classmate lists, avatars of others | PII of third parties; skip endpoints |
 | Scraping HTML of the old Neptun | We only use the documented-in-neptun-api JSON API |
 
@@ -58,10 +64,11 @@ Web is available for development and UI preview; production distribution for v1 
 
 ### 1.3 Success criteria for v1
 
-- Real ELTE account: login → PIN → Today shows next class from cache after kill/reopen.
+- Real ELTE account: login → **2FA** → PIN → Today. After kill/reopen: Unlock (PIN/bio) → **2FA again** → Today from cache (JWT was RAM-only).
+- Warm resume (process alive, JWT still in RAM): Unlock only, never a silent Neptun re-auth.
 - Backgrounding the app always shows Unlock, never Today.
 - Exam signup either succeeds with Neptun’s message or fails with Neptun’s error text.
-- `grep` of log output after a session finds no password, no JWT.
+- `grep` of log output after a session finds no password, no OTP, no JWT.
 - Distribute only via TestFlight internal + Android sideload / invite.
 
 ---
@@ -82,8 +89,20 @@ Web is available for development and UI preview; production distribution for v1 
 ## 3. Architecture
 
 ```
-[Login / Unlock]
-        │  Face ID or PIN
+[Disclaimer]
+        │
+        ▼
+[Login]  Neptun code + password
+        │  HTTP 202 + isTwoFactorRequired
+        ▼
+[2FA / Verification]  email code or authenticator — always interactive
+        │  JWT → RAM only
+        ▼
+[Set PIN]  first run only
+        │
+        ▼
+[Unlock]  Face ID or PIN = local vault, not Neptun 2FA
+        │  if no JWT: stored password + 2FA again
         ▼
 [Flutter UI  Riverpod  go_router]
         │
@@ -94,6 +113,7 @@ Web is available for development and UI preview; production distribution for v1 
 [NeptunClient dio]
         │  HTTPS, cert verification ON
         │  Authorization: Bearer <jwt in RAM>
+        │  401 → stored password + interactive OTP (never silent)
         ▼
 https://neptun.elte.hu/ujhallgato/api/
 ```
@@ -128,12 +148,12 @@ lib/
 
 | Need | Package | Notes |
 |---|---|---|
-| HTTP | `dio` | Interceptor: attach JWT; on 401 authenticate once and retry |
+| HTTP | `dio` | Interceptor: attach JWT; on 401 drop JWT and prompt OTP — **do not retry** until OTP succeeds |
 | State | `flutter_riverpod` | No GetX |
 | Routing | `go_router` | Redirect: no session → login; locked → unlock |
 | Secrets | `flutter_secure_storage` | iOS Keychain, Android Keystore |
 | Biometrics | `local_auth` | biometricOnly first, then PIN UI we own |
-| Cache | `isar` + `isar_flutter_libs` | Stage 2; Hive only if Isar codegen blocks |
+| Cache | JSON via SharedPreferences (Stage 2) | Isar planned; codegen blocked / Android tree incomplete — Hive/Isar later |
 | i18n | `flutter_localizations` + `intl` + gen-l10n | EN is `template-arb-file` |
 | Fonts | `google_fonts` | **Fraunces** (titles) + **Plus Jakarta Sans** (body). Locked. |
 | Notifications | `flutter_local_notifications` + `timezone` | Stage 2+ |
@@ -146,26 +166,39 @@ Do not add Firebase, Sentry-with-PII, analytics SDKs, or crash reporters that up
 
 ## 4. Authentication (detail)
 
+**Locked decision:** ELTE Neptun requires a one-time code on **every** fresh authentication — from email **or** an authenticator app. This is not optional, not rare, and not an error stub. Stored `code + password` can complete the password step only. The OTP step is always interactive. We do **not** store a TOTP secret to auto-generate codes (that would skip the user’s 2FA). PIN and biometrics are a **local app lock** for an already-established JWT in RAM.
+
+Session API states (Stage 2 plugs live payloads into the same enum):
+
+| `NeptunAuthStep` | Meaning |
+|---|---|
+| `needsPassword` | No accepted password step yet (or 401 cleared the JWT) |
+| `needsOtp` | Password accepted; waiting for email/authenticator code |
+| `authenticated` | JWT in RAM |
+
 ### 4.1 First session
 
-1. User enters Neptun code + password. No “remember password” checkbox — storage is mandatory for PIN unlock, explained in the disclaimer.
+1. **Disclaimer** (once). Then Login: Neptun code + password. No “remember password” checkbox — storage is mandatory for later unlock, explained in the disclaimer.
 2. `POST Account/Authenticate` `{ userName, password, lcid }`.
-3. Success: `accessToken`, `neptunCode`. JWT → RAM. Credentials → Keystore (`neptun_code`, `neptun_password`).
-4. Navigate to **Set PIN** (6 digits, enter twice). Enable Face ID / fingerprint (default on if hardware exists).
-5. Land on Today.
+3. ELTE answers **HTTP 202** + `isTwoFactorRequired: true` (no `accessToken`). Show **Verification** (2FA). Do not persist credentials yet.
+4. User enters the one-time code. Re-POST the same body plus `token: "<otp>"` (same field the official web client uses).
+5. Success: `accessToken`, `neptunCode`. JWT → RAM. Credentials → Keystore (`neptun_code`, `neptun_password`).
+6. Navigate to **Set PIN** (6 digits, enter twice). Enable Face ID / fingerprint (default on if hardware exists).
+7. Land on Today.
 
 ### 4.2 Returning session
 
-1. Cold start: if Keystore has credentials and PIN is set → **Unlock**, never Login.
+1. Cold start: if Keystore has credentials and PIN is set → **Unlock**, never Login. JWT is gone (was RAM-only).
 2. Biometric prompt immediately. Failure / cancel → PIN pad.
-3. On success: if JWT still in RAM (warm process) use it; else authenticate with stored password **without** showing Login.
+3. On local unlock: if JWT still in RAM (warm process) → Today. **Else** submit stored password **without** showing Login, then **2FA again** (Verification). Password is never enough.
 4. Wrong PIN: lockout after 5 tries for 30s, then 5 min (document in UI). Do **not** wipe Keystore on PIN fail (that would brick the user after typos). Offer “Sign out” on Unlock.
 
 ### 4.3 Token
 
 - Neptun JWT is session-scoped. Treat as expired on 401.
-- Do not persist JWT. Process death ⇒ silent re-login.
-- Refresh endpoint: use `refresh_token` **only if** ELTE actually returns and accepts it. Until proven on live ELTE, 401 → full Authenticate.
+- Do not persist JWT. Process death ⇒ Unlock (if PIN set) then password-from-Keystore + **interactive OTP**. Never a fully silent re-login.
+- Refresh endpoint: use `refresh_token` **only if** ELTE actually returns and accepts it *and* that refresh does not require a new OTP. Until proven on live ELTE, 401 → password step + 2FA.
+- 401 interceptor: drop JWT, notify session, do **not** retry the original request until OTP succeeds.
 
 ### 4.4 Errors (typed)
 
@@ -174,7 +207,8 @@ Do not add Firebase, Sentry-with-PII, analytics SDKs, or crash reporters that up
 | Bad password | “Neptun rejected these credentials.” |
 | Network | “Can’t reach Neptun.” Cache still used after unlock if already logged in before. |
 | HTTP 202 + captcha | “Neptun wants a captcha. Sign in once on the website, then retry.” Button: open `https://neptun.elte.hu/` |
-| 2FA required | If ELTE enables it: TOTP field or stored TOTP secret (opt-in, Keystore). Not in first Auth slice unless live test shows 202. |
+| HTTP 202 + 2FA | **Happy path**, not an error: Verification screen. Channel hint: email / authenticator / unknown. **Resend = re-POST `Account/Authenticate` with stored code+password** (no OTP `token`). Neptun’s email OTP often never arrives; a fresh login issues a new challenge / mail. There is no verified dedicated “resend OTP” endpoint. Show the control on Verification even when the channel is unknown (authenticator users can ignore it). Cooldown 30s. |
+| Bad OTP | “Neptun rejected this code.” Stay on Verification. |
 | HTTP 403 on a feature | Hide the tile. Do not crash. |
 
 ### 4.5 Keystore keys (names)
@@ -198,7 +232,7 @@ PIN: 6 digits, `sha256(pin + app-specific salt from Keystore random 16 bytes)`. 
 |---|---|
 | Stolen phone, unlocked | OS lock is the user’s problem. We still lock Karmin on background. |
 | Stolen phone, Karmin unlocked | Background lock + FLAG_SECURE. Short idle. |
-| Stolen phone, attacker has PIN | They get Neptun. Same as stealing the password. Disclose this in Privacy/Disclaimer. |
+| Stolen phone, attacker has PIN | They open the local vault. A new Neptun JWT still needs the user’s 2FA code (unless a JWT is already in RAM). Disclose both in Privacy/Disclaimer. |
 | Backup / ADB backup of app data | Android: `android:allowBackup="false"`. iOS: Keychain `first_unlock_this_device`. |
 | MITM | Default TLS verify. No `badCertificateCallback`. No user-installed bypass in release. |
 | Logcat / Xcode console | Logger redacts `Authorization`, `password`, `token`. Debug builds may log URLs without query secrets. |
@@ -236,12 +270,13 @@ Karmin in v1 has **no servers**. Processing is on-device. If you only use it you
 | Data | Source | Store | Purpose | Retention |
 |---|---|---|---|---|
 | Neptun code, password | User | Keystore | Re-auth | Until Sign out |
-| PIN hash + salt | User | Keystore | App lock | Until Sign out |
+| PIN hash + salt | User | Keystore | Local app lock (not Neptun 2FA) | Until Sign out |
+| TOTP secret / email OTP | — | **Never stored** | User types a fresh code every auth | — |
 | JWT | Neptun | RAM only | API calls | Process lifetime |
 | Calendar events | API | Isar | Today, calendar, notifications | Overwritten on refresh; wipe on Sign out |
 | Grades, subjects, GPA | API | Isar | Study | Same |
 | Inbox metadata + body | API | Isar | Inbox | Same |
-| Language, bio flag, notif prefs | User | SharedPreferences (non-secret) | Settings | Until Sign out or reinstall |
+| Language, bio flag, notif prefs, theme mode | User | SharedPreferences (non-secret) | Settings | Until Sign out or reinstall |
 | Notification pending IDs | Local | Plugin storage | Alarms | Recreated from cache |
 
 ### 6.2 Data we will **not** collect or persist
@@ -249,7 +284,8 @@ Karmin in v1 has **no servers**. Processing is on-device. If you only use it you
 - Analytics, advertising IDs
 - Other students’ photos or full student lists (`get_subject_course_students` — **do not call**)
 - Location (even for “navigate to building” in v1: show room text only)
-- Password in Isar, logs, or screenshots
+- Password, OTP, or JWT in Isar, logs, or screenshots
+- Authenticator TOTP secret (v1: user types the code every time)
 
 ### 6.3 Lawful basis (working assumption, not advice)
 
@@ -372,11 +408,23 @@ Brand string: **Karmin** (ASCII, no accent). Owner: Cheterin / cheterin.online.
 | Radius | 8 / 12 / 16 / pill 18 |
 | Spacing | 8pt scale; page inset 20 |
 
-Atmosphere: ink → navy page gradient. Cards (`KarminCard`): hairline borders, quiet surface gradients, optional carmine/steel accent bar. Primary CTA (`KarminPrimaryButton`): carmine gradient. Dark only — light theme remains cut for v1 (§1.2).
+Atmosphere: ink → navy page gradient. Cards (`KarminCard`): hairline borders, quiet surface gradients, optional carmine/steel accent bar. Primary CTA (`KarminPrimaryButton`): carmine gradient.
+
+**Theme (locked decision, not fully shipped):** Dark is default and first-class. Light is **in scope** — complementary Karmin tokens, not a generic Material light. ThemeMode infrastructure (System / Dark / Light) may start in Settings during Auth. The full light pass over all 7 screens + Figma light frames is **Stage 4**. Until then, switching ThemeMode may only affect Material chrome; widgets still read dark tokens.
+
+| Light token | Value (planned) |
+|---|---|
+| Paper / cream page | `#F4EFE6` |
+| Surface | `#FFFCF8` |
+| Field wash | `#EDE6DA` |
+| Ink text | `#141820` |
+| Hairline | `#D4CBBE` |
+| Muted | `#6B645A` |
+| Carmine / bright | `#9B1B30` / `#DB4257` (same accent) |
 
 **Bottom nav** (`KarminBottomNav`): icon + label, carmine active pill, muted inactive, outline-style icons. Language from community file `QYkMt6nybGd2y1gl9WUK1X` / node `96:1987`.
 
-**Auth chrome (Figma):** centered K mark, icon-led inputs (user / lock / eye), gradient Sign in, quiet microcopy. Language from `sCVzmZRqSouvVDRTO8vIDb` / node `2:2`. Flutter Login / PIN / Disclaimer screens ship in Stage 1.
+**Auth chrome (Figma):** centered K mark, icon-led inputs (user / lock / eye), gradient Sign in, quiet microcopy. Language from `sCVzmZRqSouvVDRTO8vIDb` / node `2:2`. Flutter Login / PIN / Disclaimer / **2FA Verification** screens ship in Stage 1. Verification is not yet a Figma frame — it follows the same contract (badge, icon-led code field, channel hint, gradient confirm, **Send code again** = re-login).
 
 **Schedule / event cards:** date chips, accent bars, time / location / person metadata with icons. Language from `BZfoM4pLXPnCYW3Gjkk0gV` / node `4:0`.
 
@@ -388,14 +436,15 @@ Atmosphere: ink → navy page gradient. Cards (`KarminCard`): hairline borders, 
 |---|---|
 | 01 Login | K mark, user/lock/eye fields, gradient Sign in |
 | 02 PIN | Lock badge, filled dots, polished keypad |
+| 02b Verification (2FA) | Shield/mail badge, icon-led OTP field, email vs authenticator hint, gradient Confirm, resend-if-email. **Auth contract, Figma frame TBD** |
 | 03 Today | Hero + chips + quick actions + schedule + icon nav |
 | 04 Calendar | Week/list, date chips, class/exam cards with pin/user icons |
 | 05 Study | GPA/credits, subject rows, Sign up CTA |
 | 06 Inbox | Avatars, unread badges, timestamps |
-| 07 Settings | Profile card, leading icons per row, Sign out |
+| 07 Settings | Profile card, leading icons per row, theme control, Sign out |
 | Components | Shared icon set |
 
-Flutter **Today / Calendar / Study / Inbox / Settings** already follow that contract with **demo copy**. Data binding is Stages 2–3. Login and PIN exist in Figma only until Stage 1.
+Flutter **Today / Calendar / Study / Inbox / Settings** already follow that contract with **demo copy**. Data binding is Stages 2–3. Login, PIN, Disclaimer, and Verification ship in Stage 1.
 
 ### 8.3 App structure
 
@@ -408,24 +457,28 @@ Do not invent extra tabs. Do not add a floating compose button.
 
 ### 8.4 Remaining UI (not a redesign)
 
-- **Stage 1:** implement Login, Disclaimer, Set PIN, Unlock against Figma 01/02 (behavior + FLAG_SECURE).
-- **Stage 4:** empty / error / offline banners; TalkBack/VoiceOver labels and carmine contrast (§7.10).
+- **Stage 1:** implement Login, Disclaimer, Verification (2FA), Set PIN, Unlock against Figma 01/02 + the 02b contract (behavior + FLAG_SECURE). ThemeMode preference can be stored and exposed in Settings.
+- **Stage 4:** empty / error / offline banners; TalkBack/VoiceOver labels and carmine contrast (§7.10); **full light theme pass** (all 7 screens + Figma light frames) using the tokens in §8.1.
 - Web stays a preview scaffold; v1 ship target is mobile.
-- No light theme, no Lucide migration, no extra motion system (nav already animates the active pill).
+- No Lucide migration, no extra motion system (nav already animates the active pill).
 
 ---
 
 ## 9. Features by screen (v1)
 
-Visual chrome for tabs + Settings is built (§8). Login / Unlock Flutter screens are Stage 1. Copy below is product behavior, not a new layout brief.
+Visual chrome for tabs + Settings is built (§8). Login / Unlock / Verification Flutter screens are Stage 1. Copy below is product behavior, not a new layout brief.
 
 ### 9.1 Login
 
-Neptun code, password, Sign in, Keystore one-liner. Disclaimer already accepted. Match Figma 01.
+Neptun code, password, Sign in, Keystore one-liner. Disclaimer already accepted. Match Figma 01. Success goes to Verification, not Today.
+
+### 9.1b Verification (2FA)
+
+Always shown after a successful password step when there is no JWT. Icon-led one-time code, hint for email vs authenticator vs unknown, gradient Confirm. **Send code again** re-submits stored Neptun code+password (in-memory login attempt or Keystore) so Neptun issues a new email OTP — it does not call a separate resend endpoint. Visible for every channel (the bug is email; TOTP users can ignore it). 30s cooldown; stay on Verification after HTTP 202 / `needsOtp`; clear the OTP field and snackbar. Not a Figma frame yet — same chrome as 01/02.
 
 ### 9.2 Unlock
 
-Karmin wordmark, 6 PIN dots, keypad, Face ID. Sign out link. Match Figma 02.
+Karmin wordmark, 6 PIN dots, keypad, Face ID. Sign out link. Match Figma 02. This opens the local vault only. If JWT is missing, Unlock is followed by Verification.
 
 ### 9.3 Today
 
@@ -449,7 +502,7 @@ List + thread. Read-only. Unread dots.
 
 ### 9.8 Settings
 
-Profile (name, code, training if API gives it), Language, Face ID, Change PIN, Notifications (class & exam), Privacy, Disclaimer, Sign out.
+Profile (name, code, training if API gives it), Language, **Theme (System / Dark / Light)**, Face ID, Change PIN, Notifications (class & exam), Privacy, Disclaimer, Sign out. Theme control can ship in Stage 1 as a preference; the light look itself is Stage 4.
 
 ### 9.9 Notifications
 
@@ -463,7 +516,8 @@ Map 1:1 from `neptun-api` (`NeptunAPI`). Confirm live ELTE JSON once.
 
 | Dart | Stage | Write? |
 |---|---|---|
-| `authenticate` | 1 | yes (login) |
+| `authenticate` (password) | 1 | yes (login) |
+| `authenticate` (OTP `token`) | 1 | yes (2FA) |
 | `getCalendarEvents` | 2 | no |
 | `getDashboardAverages` / `getTermAverages` | 2 | no |
 | `getDashboardCreditProgress` | 2 | no |
@@ -504,24 +558,35 @@ Completed:
 
 **Exit (met):** `flutter run` shows English Today in the locked dark UI, gear opens Settings.
 
-### Stage 1 — Auth (5–7 days) — **NEXT / GATE**
+### Stage 1 — Auth (5–7 days) — **DONE IN CODE / GATE: live ELTE unproven**
 
-- Live `Authenticate` against ELTE.
-- Login, Disclaimer, Set PIN, Unlock, lifecycle lock, Sign out — implement against Figma 01/02 using existing shared widgets.
-- 401 interceptor.
-- FLAG_SECURE on those routes.
+- Session layer with explicit `needsPassword` / `needsOtp` / `authenticated`.
+- Login, Disclaimer, **Verification (2FA)**, Set PIN, Unlock, lifecycle lock, Sign out — Figma 01/02 + 02b contract, existing shared widgets.
+- Live `POST Account/Authenticate` (password, then OTP in `token`) plus a **labeled debug/mock path** (any non-empty credentials → require any 6-digit OTP). Do not claim production Neptun auth works until an on-device ELTE login succeeds. Web preview uses the debug path (CORS + no Keystore/biometrics).
+- 401 interceptor: drop JWT, then stored password + **interactive OTP** — never silent; **do not retry** the original request until OTP succeeds.
+- FLAG_SECURE on Login / Verification / PIN / Unlock.
 - Captcha error path.
+- ThemeMode preference + Settings control (dark default). Light visuals are not done.
 
-**Exit:** real ELTE account, kill app, Face ID → Today placeholder (empty data OK). No secrets in logcat.
+**Exit:** real ELTE account, login → 2FA → PIN → Today; kill app → Unlock → 2FA → Today placeholder (empty data OK). Warm resume: Unlock only. No secrets in logcat. **Not yet proven in this repo.**
 
-### Stage 2 — Cached reads (8–10 days)
+**Debug / no-network (honest):** `kDebugMode` uses `DebugNeptunAuth` unless `--dart-define=KARMIN_LIVE_AUTH=true`. Mock: non-empty code+password → `needsOtp` (channel unknown); any 6-digit OTP → fake JWT in RAM. Login shows a development banner. Release builds always use the live client. Web/Chrome stays on the debug path (CORS).
 
-- Isar collections.
-- Calendar + dashboard repos, stale-while-revalidate.
-- Today + Calendar week/list + filters.
-- Local notifications from cache.
+### Stage 2 — Cached reads (8–10 days) — **IN PROGRESS**
 
-**Exit:** airplane mode after one fetch still shows the week.
+Shipped in this pass:
+
+- Authenticated `NeptunClient` GET helper + 401 interceptor (drop JWT, no retry).
+- Live reads: `Calendar/GetCalendarEvents`, `Dashboard/GetAverages`, `dashboard/creditprogress`, `Message/GetUnreadedMessagesCount`.
+- Today + Calendar bind to that snapshot when the call succeeds; graceful empty / “last saved” on failure.
+- **OTP resend = re-login** (re-POST Authenticate with stored password). Debug mock also re-issues `needsOtp`.
+- Stale-while-revalidate JSON cache (`SharedPreferences`, 5 min). **Isar deferred** — codegen + incomplete Android tree. Hive/Isar still the planned durable store.
+- Study subjects/grades and Inbox threads remain **demo** (Stage 3). Today’s GPA / unread / next-class chips use Stage 2 reads (debug fixtures on web).
+- Local notifications from cache: **not in this pass** (platform setup; keep cache ready).
+
+**Exit (not met):** airplane mode after one **live** fetch still shows the week — needs a real device + ELTE JSON confirmation.
+
+**Debug vs live:** same `KARMIN_LIVE_AUTH` / `kDebugMode` switch as auth. Debug student API returns the former demo week (Analysis II, etc.). Live student API is used on mobile / release / `KARMIN_LIVE_AUTH=true`.
 
 ### Stage 3 — Study, exams, inbox, settings (8–10 days)
 
@@ -535,7 +600,8 @@ Completed:
 ### Stage 4 — Harden + closed beta (4–6 days)
 
 - Empty/error/offline banners.
-- Accessibility pass on Login, Unlock, tabs.
+- Accessibility pass on Login, Verification, Unlock, tabs.
+- **Light theme pass:** apply §8.1 light tokens across all 7 screens; add Figma light frames; Settings System / Dark / Light actually restyles chrome (not only the preference).
 - Internal TestFlight + APK.
 - Privacy/Disclaimer finalized.
 - Live smoke script (manual checklist).
@@ -589,8 +655,9 @@ Translate HU/RU only after EN is frozen.
 
 Manual smoke (Stage 4):
 
-1. Disclaimer → Login → PIN → Today  
-2. Kill → biometric → Today from cache  
+1. Disclaimer → Login → 2FA → PIN → Today  
+2. Kill → biometric → 2FA → Today from cache  
+2b. Background (JWT still in RAM) → Unlock only → Today  
 3. Airplane → Calendar still populated  
 4. Wrong password once → error, no captcha spiral  
 5. Sign out → Keystore empty, Login shown  
@@ -616,6 +683,7 @@ Manual smoke (Stage 4):
 | L1 | ToS forbids clients | M | High | Closed beta; stop-if-asked |
 | L2 | Store rejection / impersonation | H if we try | Med | Don’t ship stores in v1 |
 | S1 | Captcha after retries | M | Med | Web fallback |
+| S4 | 2FA every login / 401 | H | Med | Dedicated Verification screen; never store TOTP secret |
 | S2 | Exam POST shape wrong | M | High | Capture live payload first |
 | S3 | ELTE JSON ≠ Óbuda | M | Med | Optional DTO fields; live fixture |
 | P1 | Classmate PII | L if we skip lists | High | Never call student-list endpoints |
@@ -628,7 +696,7 @@ Manual smoke (Stage 4):
 
 1. Exact ELTE JSON for `GetCalendarEvents` (start/end field names).  
 2. Whether ELTE `Authenticate` returns refresh tokens.  
-3. Whether 2FA is ever on for ELTE student web.  
+3. **Closed:** every ELTE login requires an interactive OTP (email or authenticator). Do not store a TOTP secret to skip it. Channel detection (email vs app) is best-effort from the 202 payload; default hint is “email or authenticator”.  
 4. Display name from API vs “Student” + code.  
 5. Notification exact times (15 min / 24 h) — confirm in Settings later.
 
@@ -638,7 +706,7 @@ License decided: **MIT** under Cheterin.
 
 ## 17. Immediate next actions
 
-1. **Stage 1 Auth** against a live ELTE login (Disclaimer → Login → PIN → Unlock → lifecycle lock). Build those Flutter screens to Figma 01/02; do not redesign chrome.  
+1. **Stage 2 live reads** on a device (`KARMIN_LIVE_AUTH=true`): confirm `GetCalendarEvents` field names; prove 2FA + resend-via-relogin (email OTP).  
 2. Fill `docs/legal/SOURCES.md` after personally opening ELTE Neptun terms.  
 3. Treat Figma + Flutter widgets as the locked visual contract; English + Karmin + gear → Settings.  
 4. If ELTE or SDA asks to stop distribution — stop, note in CHANGELOG, contact via cheterin.online.

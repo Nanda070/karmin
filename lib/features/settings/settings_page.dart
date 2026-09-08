@@ -1,20 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:karmin/app/widgets/karmin_icons.dart';
 
 import 'package:karmin/app/theme.dart';
+import 'package:karmin/app/theme_mode_controller.dart';
 import 'package:karmin/app/widgets/karmin_card.dart';
 import 'package:karmin/app/widgets/karmin_list_row.dart';
 import 'package:karmin/app/widgets/karmin_scaffold.dart';
+import 'package:karmin/auth/providers.dart';
 import 'package:karmin/l10n/app_localizations.dart';
 
 /// Settings shell with Stage 0 demo profile (matches Figma).
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
+  String _themeLabel(AppLocalizations l10n, ThemeMode mode) {
+    return switch (mode) {
+      ThemeMode.light => l10n.settingsThemeLight,
+      ThemeMode.system => l10n.settingsThemeSystem,
+      ThemeMode.dark => l10n.settingsThemeDark,
+    };
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final auth = ref.watch(authControllerProvider);
+    final themeMode = ref.watch(themeModeControllerProvider);
+    final code = auth.neptunCode ?? l10n.demoProfileCode;
 
     return KarminScaffold(
       body: ListView(
@@ -90,7 +104,7 @@ class SettingsPage extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              l10n.demoProfileCode,
+                              code,
                               style: KarminTypography.body(
                                 fontSize: 12,
                                 color: KarminColors.muted,
@@ -124,10 +138,29 @@ class SettingsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: KarminSpacing.sm),
                 KarminListRow(
+                  leading: _SettingsIcon(KarminIcons.palette),
+                  title: l10n.settingsTheme,
+                  subtitle: l10n.settingsThemeHint,
+                  trailing: Text(_themeLabel(l10n, themeMode)),
+                  outlined: true,
+                  onTap: () =>
+                      ref.read(themeModeControllerProvider.notifier).cycle(),
+                ),
+                const SizedBox(height: KarminSpacing.sm),
+                KarminListRow(
                   leading: _SettingsIcon(KarminIcons.faceId),
                   title: l10n.settingsFaceId,
-                  trailing: Text(l10n.settingsOn),
+                  trailing: Text(
+                    !auth.bioAvailable
+                        ? l10n.settingsFaceIdUnavailable
+                        : (auth.bioEnabled ? l10n.settingsOn : l10n.settingsOff),
+                  ),
                   outlined: true,
+                  onTap: !auth.bioAvailable
+                      ? null
+                      : () => ref
+                          .read(authControllerProvider.notifier)
+                          .setBioEnabled(!auth.bioEnabled),
                 ),
                 const SizedBox(height: KarminSpacing.sm),
                 KarminListRow(
@@ -135,6 +168,8 @@ class SettingsPage extends StatelessWidget {
                   title: l10n.settingsPin,
                   trailing: Text(l10n.settingsChange),
                   outlined: true,
+                  onTap: () =>
+                      ref.read(authControllerProvider.notifier).beginChangePin(),
                 ),
                 const SizedBox(height: KarminSpacing.sm),
                 KarminListRow(
@@ -145,7 +180,8 @@ class SettingsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: KarminSpacing.xl),
                 TextButton.icon(
-                  onPressed: () {},
+                  onPressed: () =>
+                      ref.read(authControllerProvider.notifier).signOut(),
                   icon: const Icon(
                     KarminIcons.logout,
                     size: 16,

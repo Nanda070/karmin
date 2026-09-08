@@ -28,6 +28,20 @@ final class NeptunCaptchaException extends NeptunException {
   ]);
 }
 
+/// Wrong or expired one-time code.
+final class NeptunOtpException extends NeptunException {
+  const NeptunOtpException([
+    super.message = 'Neptun rejected this code.',
+  ]);
+}
+
+/// JWT died; UI must collect a new OTP (password may be replayed from Keystore).
+final class NeptunSessionExpiredException extends NeptunException {
+  const NeptunSessionExpiredException([
+    super.message = 'Neptun session expired. Enter a new one-time code.',
+  ]);
+}
+
 /// Unexpected status or payload shape.
 final class NeptunApiException extends NeptunException {
   const NeptunApiException(

@@ -217,4 +217,176 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get todaySchedule => 'Расписание на сегодня';
+
+  @override
+  String get disclaimerTitle => 'Неофициальный клиент';
+
+  @override
+  String get disclaimerBody =>
+      'Karmin — неофициальный продукт Cheterin. Он не связан с ELTE и оператором Neptun и не поддерживается ими.\n\nПароль Neptun хранится в защищённом хранилище телефона, чтобы открывать Karmin через Face ID или PIN. Каждый новый сеанс Neptun всё равно требует одноразовый код из почты или приложения-аутентификатора. У Karmin нет своего сервера.\n\nВы используете приложение на свой риск. Если правила университета требуют, пользуйтесь официальным вебом Neptun.';
+
+  @override
+  String get disclaimerUnderstand => 'Понятно';
+
+  @override
+  String get disclaimerOfficialNeptun => 'Официальный Neptun';
+
+  @override
+  String get loginSubtitle => 'ELTE Neptun';
+
+  @override
+  String get loginNeptunCode => 'Код Neptun';
+
+  @override
+  String get loginPassword => 'Пароль';
+
+  @override
+  String get loginSignIn => 'Войти';
+
+  @override
+  String get loginKeystoreHint => 'Первый вход. Пароль сохраняется в Keystore.';
+
+  @override
+  String get loginDebugBanner =>
+      'Режим разработки — без Neptun. Любые непустые данные, затем любой 6-значный код.';
+
+  @override
+  String get loginErrorEmpty => 'Введите код Neptun и пароль.';
+
+  @override
+  String get loginErrorBadCredentials => 'Neptun отклонил эти данные.';
+
+  @override
+  String get loginErrorNetwork => 'Не удаётся связаться с Neptun.';
+
+  @override
+  String get loginErrorCaptcha =>
+      'Neptun просит captcha. Войдите один раз на сайте и повторите.';
+
+  @override
+  String get loginOpenWebsite => 'Открыть сайт Neptun';
+
+  @override
+  String get otpTitle => 'Подтверждение';
+
+  @override
+  String get otpSubtitleEmail => 'Введите одноразовый код из письма.';
+
+  @override
+  String get otpSubtitleAuthenticator =>
+      'Введите одноразовый код из приложения-аутентификатора.';
+
+  @override
+  String get otpSubtitleUnknown =>
+      'Введите одноразовый код из письма или приложения-аутентификатора.';
+
+  @override
+  String get otpCodeHint => 'Одноразовый код';
+
+  @override
+  String get otpConfirm => 'Подтвердить';
+
+  @override
+  String get otpResend => 'Отправить ещё раз код';
+
+  @override
+  String otpResendWait(int seconds) {
+    return 'Ещё раз через $seconds с';
+  }
+
+  @override
+  String get otpResent => 'Новый код запрошен.';
+
+  @override
+  String get otpError => 'Neptun отклонил этот код.';
+
+  @override
+  String get todayEmptyNext => 'Нет ближайшей пары';
+
+  @override
+  String get todayEmptySchedule => 'На сегодня ничего нет.';
+
+  @override
+  String get calendarEmpty => 'Нет событий для показа.';
+
+  @override
+  String get dataError => 'Не удалось обновить данные Neptun.';
+
+  @override
+  String get dataCached => 'Показаны последние сохранённые данные.';
+
+  @override
+  String relativeMinutes(int minutes) {
+    return 'через $minutes мин';
+  }
+
+  @override
+  String get relativeNow => 'сейчас';
+
+  @override
+  String get setPinTitle => 'Задать PIN';
+
+  @override
+  String get setPinConfirmTitle => 'Повторите PIN';
+
+  @override
+  String get setPinSubtitle =>
+      'Выберите 6-значный PIN, чтобы открывать Karmin на этом устройстве.';
+
+  @override
+  String get setPinConfirmSubtitle => 'Введите тот же PIN ещё раз.';
+
+  @override
+  String get setPinMismatch => 'PIN не совпал. Попробуйте снова.';
+
+  @override
+  String get setPinEnableBio => 'Открывать Face ID / отпечатком';
+
+  @override
+  String get unlockTitle => 'Разблокировка';
+
+  @override
+  String get unlockSubtitle => 'Face ID или 6-значный PIN';
+
+  @override
+  String get unlockSubtitlePinOnly => 'Введите 6-значный PIN';
+
+  @override
+  String get unlockSignOut => 'Выйти';
+
+  @override
+  String get unlockWrongPin => 'Неверный PIN';
+
+  @override
+  String unlockLocked(int seconds) {
+    return 'Слишком много попыток. Подождите $seconds с.';
+  }
+
+  @override
+  String get unlockUseBiometrics => 'Face ID';
+
+  @override
+  String get unlockBiometricReason => 'Разблокировать Karmin';
+
+  @override
+  String get settingsTheme => 'Тема';
+
+  @override
+  String get settingsThemeDark => 'Тёмная';
+
+  @override
+  String get settingsThemeLight => 'Светлая';
+
+  @override
+  String get settingsThemeSystem => 'Системная';
+
+  @override
+  String get settingsThemeHint =>
+      'Светлый вид появится в более поздней полировке.';
+
+  @override
+  String get settingsOff => 'Выкл';
+
+  @override
+  String get settingsFaceIdUnavailable => 'Недоступно';
 }

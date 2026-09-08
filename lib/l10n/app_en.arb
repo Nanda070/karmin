@@ -78,5 +78,79 @@
   "todayActionSchedule": "Schedule",
   "todayActionSubjects": "Subjects",
   "todayActionInbox": "Inbox",
-  "todaySchedule": "Today's schedule"
+  "todaySchedule": "Today's schedule",
+  "disclaimerTitle": "Unofficial client",
+  "disclaimerBody": "Karmin is an unofficial product by Cheterin. It is not affiliated with, endorsed by, or supported by Eötvös Loránd University or the operator of Neptun.\n\nYour Neptun password is stored in this phone’s secure hardware-backed store so you can unlock Karmin with Face ID or a PIN. Every new Neptun session still requires a one-time code from your email or authenticator app. Karmin does not run a server. ELTE and Neptun remain responsible for the data they hold.\n\nYou use Karmin at your own risk. Prefer the official Neptun website when university rules require it.",
+  "disclaimerUnderstand": "I understand",
+  "disclaimerOfficialNeptun": "Official Neptun",
+  "loginSubtitle": "ELTE Neptun",
+  "loginNeptunCode": "Neptun code",
+  "loginPassword": "Password",
+  "loginSignIn": "Sign in",
+  "loginKeystoreHint": "First sign-in. Password is stored in Keystore.",
+  "loginDebugBanner": "Development login — not talking to Neptun. Any non-empty credentials, then any 6-digit code.",
+  "loginErrorEmpty": "Enter your Neptun code and password.",
+  "loginErrorBadCredentials": "Neptun rejected these credentials.",
+  "loginErrorNetwork": "Can't reach Neptun.",
+  "loginErrorCaptcha": "Neptun wants a captcha. Sign in once on the website, then retry.",
+  "loginOpenWebsite": "Open Neptun website",
+  "otpTitle": "Verification",
+  "otpSubtitleEmail": "Enter the one-time code from your email.",
+  "otpSubtitleAuthenticator": "Enter the one-time code from your authenticator app.",
+  "otpSubtitleUnknown": "Enter the one-time code from your email or authenticator app.",
+  "otpCodeHint": "One-time code",
+  "otpConfirm": "Confirm",
+  "otpResend": "Send code again",
+  "otpResendWait": "Send again in {seconds}s",
+  "@otpResendWait": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "otpResent": "A new code was requested.",
+  "otpError": "Neptun rejected this code.",
+  "todayEmptyNext": "No upcoming class",
+  "todayEmptySchedule": "Nothing on the schedule today.",
+  "calendarEmpty": "No events to show.",
+  "dataError": "Can't refresh from Neptun.",
+  "dataCached": "Showing last saved data.",
+  "relativeMinutes": "in {minutes} min",
+  "@relativeMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeNow": "now",
+  "setPinTitle": "Set PIN",
+  "setPinConfirmTitle": "Confirm PIN",
+  "setPinSubtitle": "Choose a 6-digit PIN to unlock Karmin on this device.",
+  "setPinConfirmSubtitle": "Enter the same PIN again.",
+  "setPinMismatch": "PINs did not match. Try again.",
+  "setPinEnableBio": "Unlock with Face ID / fingerprint",
+  "unlockTitle": "Unlock",
+  "unlockSubtitle": "Face ID or 6-digit PIN",
+  "unlockSubtitlePinOnly": "Enter your 6-digit PIN",
+  "unlockSignOut": "Sign out",
+  "unlockWrongPin": "Wrong PIN",
+  "unlockLocked": "Too many attempts. Try again in {seconds}s.",
+  "@unlockLocked": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "unlockUseBiometrics": "Use Face ID",
+  "unlockBiometricReason": "Unlock Karmin",
+  "settingsTheme": "Theme",
+  "settingsThemeDark": "Dark",
+  "settingsThemeLight": "Light",
+  "settingsThemeSystem": "System",
+  "settingsThemeHint": "Light look comes in a later polish pass.",
+  "settingsOff": "Off",
+  "settingsFaceIdUnavailable": "Unavailable"
 }

@@ -9,19 +9,24 @@ class KarminPrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.height = 52,
+    this.busy = false,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
   final double height;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    final enabled = onPressed != null && !busy;
+    return Opacity(
+      opacity: enabled ? 1 : 0.55,
+      child: Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onPressed,
+        onTap: enabled ? onPressed : null,
         borderRadius: KarminRadii.mdBorder,
         child: Ink(
           height: height,
@@ -50,7 +55,17 @@ class KarminPrimaryButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (icon != null) ...[
+              if (busy) ...[
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: KarminColors.text,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ] else if (icon != null) ...[
                 Icon(icon, size: 18, color: KarminColors.text),
                 const SizedBox(width: 8),
               ],
@@ -65,6 +80,7 @@ class KarminPrimaryButton extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }

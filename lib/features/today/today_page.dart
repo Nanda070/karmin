@@ -1,183 +1,229 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:karmin/app/widgets/karmin_icons.dart';
 
 import 'package:karmin/app/theme.dart';
 import 'package:karmin/app/widgets/karmin_card.dart';
+import 'package:karmin/app/widgets/karmin_icons.dart';
 import 'package:karmin/app/widgets/karmin_scaffold.dart'
     show KarminCircleButton, KarminPageHeader, KarminStatChip;
 import 'package:karmin/app/widgets/karmin_section_label.dart';
+import 'package:karmin/auth/providers.dart';
+import 'package:karmin/data/providers.dart';
+import 'package:karmin/data/student_repository.dart';
 import 'package:karmin/l10n/app_localizations.dart';
 
-class TodayPage extends StatelessWidget {
+class TodayPage extends ConsumerWidget {
   const TodayPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final now = DateTime.now();
     final dateLine = DateFormat('EEEE · MMM d').format(now);
+    final auth = ref.watch(authControllerProvider);
+    final async = ref.watch(studentSnapshotProvider);
+    final snapshot = async.valueOrNull ?? StudentSnapshot.empty();
+    final next = snapshot.nextClass(now);
+    final exam = snapshot.nextExam(now);
+    final todayEvents = snapshot.eventsOn(now);
+    final code = auth.neptunCode ?? '';
+    final initial = code.isNotEmpty ? code[0].toUpperCase() : 'K';
+    final gpa = snapshot.dashboard.gpaLabel ?? '—';
+    final unread = snapshot.dashboard.unreadCount;
+    final examLabel = exam == null
+        ? '—'
+        : DateFormat('E HH:mm').format(exam.start);
+    final messagesLabel = unread > 0 ? l10n.inboxNewCount(unread) : '—';
 
-    return ListView(
-      padding: const EdgeInsets.only(bottom: KarminSpacing.xxl),
-      children: [
-        KarminPageHeader(
-          title: l10n.tabToday,
-          subtitle: dateLine,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              KarminCircleButton(
-                onPressed: () => context.push('/settings'),
-                child: Text(
-                  'A',
-                  style: KarminTypography.body(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+    return RefreshIndicator(
+      color: KarminColors.carmineBright,
+      backgroundColor: KarminColors.navy,
+      onRefresh: () => ref.read(studentSnapshotProvider.notifier).refresh(),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: KarminSpacing.xxl),
+        children: [
+          KarminPageHeader(
+            title: l10n.tabToday,
+            subtitle: dateLine,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                KarminCircleButton(
+                  onPressed: () => context.push('/settings'),
+                  child: Text(
+                    initial,
+                    style: KarminTypography.body(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: KarminSpacing.sm),
-              KarminCircleButton(
-                onPressed: () => context.push('/settings'),
-                bordered: true,
-                tooltip: l10n.settingsTitle,
-                icon: KarminIcons.settings,
-              ),
-            ],
+                const SizedBox(width: KarminSpacing.sm),
+                KarminCircleButton(
+                  onPressed: () => context.push('/settings'),
+                  bordered: true,
+                  tooltip: l10n.settingsTitle,
+                  icon: KarminIcons.settings,
+                ),
+              ],
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: KarminSpacing.pageX),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: KarminSpacing.sm),
-              KarminCard(
-                variant: KarminCardVariant.elevated,
-                accentBar: true,
-                accentBarColor: KarminColors.carmineBright,
-                padding: const EdgeInsets.fromLTRB(14, 16, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          KarminIcons.sparkles,
-                          size: 12,
-                          color: KarminColors.carmineBright,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          l10n.nextClassLabel,
-                          style: KarminTypography.label(
-                            fontSize: 11,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: KarminSpacing.pageX),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (snapshot.errorMessage != null) ...[
+                  Text(
+                    snapshot.fromCache ? l10n.dataCached : l10n.dataError,
+                    style: KarminTypography.body(
+                      fontSize: 12,
+                      color: KarminColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: KarminSpacing.sm),
+                ],
+                const SizedBox(height: KarminSpacing.sm),
+                KarminCard(
+                  variant: KarminCardVariant.elevated,
+                  accentBar: true,
+                  accentBarColor: KarminColors.carmineBright,
+                  padding: const EdgeInsets.fromLTRB(14, 16, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            KarminIcons.sparkles,
+                            size: 12,
                             color: KarminColors.carmineBright,
-                            fontWeight: FontWeight.w600,
                           ),
+                          const SizedBox(width: 6),
+                          Text(
+                            l10n.nextClassLabel,
+                            style: KarminTypography.label(
+                              fontSize: 11,
+                              color: KarminColors.carmineBright,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        next?.title ?? l10n.todayEmptyNext,
+                        style: KarminTypography.title(fontSize: 20),
+                      ),
+                      if (next != null) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            if (next.room != null) ...[
+                              _MetaChip(
+                                icon: KarminIcons.mapPin,
+                                text: next.room!,
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            _MetaChip(
+                              icon: KarminIcons.clock,
+                              text: _relative(l10n, now, next.start),
+                            ),
+                          ],
                         ),
                       ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: KarminSpacing.md),
+                Row(
+                  children: [
+                    KarminStatChip(
+                      label: l10n.chipExam,
+                      value: examLabel,
+                      valueColor: KarminColors.carmineBright,
+                      icon: KarminIcons.exam,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      l10n.demoNextClassTitle,
-                      style: KarminTypography.title(fontSize: 20),
+                    const SizedBox(width: KarminSpacing.sm),
+                    KarminStatChip(
+                      label: l10n.chipMessages,
+                      value: messagesLabel,
+                      icon: KarminIcons.mail,
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _MetaChip(
-                          icon: KarminIcons.mapPin,
-                          text: 'D 3-510',
-                        ),
-                        const SizedBox(width: 8),
-                        _MetaChip(
-                          icon: KarminIcons.clock,
-                          text: 'in 12 min',
-                        ),
-                      ],
+                    const SizedBox(width: KarminSpacing.sm),
+                    KarminStatChip(
+                      label: l10n.chipGpa,
+                      value: gpa,
+                      icon: KarminIcons.trending,
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: KarminSpacing.md),
-              Row(
-                children: [
-                  KarminStatChip(
-                    label: l10n.chipExam,
-                    value: l10n.demoExamTime,
-                    valueColor: KarminColors.carmineBright,
-                    icon: KarminIcons.exam,
-                  ),
-                  const SizedBox(width: KarminSpacing.sm),
-                  KarminStatChip(
-                    label: l10n.chipMessages,
-                    value: l10n.demoMessagesNew,
-                    icon: KarminIcons.mail,
-                  ),
-                  const SizedBox(width: KarminSpacing.sm),
-                  KarminStatChip(
-                    label: l10n.chipGpa,
-                    value: l10n.demoGpa,
-                    icon: KarminIcons.trending,
-                  ),
-                ],
-              ),
-              const SizedBox(height: KarminSpacing.xl),
-              KarminSectionLabel(l10n.todayQuickActions),
-              const SizedBox(height: KarminSpacing.sm),
-              Row(
-                children: [
-                  _QuickAction(
-                    icon: KarminIcons.calendarPlus,
-                    label: l10n.todayActionSchedule,
-                    onTap: () => context.go('/calendar'),
-                  ),
-                  const SizedBox(width: KarminSpacing.sm),
-                  _QuickAction(
-                    icon: KarminIcons.book,
-                    label: l10n.todayActionSubjects,
-                    onTap: () => context.go('/study'),
-                  ),
-                  const SizedBox(width: KarminSpacing.sm),
-                  _QuickAction(
-                    icon: KarminIcons.message,
-                    label: l10n.todayActionInbox,
-                    onTap: () => context.go('/inbox'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: KarminSpacing.xl),
-              KarminSectionLabel(l10n.todaySchedule),
-              const SizedBox(height: KarminSpacing.sm),
-              _ScheduleRow(
-                time: '08:00',
-                title: l10n.demoSubjectAnalysis,
-                room: l10n.demoEventAnalysisRoom,
-                accent: KarminColors.steel,
-              ),
-              const SizedBox(height: KarminSpacing.sm),
-              _ScheduleRow(
-                time: '10:15',
-                title: l10n.demoEventProgrammingTitle,
-                room: l10n.demoEventProgrammingRoom,
-                accent: KarminColors.steel,
-              ),
-              const SizedBox(height: KarminSpacing.sm),
-              _ScheduleRow(
-                time: '10:00',
-                title: l10n.demoEventExamTitle,
-                room: l10n.demoEventExamRoom,
-                accent: KarminColors.carmine,
-                isExam: true,
-              ),
-            ],
+                const SizedBox(height: KarminSpacing.xl),
+                KarminSectionLabel(l10n.todayQuickActions),
+                const SizedBox(height: KarminSpacing.sm),
+                Row(
+                  children: [
+                    _QuickAction(
+                      icon: KarminIcons.calendarPlus,
+                      label: l10n.todayActionSchedule,
+                      onTap: () => context.go('/calendar'),
+                    ),
+                    const SizedBox(width: KarminSpacing.sm),
+                    _QuickAction(
+                      icon: KarminIcons.book,
+                      label: l10n.todayActionSubjects,
+                      onTap: () => context.go('/study'),
+                    ),
+                    const SizedBox(width: KarminSpacing.sm),
+                    _QuickAction(
+                      icon: KarminIcons.message,
+                      label: l10n.todayActionInbox,
+                      onTap: () => context.go('/inbox'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: KarminSpacing.xl),
+                KarminSectionLabel(l10n.todaySchedule),
+                const SizedBox(height: KarminSpacing.sm),
+                if (todayEvents.isEmpty)
+                  Text(
+                    l10n.todayEmptySchedule,
+                    style: KarminTypography.body(
+                      fontSize: 13,
+                      color: KarminColors.muted,
+                    ),
+                  )
+                else
+                  for (var i = 0; i < todayEvents.length; i++) ...[
+                    if (i > 0) const SizedBox(height: KarminSpacing.sm),
+                    _ScheduleRow(
+                      time: DateFormat('HH:mm').format(todayEvents[i].start),
+                      title: todayEvents[i].title,
+                      room: todayEvents[i].room ?? '—',
+                      accent: todayEvents[i].isExam
+                          ? KarminColors.carmine
+                          : KarminColors.steel,
+                      isExam: todayEvents[i].isExam,
+                    ),
+                  ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
+  }
+
+  String _relative(AppLocalizations l10n, DateTime now, DateTime start) {
+    final minutes = start.difference(now).inMinutes;
+    if (minutes <= 0) {
+      return l10n.relativeNow;
+    }
+    return l10n.relativeMinutes(minutes);
   }
 }
 

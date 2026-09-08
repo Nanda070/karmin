@@ -75,5 +75,79 @@
   "todayActionSchedule": "Расписание",
   "todayActionSubjects": "Предметы",
   "todayActionInbox": "Входящие",
-  "todaySchedule": "Расписание на сегодня"
+  "todaySchedule": "Расписание на сегодня",
+  "disclaimerTitle": "Неофициальный клиент",
+  "disclaimerBody": "Karmin — неофициальный продукт Cheterin. Он не связан с ELTE и оператором Neptun и не поддерживается ими.\n\nПароль Neptun хранится в защищённом хранилище телефона, чтобы открывать Karmin через Face ID или PIN. Каждый новый сеанс Neptun всё равно требует одноразовый код из почты или приложения-аутентификатора. У Karmin нет своего сервера.\n\nВы используете приложение на свой риск. Если правила университета требуют, пользуйтесь официальным вебом Neptun.",
+  "disclaimerUnderstand": "Понятно",
+  "disclaimerOfficialNeptun": "Официальный Neptun",
+  "loginSubtitle": "ELTE Neptun",
+  "loginNeptunCode": "Код Neptun",
+  "loginPassword": "Пароль",
+  "loginSignIn": "Войти",
+  "loginKeystoreHint": "Первый вход. Пароль сохраняется в Keystore.",
+  "loginDebugBanner": "Режим разработки — без Neptun. Любые непустые данные, затем любой 6-значный код.",
+  "loginErrorEmpty": "Введите код Neptun и пароль.",
+  "loginErrorBadCredentials": "Neptun отклонил эти данные.",
+  "loginErrorNetwork": "Не удаётся связаться с Neptun.",
+  "loginErrorCaptcha": "Neptun просит captcha. Войдите один раз на сайте и повторите.",
+  "loginOpenWebsite": "Открыть сайт Neptun",
+  "otpTitle": "Подтверждение",
+  "otpSubtitleEmail": "Введите одноразовый код из письма.",
+  "otpSubtitleAuthenticator": "Введите одноразовый код из приложения-аутентификатора.",
+  "otpSubtitleUnknown": "Введите одноразовый код из письма или приложения-аутентификатора.",
+  "otpCodeHint": "Одноразовый код",
+  "otpConfirm": "Подтвердить",
+  "otpResend": "Отправить ещё раз код",
+  "otpResendWait": "Ещё раз через {seconds} с",
+  "@otpResendWait": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "otpResent": "Новый код запрошен.",
+  "otpError": "Neptun отклонил этот код.",
+  "todayEmptyNext": "Нет ближайшей пары",
+  "todayEmptySchedule": "На сегодня ничего нет.",
+  "calendarEmpty": "Нет событий для показа.",
+  "dataError": "Не удалось обновить данные Neptun.",
+  "dataCached": "Показаны последние сохранённые данные.",
+  "relativeMinutes": "через {minutes} мин",
+  "@relativeMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeNow": "сейчас",
+  "setPinTitle": "Задать PIN",
+  "setPinConfirmTitle": "Повторите PIN",
+  "setPinSubtitle": "Выберите 6-значный PIN, чтобы открывать Karmin на этом устройстве.",
+  "setPinConfirmSubtitle": "Введите тот же PIN ещё раз.",
+  "setPinMismatch": "PIN не совпал. Попробуйте снова.",
+  "setPinEnableBio": "Открывать Face ID / отпечатком",
+  "unlockTitle": "Разблокировка",
+  "unlockSubtitle": "Face ID или 6-значный PIN",
+  "unlockSubtitlePinOnly": "Введите 6-значный PIN",
+  "unlockSignOut": "Выйти",
+  "unlockWrongPin": "Неверный PIN",
+  "unlockLocked": "Слишком много попыток. Подождите {seconds} с.",
+  "@unlockLocked": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "unlockUseBiometrics": "Face ID",
+  "unlockBiometricReason": "Разблокировать Karmin",
+  "settingsTheme": "Тема",
+  "settingsThemeDark": "Тёмная",
+  "settingsThemeLight": "Светлая",
+  "settingsThemeSystem": "Системная",
+  "settingsThemeHint": "Светлый вид появится в более поздней полировке.",
+  "settingsOff": "Выкл",
+  "settingsFaceIdUnavailable": "Недоступно"
 }

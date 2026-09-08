@@ -30,4 +30,10 @@ abstract final class KarminIcons {
   static const IconData math = Icons.functions_rounded;
   static const IconData code = Icons.code_rounded;
   static const IconData edit = Icons.edit_outlined;
+  static const IconData visibility = Icons.visibility_outlined;
+  static const IconData visibilityOff = Icons.visibility_off_outlined;
+  static const IconData backspace = Icons.backspace_outlined;
+  static const IconData shield = Icons.shield_outlined;
+  static const IconData key = Icons.key_outlined;
+  static const IconData palette = Icons.palette_outlined;
 }

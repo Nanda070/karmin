@@ -4,6 +4,14 @@ import 'package:go_router/go_router.dart';
 
 import 'package:karmin/app/widgets/karmin_bottom_nav.dart';
 import 'package:karmin/app/widgets/karmin_scaffold.dart';
+import 'package:karmin/auth/auth_redirect.dart';
+import 'package:karmin/auth/boot_page.dart';
+import 'package:karmin/auth/disclaimer_page.dart';
+import 'package:karmin/auth/login_page.dart';
+import 'package:karmin/auth/otp_page.dart';
+import 'package:karmin/auth/providers.dart';
+import 'package:karmin/auth/set_pin_page.dart';
+import 'package:karmin/auth/unlock_page.dart';
 import 'package:karmin/features/calendar/calendar_page.dart';
 import 'package:karmin/features/inbox/inbox_page.dart';
 import 'package:karmin/features/settings/settings_page.dart';
@@ -12,9 +20,47 @@ import 'package:karmin/features/today/today_page.dart';
 import 'package:karmin/l10n/app_localizations.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
+  final refresh = _AuthRefresh(ref);
+  final router = GoRouter(
     initialLocation: '/today',
+    refreshListenable: refresh,
+    redirect: (context, state) {
+      return authRedirect(
+        ref.read(authControllerProvider),
+        state.uri.path,
+      );
+    },
     routes: [
+      GoRoute(
+        path: '/boot',
+        name: 'boot',
+        builder: (context, state) => const BootPage(),
+      ),
+      GoRoute(
+        path: '/disclaimer',
+        name: 'disclaimer',
+        builder: (context, state) => const DisclaimerPage(),
+      ),
+      GoRoute(
+        path: '/login',
+        name: 'login',
+        builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: '/verify',
+        name: 'verify',
+        builder: (context, state) => const OtpPage(),
+      ),
+      GoRoute(
+        path: '/set-pin',
+        name: 'setPin',
+        builder: (context, state) => const SetPinPage(),
+      ),
+      GoRoute(
+        path: '/unlock',
+        name: 'unlock',
+        builder: (context, state) => const UnlockPage(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return AppShell(navigationShell: navigationShell);
@@ -65,7 +111,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  ref.onDispose(() {
+    router.dispose();
+    refresh.dispose();
+  });
+  return router;
 });
+
+class _AuthRefresh extends ChangeNotifier {
+  _AuthRefresh(Ref ref) {
+    ref.listen(authControllerProvider, (previous, next) {
+      notifyListeners();
+    });
+  }
+}
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});

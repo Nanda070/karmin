@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Visual tokens from Figma (Karmin, dark-only).
+/// Visual tokens from Figma (Karmin dark — current default / first-class).
 abstract final class KarminColors {
   static const Color ink = Color(0xFF07080C);
   static const Color navy = Color(0xFF152036);
@@ -12,6 +12,20 @@ abstract final class KarminColors {
   static const Color text = Color(0xFFE8EAED);
   static const Color carmine = Color(0xFF9B1B30);
   static const Color carmineBright = Color(0xFFDB4257);
+}
+
+/// Planned light tokens (Stage 4 full pass). ThemeMode can select this ThemeData
+/// now; feature screens still paint with [KarminColors] until the light pass.
+abstract final class KarminLightColors {
+  static const Color paper = Color(0xFFF4EFE6);
+  static const Color surface = Color(0xFFFFFCF8);
+  static const Color field = Color(0xFFEDE6DA);
+  static const Color ink = Color(0xFF141820);
+  static const Color hairline = Color(0xFFD4CBBE);
+  static const Color muted = Color(0xFF6B645A);
+  static const Color steel = Color(0xFF4A6A8A);
+  static const Color carmine = KarminColors.carmine;
+  static const Color carmineBright = KarminColors.carmineBright;
 }
 
 /// 8pt spacing scale.
@@ -235,6 +249,111 @@ abstract final class KarminTheme {
             fontSize: 15,
             fontWeight: FontWeight.w500,
             color: KarminColors.carmine,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Skeleton light ThemeData. Widgets that hardcode [KarminColors] stay dark
+  /// until the Stage 4 pass.
+  static ThemeData light() {
+    final sans = GoogleFonts.plusJakartaSansTextTheme(
+      ThemeData(brightness: Brightness.light).textTheme,
+    ).apply(
+      bodyColor: KarminLightColors.ink,
+      displayColor: KarminLightColors.ink,
+    );
+
+    final textTheme = sans.copyWith(
+      displayLarge: KarminTypography.display(
+        fontSize: 34,
+        color: KarminLightColors.ink,
+      ),
+      displayMedium: KarminTypography.display(
+        fontSize: 28,
+        color: KarminLightColors.ink,
+      ),
+      displaySmall: KarminTypography.display(
+        fontSize: 24,
+        color: KarminLightColors.ink,
+      ),
+      headlineLarge: KarminTypography.display(
+        fontSize: 28,
+        color: KarminLightColors.ink,
+      ),
+      headlineMedium: KarminTypography.display(
+        fontSize: 22,
+        color: KarminLightColors.ink,
+      ),
+      headlineSmall: KarminTypography.title(
+        fontSize: 18,
+        color: KarminLightColors.ink,
+      ),
+      titleLarge: KarminTypography.title(
+        fontSize: 18,
+        color: KarminLightColors.ink,
+      ),
+      titleMedium: KarminTypography.title(
+        fontSize: 16,
+        color: KarminLightColors.ink,
+      ),
+      titleSmall: KarminTypography.title(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: KarminLightColors.ink,
+      ),
+      bodyLarge: KarminTypography.body(
+        fontSize: 16,
+        color: KarminLightColors.ink,
+      ),
+      bodyMedium: KarminTypography.body(
+        fontSize: 14,
+        color: KarminLightColors.ink,
+      ),
+      bodySmall: KarminTypography.body(
+        fontSize: 13,
+        color: KarminLightColors.muted,
+      ),
+      labelLarge: KarminTypography.body(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: KarminLightColors.ink,
+      ),
+      labelMedium: KarminTypography.label(
+        fontSize: 12,
+        color: KarminLightColors.muted,
+      ),
+      labelSmall: KarminTypography.label(
+        fontSize: 11,
+        color: KarminLightColors.muted,
+      ),
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      colorScheme: const ColorScheme.light(
+        primary: KarminLightColors.carmine,
+        onPrimary: Colors.white,
+        secondary: KarminLightColors.steel,
+        onSecondary: Colors.white,
+        surface: KarminLightColors.surface,
+        onSurface: KarminLightColors.ink,
+        error: KarminLightColors.carmineBright,
+        onError: Colors.white,
+        outline: KarminLightColors.hairline,
+      ),
+      scaffoldBackgroundColor: KarminLightColors.paper,
+      textTheme: textTheme,
+      dividerColor: KarminLightColors.hairline,
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: KarminLightColors.carmine,
+          textStyle: KarminTypography.body(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: KarminLightColors.carmine,
           ),
         ),
       ),

@@ -1,6 +1,6 @@
-# Security (stub — Stage 0)
+# Security
 
-Not a full audit. Working threat model: [PLAN.md](PLAN.md) §5.
+Working threat model: [PLAN.md](PLAN.md) §5.
 
 ## Keystore keys
 
@@ -12,15 +12,23 @@ Not a full audit. Working threat model: [PLAN.md](PLAN.md) §5.
 | `karmin.pin.salt` | 16 random bytes, base64 |
 | `karmin.lock.bio_enabled` | Bio preference |
 
-PIN plaintext is never stored. JWT is never persisted.
+PIN plaintext is never stored. JWT is never persisted. TOTP secrets and email OTPs are never stored — the user types a fresh code on every Neptun authentication.
+
+## Session
+
+- PIN / Face ID = local app lock.
+- Warm resume (JWT still in RAM): Unlock only.
+- Cold start or 401: Unlock (if needed) then interactive 2FA. Password may be replayed from Keystore.
+- Email OTP resend is **re-authentication** (same password POST). Do not log the password or the OTP. Cooldown 30s to avoid hammering Neptun.
 
 ## Platform
 
 - Android: `android:allowBackup="false"`.
 - iOS: Keychain `first_unlock_this_device`, `synchronizable: false`.
+- FLAG_SECURE on Login / Verification / PIN / Unlock (best-effort MethodChannel; no-ops on web).
 
 ## Reporting
 
 If you find a vulnerability in Karmin, contact the maintainer privately (do not file a public issue with secrets). Email TBD.
 
-Do not log `Authorization`, `password`, or tokens.
+Do not log `Authorization`, `password`, OTP `token`, or JWTs.

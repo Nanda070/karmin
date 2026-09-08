@@ -513,6 +513,324 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Today\'s schedule'**
   String get todaySchedule;
+
+  /// No description provided for @disclaimerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unofficial client'**
+  String get disclaimerTitle;
+
+  /// No description provided for @disclaimerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Karmin is an unofficial product by Cheterin. It is not affiliated with, endorsed by, or supported by Eötvös Loránd University or the operator of Neptun.\n\nYour Neptun password is stored in this phone’s secure hardware-backed store so you can unlock Karmin with Face ID or a PIN. Every new Neptun session still requires a one-time code from your email or authenticator app. Karmin does not run a server. ELTE and Neptun remain responsible for the data they hold.\n\nYou use Karmin at your own risk. Prefer the official Neptun website when university rules require it.'**
+  String get disclaimerBody;
+
+  /// No description provided for @disclaimerUnderstand.
+  ///
+  /// In en, this message translates to:
+  /// **'I understand'**
+  String get disclaimerUnderstand;
+
+  /// No description provided for @disclaimerOfficialNeptun.
+  ///
+  /// In en, this message translates to:
+  /// **'Official Neptun'**
+  String get disclaimerOfficialNeptun;
+
+  /// No description provided for @loginSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'ELTE Neptun'**
+  String get loginSubtitle;
+
+  /// No description provided for @loginNeptunCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Neptun code'**
+  String get loginNeptunCode;
+
+  /// No description provided for @loginPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get loginPassword;
+
+  /// No description provided for @loginSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get loginSignIn;
+
+  /// No description provided for @loginKeystoreHint.
+  ///
+  /// In en, this message translates to:
+  /// **'First sign-in. Password is stored in Keystore.'**
+  String get loginKeystoreHint;
+
+  /// No description provided for @loginDebugBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Development login — not talking to Neptun. Any non-empty credentials, then any 6-digit code.'**
+  String get loginDebugBanner;
+
+  /// No description provided for @loginErrorEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your Neptun code and password.'**
+  String get loginErrorEmpty;
+
+  /// No description provided for @loginErrorBadCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Neptun rejected these credentials.'**
+  String get loginErrorBadCredentials;
+
+  /// No description provided for @loginErrorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach Neptun.'**
+  String get loginErrorNetwork;
+
+  /// No description provided for @loginErrorCaptcha.
+  ///
+  /// In en, this message translates to:
+  /// **'Neptun wants a captcha. Sign in once on the website, then retry.'**
+  String get loginErrorCaptcha;
+
+  /// No description provided for @loginOpenWebsite.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Neptun website'**
+  String get loginOpenWebsite;
+
+  /// No description provided for @otpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification'**
+  String get otpTitle;
+
+  /// No description provided for @otpSubtitleEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the one-time code from your email.'**
+  String get otpSubtitleEmail;
+
+  /// No description provided for @otpSubtitleAuthenticator.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the one-time code from your authenticator app.'**
+  String get otpSubtitleAuthenticator;
+
+  /// No description provided for @otpSubtitleUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the one-time code from your email or authenticator app.'**
+  String get otpSubtitleUnknown;
+
+  /// No description provided for @otpCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time code'**
+  String get otpCodeHint;
+
+  /// No description provided for @otpConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get otpConfirm;
+
+  /// No description provided for @otpResend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send code again'**
+  String get otpResend;
+
+  /// No description provided for @otpResendWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Send again in {seconds}s'**
+  String otpResendWait(int seconds);
+
+  /// No description provided for @otpResent.
+  ///
+  /// In en, this message translates to:
+  /// **'A new code was requested.'**
+  String get otpResent;
+
+  /// No description provided for @otpError.
+  ///
+  /// In en, this message translates to:
+  /// **'Neptun rejected this code.'**
+  String get otpError;
+
+  /// No description provided for @todayEmptyNext.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming class'**
+  String get todayEmptyNext;
+
+  /// No description provided for @todayEmptySchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing on the schedule today.'**
+  String get todayEmptySchedule;
+
+  /// No description provided for @calendarEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No events to show.'**
+  String get calendarEmpty;
+
+  /// No description provided for @dataError.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t refresh from Neptun.'**
+  String get dataError;
+
+  /// No description provided for @dataCached.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing last saved data.'**
+  String get dataCached;
+
+  /// No description provided for @relativeMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'in {minutes} min'**
+  String relativeMinutes(int minutes);
+
+  /// No description provided for @relativeNow.
+  ///
+  /// In en, this message translates to:
+  /// **'now'**
+  String get relativeNow;
+
+  /// No description provided for @setPinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set PIN'**
+  String get setPinTitle;
+
+  /// No description provided for @setPinConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm PIN'**
+  String get setPinConfirmTitle;
+
+  /// No description provided for @setPinSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a 6-digit PIN to unlock Karmin on this device.'**
+  String get setPinSubtitle;
+
+  /// No description provided for @setPinConfirmSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the same PIN again.'**
+  String get setPinConfirmSubtitle;
+
+  /// No description provided for @setPinMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'PINs did not match. Try again.'**
+  String get setPinMismatch;
+
+  /// No description provided for @setPinEnableBio.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock with Face ID / fingerprint'**
+  String get setPinEnableBio;
+
+  /// No description provided for @unlockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get unlockTitle;
+
+  /// No description provided for @unlockSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Face ID or 6-digit PIN'**
+  String get unlockSubtitle;
+
+  /// No description provided for @unlockSubtitlePinOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your 6-digit PIN'**
+  String get unlockSubtitlePinOnly;
+
+  /// No description provided for @unlockSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get unlockSignOut;
+
+  /// No description provided for @unlockWrongPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong PIN'**
+  String get unlockWrongPin;
+
+  /// No description provided for @unlockLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Try again in {seconds}s.'**
+  String unlockLocked(int seconds);
+
+  /// No description provided for @unlockUseBiometrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Face ID'**
+  String get unlockUseBiometrics;
+
+  /// No description provided for @unlockBiometricReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock Karmin'**
+  String get unlockBiometricReason;
+
+  /// No description provided for @settingsTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get settingsTheme;
+
+  /// No description provided for @settingsThemeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get settingsThemeDark;
+
+  /// No description provided for @settingsThemeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get settingsThemeLight;
+
+  /// No description provided for @settingsThemeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get settingsThemeSystem;
+
+  /// No description provided for @settingsThemeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Light look comes in a later polish pass.'**
+  String get settingsThemeHint;
+
+  /// No description provided for @settingsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get settingsOff;
+
+  /// No description provided for @settingsFaceIdUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get settingsFaceIdUnavailable;
 }
 
 class _AppLocalizationsDelegate
