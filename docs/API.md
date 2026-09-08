@@ -2,15 +2,15 @@
 
 **Owner:** Nanda / Cheterin Group. Unofficial; not affiliated with ELTE or Neptun.
 
-Base (student reads): `https://neptun.elte.hu/Account/api/` (fork institute `…/Account` + `/api/`). JSON Authenticate is still probed at absolute `https://neptun.elte.hu/Account/api/Account/Authenticate` (`postUri`). **Live ELTE does not serve that controller** (dummy POST → empty HTTP 400, GET → HTML 404). Password login that reaches Verification is Potlap MVC `GET+POST /Account/Login` then `/Account/Login2FA`. Legacy `ujhallgato/api` unused. Optional email resend still uses MVC Login2FA.
+Base (student reads): `https://neptun.elte.hu/Account/api/` (fork institute `…/Account` + `/api/`). **Live ELTE does not serve** JSON Authenticate at `https://neptun.elte.hu/Account/api/Account/Authenticate` (dummy POST → empty HTTP 400, GET → HTML 404). Password login is Potlap MVC `GET+POST /Account/Login` then `/Account/Login2FA` — that URL is **not** probed first (iPhone timeout looked like “Can't reach Neptun”). Optional JWT upgrade after MVC OTP may still POST Authenticate. Legacy `ujhallgato/api` unused. Optional email resend still uses MVC Login2FA.
 
-Authenticate JSON probe headers: `Content-Type: application/json` (no charset) + dart:io User-Agent (+ fork `devicecookie` when present); strip `Authorization`. MVC Login uses Safari-like headers + antiforgery. Student GETs keep User-Agent `Karmin/0.1.0` + `X-Requested-With`.
+Optional post-OTP Authenticate headers: `Content-Type: application/json` (no charset) + dart:io User-Agent (+ fork `devicecookie` when present); strip `Authorization`. MVC Login uses Safari-like headers + antiforgery (never `X-Requested-With: null`). Student GETs keep User-Agent `Karmin/0.1.0` + `X-Requested-With`.
 
 JWT: RAM only. **Real** Authenticate `accessToken` → `Authorization: Bearer` on student GETs only. MVC placeholder `elte-portal-session` is **not** sent as Bearer and blocks student GETs with an honest portal-session error. 401 on a non-auth path drops a real JWT and does **not** retry until OTP succeeds. HTML/maintenance bodies → `NeptunMaintenanceException` (with HTTP status). Login/OTP reject → `HTTP <status>` + short Neptun text or `empty body` (never the opaque “sign on the website” string without status).
 
 | Dart method | Path | Stage | Write? | Notes |
 |---|---|---|---|---|
-| `submitPassword` | One JSON probe `POST /Account/api/Account/Authenticate` `{ userName, password, captcha:"", captchaIdentifier:"", token:"", LCID }`; on empty 400 / HTML 404 → **MVC** `GET+POST /Account/Login` | 1 | yes | JSON 202/JWT stays on Authenticate. ELTE live uses MVC (antiforgery). Generic 400 is **not** invalid credentials. |
+| `submitPassword` | **MVC only** `GET+POST /Account/Login` (`LoginName`, `Password`, antiforgery) | 1 | yes | No JSON Authenticate on this step. ELTE live uses cookies + Login2FA. |
 | `submitOtp` | JSON `token=<bare 6 digits>` if JSON 2FA pending; else MVC `POST /Account/Login2FA` `TOTPCode` | 1 | yes | Never compose email prefix on Authenticator. After MVC success, one JSON upgrade attempt for JWT (ignored if still 400). Failures include HTTP status. |
 | `reset` | clears JSON 2FA pending + device cookie + portal cookies | — | — | Called from `AuthController.signOut`. |
 | `resendEmailCode` | **`POST /Account/Login2FA` + `GetEmail=true`** (or Login + GetEmail) | 1–2 | yes | Optional email path only. Visible error if no prefix. |

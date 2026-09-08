@@ -6,6 +6,13 @@
 
 ## 8 сентября 2026 г.
 
+### Auth / Can't reach Neptun (`0.1.0+9`)
+
+- «Can't reach Neptun» после `+8`: парольный шаг сначала бил в мёртвый JSON `Authenticate`. На iPhone этот URL часто **timeout / reset без HTTP**, это считалось hard-fail и **MVC Login не вызывался**
+- Пароль теперь **только** MVC `GET+POST /Account/Login`. JSON Authenticate — опциональный JWT после успешного Login2FA, не зонд до пароля
+- Убран `X-Requested-With: null` (Dio 5 ArgumentError → ложный «Can't reach»). ArgumentError больше не мапится в сеть
+- IPA `0.1.0+9`
+
 ### Auth / password HTTP 400 (`0.1.0+8`)
 
 - Живой dummy `POST …/Account/api/Account/Authenticate` (fork JSON) → **пустой HTTP 400**, GET того же URL → HTML 404. Это не LCID и не Safari: на публичном ELTE **нет** JSON Authenticate (у Óbuda тот же DTO даёт JSON 500, не 400)

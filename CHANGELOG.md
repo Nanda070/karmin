@@ -2,6 +2,7 @@
 
 ## Unreleased — Stage 4 harden (polish)
 
+- Fix «Can't reach Neptun» after `0.1.0+8`: the JSON Authenticate probe timed out / reset on iPhone (no HTTP) and aborted before MVC Login. Password is **MVC only**; JSON Authenticate is an optional JWT upgrade after Login2FA. Do not send `X-Requested-With: null` (Dio ArgumentError ≠ network). Build `0.1.0+9`
 - Fix password-step HTTP 400: live dummy POST to `…/Account/api/Account/Authenticate` is **empty HTTP 400** (GET is HTML 404) — ELTE does not host that JSON controller. Login that reached Verification is **MVC** `GET+POST /Account/Login` (antiforgery + cookies) then `/Account/Login2FA` Authenticator digits. One JSON probe kept for 202/JWT institutes; empty 400 falls through to MVC (no LCID/header retry). Errors include HTTP status + `empty body` snippet. Build `0.1.0+8`
 - Fix password-step HTTP 400 after `0.1.0+6`: first Authenticate is **LCID 1033 + Safari/XHR** (superseded by `+8` — LCID order was not the 400). Build `0.1.0+7`
 - Restore Verification after `0.1.0+5`: password+OTP stay on one Authenticate URL; LCID **1038 then 1033** until 202/2FA/JWT (no hardcoded 1038-only); fork-minimal headers first, then one Safari/XHR retry if still not 2FA. Login/OTP errors show `HTTP xxx` + short Neptun text (never the opaque “sign on the website” without status). Student GETs stay on `Account/api` + real JWT. Build `0.1.0+6`

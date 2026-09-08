@@ -60,16 +60,16 @@ The legacy public path `https://neptun.elte.hu/ujhallgato/api/` is a **stub** (G
 
 - Live dummy `POST https://neptun.elte.hu/Account/api/Account/Authenticate` with the fork body is **empty HTTP 400**; GET of that URL is **HTML 404**. ELTE’s public host does not run the SDA JSON Authenticate controller (Óbuda’s `ujhallgato/api/Account/Authenticate` with the same JSON returns a JSON 500, not 400).
 - The request that reached Verification is Potlap **MVC**: `GET /Account/Login` (`.Potlap.Session` + `.Potlap.Antiforgery`) then `POST /Account/Login` `LoginName` + `Password` + `__RequestVerificationToken`, then `/Account/Login2FA` with Microsoft Authenticator digits in `TOTPCode` (never email `732-` prefix).
-- Karmin still **probes JSON Authenticate once** (fork keys, UI LCID, `jsonEncode`, dart:io User-Agent). HTTP 202 / JWT stays on that channel. Empty 400 / HTML 404 **falls through to MVC** — no LCID or Safari-header retry (`+7` did that; it was not the 400).
+- Password login does **not** probe JSON Authenticate (`+8` did; iPhone timeout/reset became “Can't reach Neptun” and never opened MVC Login).
 - After MVC OTP, one JSON Authenticate with `token=<6 digits>` is attempted to upgrade to a JWT. If it 400s again, the session stays the MVC placeholder (student GETs show the honest portal-session banner).
 - Optional mail only via **Send code again** (`EltePortalLogin` `GetEmail=true`).
 - Email confirm (only with a prefix): `RequestEmailCode` + `EmailCode` + `CodePrefix`.
 
 **Why not JSON-only on ELTE:** Neptun-Mobile-fork’s Authenticate works on institutes that host `…/ujhallgato/api` or `…/hallgato_ng/api`. Public ELTE login is Potlap MVC; the JSON controller is missing (empty 400). Do not invent `RequestEmail` / `Provider=Email` on the Authenticator path.
 
-`LiveNeptunAuth` probes Authenticate via absolute `NeptunClient.authenticateUrl` (`dio.postUri`, 8s timeouts) then MVC Login. Captures fork `devicecookie` from Set-Cookie when JSON exists. Password/OTP failures show `HTTP <status>` plus short Neptun text or `empty body` — never collapse HTML/maintenance into the opaque “sign on the website” string. Empty 400 on Authenticate is still not “wrong password”.
+`LiveNeptunAuth` password is MVC Login only. Optional post-OTP Authenticate uses absolute `NeptunClient.authenticateUrl` (`dio.postUri`, 8s timeouts) and captures fork `devicecookie` from Set-Cookie when JSON exists. Password/OTP failures on MVC show credentials / captcha / OTP / lockout — never collapse a Dio `ArgumentError` into “Can't reach Neptun.” That string is only timeout / DNS / TLS on Login itself.
 
-User-Agent (student JSON GETs): `Karmin/0.1.0 (Flutter; ELTE student client)`. JSON Authenticate uses a dart:io-like UA. MVC form posts clear `X-Requested-With` and send Safari-like headers.
+User-Agent (student JSON GETs): `Karmin/0.1.0 (Flutter; ELTE student client)`. Optional JSON Authenticate uses a dart:io-like UA. MVC form posts omit `X-Requested-With` (never set it to `null`) and send Safari-like headers.
 
 ---
 
@@ -138,19 +138,19 @@ Lifecycle: pause/hidden records a timestamp; resume always `lockLocally()` if a 
 ### Dio (`NeptunClient`)
 
 - Base URL: `https://neptun.elte.hu/Account/api/` (fork institute + `/api/`)
-- Connect 15s, receive 30s (JSON Authenticate overrides to 8s).
+- Connect 15s, receive 30s (optional post-OTP JSON Authenticate overrides to 8s).
 - `validateStatus`: 2xx only on the default client; auth/MVC use `< 500` and parse bodies.
 - **Do not** default `Content-Type: application/json`. Dio 5 GET `/Account/Login` with a null content-type header throws `ArgumentError`; login used to map that crash to “Can't reach Neptun.” JSON POSTs still get `application/json` from Map bodies. `applyEltePortalBrowserHeaders` strips Content-Type on portal GETs.
 - **onRequest:** if **real** JWT (`hasRealJwt`), `Authorization: Bearer <token>`. Never send MVC placeholder `elte-portal-session` as Bearer.
 - **onError:** HTTP 401 + real JWT + path does not contain `Account/Authenticate` → `clearSession()` + `onUnauthorized`. No retry interceptor.
 - `getData` / `postData` require `hasRealJwt`; unwrap `{ data: … }` envelopes. Portal-only session → `NeptunPortalSessionException` (honest empty banner, no OTP storm).
-- `lcid`: UI `hu` → 1038; otherwise 1033. Russian UI has **no** Neptun `lcid` — keep 1038 on the JSON probe. Live password tries **one** JSON Authenticate with that LCID, then MVC Login if the JSON API is missing.
+- `lcid`: UI `hu` → 1038; otherwise 1033. Russian UI has **no** Neptun `lcid` — keep 1038 on an optional post-OTP JSON upgrade. Live password is **MVC Login only** (no JSON Authenticate probe — that dead URL timed out on iPhone as “Can't reach Neptun”).
 
 Typed exceptions live in `lib/api/exceptions.dart`. `mapDioException` / `isDioTransportFailure`:
 
-- **Can't reach Neptun** (`NeptunNetworkException`) = **no HTTP response** (timeout, DNS, TLS, connection reset). Never for an `ArgumentError` or any ELTE status.
+- **Can't reach Neptun** (`NeptunNetworkException`) = **no HTTP response** (timeout, DNS, TLS, connection reset) on **MVC Login**. Never for an `ArgumentError`, a dead JSON Authenticate probe, or any ELTE status.
 - HTML / maintenance page → `NeptunMaintenanceException`.
-- HTTP from ELTE → credentials (`NeptunAuthException`), captcha, OTP (`NeptunOtpException`), lockout, or **Neptun request failed** (`NeptunApiException`). Empty 400 on JSON Authenticate is `NeptunUnavailableException` **with HTTP status + `empty body`**, then MVC Login — not wrong password and not the opaque website string.
+- HTTP from ELTE → credentials (`NeptunAuthException`), captcha, OTP (`NeptunOtpException`), lockout, or **Neptun request failed** (`NeptunApiException`). JSON Authenticate is not used on the password step.
 
 Do not log request bodies.
 

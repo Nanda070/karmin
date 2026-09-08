@@ -337,7 +337,7 @@ void main() {
     expect(normalizeOtpPrefix(ticket.otpPrefix), isEmpty);
   });
 
-  test('fork-style Authenticate 2FA then token verify', () async {
+  test('MVC Login2FA then optional JSON upgrade with bare token', () async {
     var sawToken = false;
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
@@ -347,24 +347,13 @@ void main() {
         final token = '${map['token'] ?? ''}';
         expect(map.containsKey('lcid'), isFalse);
         expect(map['LCID'], 1038);
-        if (token.isEmpty) {
-          return jsonBody(202, {
-            'data': {
-              'isTwoFactorRequired': true,
-              'twoFactorLoginToken': 'pending-2fa',
-            },
-          });
-        }
         sawToken = true;
         expect(token, '654321');
         return jsonBody(200, {
           'data': {'accessToken': 'jwt-from-fork'},
         });
       }
-      if (url.contains('Account/Authenticate')) {
-        return jsonBody(202, {'isTwoFactorRequired': true});
-      }
-      fail('unexpected ${options.method} $url');
+      return eltePortalScript()(options);
     });
 
     final auth = LiveNeptunAuth(clientWith(adapter));

@@ -443,70 +443,13 @@ void main() {
     );
   });
 
-  test('JSON 2FA (fork Authenticate) is authenticator — no MVC', () async {
-    var loginPosts = 0;
-    final adapter = ScriptedAdapter((options) {
-      final url = options.uri.toString();
-      if (url.contains('Account/Authenticate')) {
-        return jsonBody(202, {
-          'data': {
-            'isTwoFactorRequired': true,
-            'isCaptchaRequired': false,
-            'twoFactorLoginToken': 'pending',
-          },
-        });
-      }
-      if (options.method == 'POST' && isPasswordLoginUrl(url)) {
-        loginPosts += 1;
-      }
-      fail('fork JSON 2FA must not hit MVC ${options.method} $url');
-    });
-    final auth = LiveNeptunAuth(clientWith(adapter));
-    final ticket = await auth.submitPassword(
-      userName: 'abc123',
-      password: 'secret',
-      lcid: 1033,
-    );
-    expect(ticket.step, NeptunAuthStep.needsOtp);
-    expect(ticket.otpChannel, OtpChannel.authenticator);
-    expect(loginPosts, 0);
-    expect(auth.jsonTwoFactorPending, isTrue);
-    expect(auth.lastAuthenticateLcid, 1033);
-    final map = asAuthBody(adapter.bodies.single);
-    expect(map['LCID'], 1033);
-    expect(map['token'], '');
-    expect(map.keys.toList(), [
-      'userName',
-      'password',
-      'captcha',
-      'captchaIdentifier',
-      'token',
-      'LCID',
-    ]);
-    expect(adapter.headers.single['Accept'], isNull);
-    expect(
-      adapter.headers.single['User-Agent']?.toString(),
-      forkAuthenticateUserAgent,
-    );
-    expect(
-      adapter.headers.single[Headers.contentTypeHeader],
-      Headers.jsonContentType,
-    );
-  });
-
-  test('empty JSON 400 falls through to MVC Login2FA, no second Authenticate',
+  test('password login uses MVC Login and never POSTs JSON Authenticate',
       () async {
-    final lcids = <int>[];
     var loginPosts = 0;
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
       if (url.contains('Account/Authenticate')) {
-        final map = asAuthBody(options.data);
-        final lcid = map['LCID'];
-        lcids.add(lcid is int ? lcid : int.parse('$lcid'));
-        expect(map['token'], '');
-        expect(options.headers['Accept'], isNull);
-        return jsonBody(400, {});
+        fail('password must not probe dead JSON Authenticate');
       }
       if (options.method == 'POST' && isPasswordLoginUrl(url)) {
         loginPosts += 1;
@@ -536,8 +479,31 @@ void main() {
     expect(ticket.step, NeptunAuthStep.needsOtp);
     expect(ticket.otpChannel, OtpChannel.authenticator);
     expect(auth.jsonTwoFactorPending, isFalse);
-    expect(lcids, [1033]);
     expect(loginPosts, 1);
+  });
+
+  test('Authenticate timeout does not become Can\'t reach before MVC Login',
+      () async {
+    final adapter = ScriptedAdapter((options) {
+      final url = options.uri.toString();
+      if (url.contains('Account/Authenticate')) {
+        throw DioException(
+          requestOptions: options,
+          type: DioExceptionType.connectionTimeout,
+        );
+      }
+      return eltePortalScript()(options);
+    });
+    final ticket = await LiveNeptunAuth(clientWith(adapter)).submitPassword(
+      userName: 'n4ibzj',
+      password: 'secret',
+      lcid: 1033,
+    );
+    expect(ticket.step, NeptunAuthStep.needsOtp);
+    expect(
+      adapter.paths.any((path) => path.contains('Account/Authenticate')),
+      isFalse,
+    );
   });
 
   test('MVC OTP after JSON miss posts Login2FA TOTP without email prefix',
@@ -591,42 +557,24 @@ void main() {
     expect(totpPost!['TOTPCode'], isNot(contains('732')));
   });
 
-  test('2FA on first JSON POST does not send MVC or a second Authenticate',
+  test('MVC login error HTML is invalid credentials, not a second LCID probe',
       () async {
     final adapter = ScriptedAdapter((options) {
-      if (options.uri.toString().contains('Account/Login')) {
-        fail('JSON 202 must not hit MVC');
+      final url = options.uri.toString();
+      if (url.contains('Account/Authenticate')) {
+        fail('password must not probe JSON Authenticate');
       }
-      final map = asAuthBody(options.data);
-      expect(map['LCID'], 1033);
-      expect(options.headers['Accept'], isNull);
-      expect(
-        options.headers['User-Agent']?.toString(),
-        forkAuthenticateUserAgent,
-      );
-      return jsonBody(202, {'isTwoFactorRequired': true});
-    });
-    final auth = LiveNeptunAuth(clientWith(adapter));
-    final ticket = await auth.submitPassword(
-      userName: 'abc123',
-      password: 'secret',
-      lcid: 1033,
-    );
-    expect(ticket.step, NeptunAuthStep.needsOtp);
-    expect(adapter.calls, 1);
-    expect(auth.lastAuthenticateLcid, 1033);
-    expect(auth.jsonTwoFactorPending, isTrue);
-  });
-
-  test('explicit bad-password 400 does not retry another LCID', () async {
-    final adapter = ScriptedAdapter((options) {
-      return jsonBody(400, {
-        'modelStateErrors': [
-          {
-            'errors': ['Invalid user name or password.'],
-          },
-        ],
-      });
+      if (options.method == 'GET' && isPasswordLoginUrl(url)) {
+        return htmlBody(200, eltePasswordLoginHtml);
+      }
+      if (options.method == 'POST' && isPasswordLoginUrl(url)) {
+        return htmlBody(
+          200,
+          '$eltePasswordLoginHtml'
+          '<div class="validation-summary-errors">Invalid user name or password.</div>',
+        );
+      }
+      fail('unexpected ${options.method} $url');
     });
     final auth = LiveNeptunAuth(clientWith(adapter));
     await expectLater(
@@ -637,35 +585,32 @@ void main() {
       ),
       throwsA(isA<NeptunAuthException>()),
     );
-    expect(adapter.calls, 1);
+    expect(
+      adapter.paths.any((path) => path.contains('Account/Authenticate')),
+      isFalse,
+    );
   });
 
-  test('JSON 202 then OTP stays on Authenticate URL with fork headers', () async {
+  test('MVC OTP then optional JSON upgrade uses fork Authenticate headers',
+      () async {
     final urls = <String>[];
     final tokens = <String>[];
-    final accepts = <String?>[];
-    final userAgents = <String?>[];
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
       urls.add(url);
-      if (url.contains('Account/Login')) {
-        fail('JSON 2FA must not hit MVC');
-      }
-      accepts.add(options.headers['Accept']?.toString());
-      userAgents.add(options.headers['User-Agent']?.toString());
-      final map = asAuthBody(options.data);
-      tokens.add('${map['token'] ?? ''}');
-      if ('${map['token'] ?? ''}'.isNotEmpty) {
+      if (url.contains('Account/Authenticate')) {
         expect(options.headers['Accept'], isNull);
         expect(
           options.headers['User-Agent']?.toString(),
           forkAuthenticateUserAgent,
         );
+        final map = asAuthBody(options.data);
+        tokens.add('${map['token'] ?? ''}');
         return jsonBody(200, {
           'data': {'accessToken': 'jwt-fork'},
         });
       }
-      return jsonBody(202, {'isTwoFactorRequired': true});
+      return eltePortalScript()(options);
     });
     final auth = LiveNeptunAuth(clientWith(adapter));
     final first = await auth.submitPassword(
@@ -674,8 +619,7 @@ void main() {
       lcid: 1033,
     );
     expect(first.step, NeptunAuthStep.needsOtp);
-    expect(auth.jsonTwoFactorPending, isTrue);
-    expect(adapter.calls, 1);
+    expect(auth.jsonTwoFactorPending, isFalse);
 
     final done = await auth.submitOtp(
       userName: 'abc123',
@@ -684,35 +628,14 @@ void main() {
       otp: '654321',
     );
     expect(done.accessToken, 'jwt-fork');
+    expect(tokens.single, '654321');
     expect(
-      urls,
-      everyElement(
-        'https://neptun.elte.hu/Account/api/Account/Authenticate',
-      ),
+      urls.where((path) => path.contains('Account/Authenticate')),
+      hasLength(1),
     );
-    expect(tokens.last, '654321');
-    expect(accepts, everyElement(isNull));
-    expect(userAgents, everyElement(forkAuthenticateUserAgent));
   });
 
-  test('JSON 202 without envelope stays on authenticator path', () async {
-    final adapter = ScriptedAdapter((options) {
-      final url = options.uri.toString();
-      if (url.contains('Account/Authenticate')) {
-        return jsonBody(202, {'isTwoFactorRequired': true});
-      }
-      fail('must not fall through to MVC');
-    });
-    final ticket = await LiveNeptunAuth(clientWith(adapter)).submitPassword(
-      userName: 'abc',
-      password: 'secret',
-      lcid: 1033,
-    );
-    expect(ticket.step, NeptunAuthStep.needsOtp);
-    expect(ticket.otpChannel, OtpChannel.authenticator);
-  });
-
-  test('JSON API miss falls through to MVC Login and reaches OTP', () async {
+  test('JSON API miss is skipped; MVC Login still reaches OTP', () async {
     final adapter = ScriptedAdapter(eltePortalScript());
     final ticket = await LiveNeptunAuth(clientWith(adapter)).submitPassword(
       userName: 'n4ibzj',
@@ -723,7 +646,7 @@ void main() {
     expect(ticket.otpChannel, OtpChannel.authenticator);
     expect(
       adapter.paths.any((path) => path.contains('Account/Authenticate')),
-      isTrue,
+      isFalse,
     );
     expect(
       adapter.paths.any((path) => path.contains('Account/Login')),
@@ -758,171 +681,57 @@ void main() {
     expect(jar.containsKey('.AspNetCore.Mvc.CookieTempDataProvider'), isFalse);
   });
 
-  test('JSON 202 sets pending; failed re-login keeps pending for token OTP',
-      () async {
-    var passwordAttempts = 0;
-    var otpTokenPosts = 0;
-    final adapter = ScriptedAdapter((options) {
-      final url = options.uri.toString();
-      if (options.method == 'POST' && url.contains('Account/Authenticate')) {
-        final map = asAuthBody(options.data);
-        final token = '${map['token'] ?? ''}';
-        if (token.isNotEmpty) {
-          otpTokenPosts += 1;
-          expect(token, '123456');
-          return jsonBody(200, {
-            'data': {'accessToken': 'jwt-after-relogin'},
-          });
-        }
-        passwordAttempts += 1;
-        if (passwordAttempts == 1) {
-          return jsonBody(202, {'isTwoFactorRequired': true});
-        }
-        throw DioException(
-          requestOptions: options,
-          type: DioExceptionType.connectionTimeout,
-        );
-      }
-      fail('unexpected ${options.method} $url');
-    });
-
+  test('reset clears JSON pending and device cookie after MVC login', () async {
+    final adapter = ScriptedAdapter(eltePortalScript());
     final auth = LiveNeptunAuth(clientWith(adapter));
-    final first = await auth.submitPassword(
-      userName: 'abc123',
+    await auth.submitPassword(
+      userName: 'abc',
       password: 'secret',
       lcid: 1033,
     );
-    expect(first.step, NeptunAuthStep.needsOtp);
-    expect(auth.jsonTwoFactorPending, isTrue);
-
-    await expectLater(
-      auth.submitPassword(
-        userName: 'abc123',
-        password: 'secret',
-        lcid: 1033,
-      ),
-      throwsA(isA<NeptunException>()),
-    );
-    expect(auth.jsonTwoFactorPending, isTrue);
-
-    final done = await auth.submitOtp(
-      userName: 'abc123',
-      password: 'secret',
-      lcid: 1033,
-      otp: '123456',
-    );
-    expect(otpTokenPosts, 1);
-    expect(done.accessToken, 'jwt-after-relogin');
     expect(auth.jsonTwoFactorPending, isFalse);
-  });
-
-  test('JSON 202 then re-login 202 keeps pending; reset clears cookie+pending',
-      () async {
-    final b64 = base64.encode(utf8.encode('ABC'));
-    final adapter = ScriptedAdapter((options) {
-      final url = options.uri.toString();
-      if (options.method == 'POST' && url.contains('Account/Authenticate')) {
-        final map = asAuthBody(options.data);
-        if ('${map['token'] ?? ''}'.isNotEmpty) {
-          expect(options.headers['Cookie'], 'devicecookie-$b64=dev1');
-          return jsonBody(200, {
-            'data': {'accessToken': 'jwt'},
-          });
-        }
-        return jsonBody(
-          202,
-          {'isTwoFactorRequired': true},
-          setCookie: ['devicecookie-$b64=dev1; path=/; httponly'],
-        );
-      }
-      fail('unexpected ${options.uri}');
-    });
-
-    final auth = LiveNeptunAuth(clientWith(adapter));
-    await auth.submitPassword(
-      userName: 'abc',
-      password: 'secret',
-      lcid: 1033,
-    );
-    expect(auth.jsonTwoFactorPending, isTrue);
-    expect(auth.deviceCookieValue, 'dev1');
-
-    await auth.submitPassword(
-      userName: 'abc',
-      password: 'secret',
-      lcid: 1033,
-    );
-    expect(auth.jsonTwoFactorPending, isTrue);
 
     auth.reset();
     expect(auth.jsonTwoFactorPending, isFalse);
     expect(auth.deviceCookieValue, isNull);
   });
 
-  test('JWT password clears pending flag', () async {
-    var phase = 0;
+  test('JWT upgrade after MVC OTP never sends stale Bearer', () async {
     final adapter = ScriptedAdapter((options) {
-      if (!options.uri.toString().contains('Account/Authenticate')) {
-        fail('unexpected ${options.uri}');
+      if (options.uri.toString().contains('Account/Authenticate')) {
+        expect(options.headers['Authorization'], isNull);
+        expect(options.headers['X-Requested-With'], isNull);
+        expect(options.headers['Origin'], isNull);
+        expect(options.headers['Referer'], isNull);
+        expect(options.headers['Accept'], isNull);
+        expect(
+          options.headers['User-Agent']?.toString(),
+          forkAuthenticateUserAgent,
+        );
+        expect(
+          options.headers[Headers.contentTypeHeader],
+          Headers.jsonContentType,
+        );
+        return jsonBody(200, {
+          'data': {'accessToken': 'jwt'},
+        });
       }
-      phase += 1;
-      if (phase == 1) {
-        return jsonBody(202, {'isTwoFactorRequired': true});
-      }
-      return jsonBody(200, {
-        'data': {'accessToken': 'direct-jwt'},
-      });
-    });
-    final auth = LiveNeptunAuth(clientWith(adapter));
-    await auth.submitPassword(userName: 'a', password: 'b', lcid: 1033);
-    expect(auth.jsonTwoFactorPending, isTrue);
-
-    final ticket = await auth.submitPassword(
-      userName: 'a',
-      password: 'b',
-      lcid: 1033,
-    );
-    expect(ticket.hasJwt, isTrue);
-    expect(auth.jsonTwoFactorPending, isFalse);
-  });
-
-  test('Authenticate JSON probe never sends Bearer and uses fork headers',
-      () async {
-    final adapter = ScriptedAdapter((options) {
-      expect(options.headers['Authorization'], isNull);
-      expect(options.headers['X-Requested-With'], isNull);
-      expect(options.headers['Origin'], isNull);
-      expect(options.headers['Referer'], isNull);
-      expect(options.headers['Accept'], isNull);
-      expect(
-        options.headers['User-Agent']?.toString(),
-        forkAuthenticateUserAgent,
-      );
-      expect(
-        options.headers[Headers.contentTypeHeader],
-        Headers.jsonContentType,
-      );
-      expect(asAuthBody(options.data)['LCID'], 1038);
-      return jsonBody(202, {'isTwoFactorRequired': true});
+      return eltePortalScript()(options);
     });
     final client = clientWith(adapter)..setAccessToken('stale-jwt');
-    await LiveNeptunAuth(client).submitPassword(
+    final auth = LiveNeptunAuth(client);
+    await auth.submitPassword(userName: 'a', password: 'b', lcid: 1038);
+    final done = await auth.submitOtp(
       userName: 'a',
       password: 'b',
       lcid: 1038,
+      otp: '654321',
     );
+    expect(done.accessToken, 'jwt');
   });
 
-  test('OTP failure surfaces HTTP status to caller', () async {
-    final adapter = ScriptedAdapter((options) {
-      final map = asAuthBody(options.data);
-      if ('${map['token'] ?? ''}'.isEmpty) {
-        return jsonBody(202, {'isTwoFactorRequired': true});
-      }
-      return jsonBody(400, {
-        'message': 'The token is invalid.',
-      });
-    });
+  test('wrong MVC Authenticator code is OTP reject, not can\'t reach', () async {
+    final adapter = ScriptedAdapter(eltePortalScript());
     final auth = LiveNeptunAuth(clientWith(adapter));
     await auth.submitPassword(userName: 'a', password: 'b', lcid: 1038);
     await expectLater(
@@ -930,15 +739,9 @@ void main() {
         userName: 'a',
         password: 'b',
         lcid: 1038,
-        otp: '111111',
+        otp: '11111',
       ),
-      throwsA(
-        isA<NeptunOtpException>().having(
-          (e) => e.message,
-          'message',
-          'Neptun rejected this code (HTTP 400): The token is invalid.',
-        ),
-      ),
+      throwsA(isA<NeptunOtpException>()),
     );
   });
 }

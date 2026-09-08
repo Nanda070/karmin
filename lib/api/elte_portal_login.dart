@@ -384,6 +384,9 @@ class EltePortalLogin {
       return response;
     } on DioException catch (error) {
       throw mapDioException(error);
+    } on ArgumentError {
+      // Dio 5 throws if a header value is null (never “Can't reach”).
+      throw const NeptunApiException('Neptun request failed.');
     }
   }
 
@@ -409,6 +412,8 @@ class EltePortalLogin {
         return error.response!;
       }
       throw mapDioException(error);
+    } on ArgumentError {
+      throw const NeptunApiException('Neptun request failed.');
     }
   }
 
@@ -423,7 +428,6 @@ class EltePortalLogin {
       'Origin': origin,
       'Referer': referer,
       'User-Agent': NeptunClient.portalUserAgent,
-      'X-Requested-With': null,
       if (_cookies.isNotEmpty) 'Cookie': cookieHeader(_cookies),
     };
     // Never set content-type: null. Dio 5 treats that as conflicting with the

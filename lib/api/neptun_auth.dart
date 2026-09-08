@@ -445,15 +445,14 @@ class DebugNeptunAuth implements NeptunAuthApi {
 /// Live ELTE login.
 ///
 /// Public `neptun.elte.hu` does **not** host the SDA JSON Authenticate
-/// controller (live dummy POST → empty HTTP 400, GET → HTML 404). The
-/// request that reached Verification is Potlap MVC: GET `/Account/Login`
-/// (cookies + antiforgery) then POST `LoginName`/`Password`, then
-/// `/Account/Login2FA` with Microsoft Authenticator digits.
-///
-/// One JSON Authenticate probe is still tried first. HTTP 202 / JWT stays
-/// on that channel (fork institutes). Empty 400 / HTML 404 falls through
-/// to MVC — not another LCID or User-Agent guess. Optional email resend
-/// still uses [EltePortalLogin].
+/// controller (live dummy POST → empty HTTP 400, GET → HTML 404). On
+/// iPhone that dead path often times out / resets with **no HTTP
+/// status**, which used to map to “Can't reach Neptun” and abort before
+/// MVC. Password login is therefore **only** Potlap MVC: GET
+/// `/Account/Login` (cookies + antiforgery) then POST `LoginName` /
+/// `Password`, then `/Account/Login2FA` with Microsoft Authenticator
+/// digits. JSON Authenticate is used only as an optional JWT upgrade
+/// after a successful MVC OTP — never on the password step.
 class LiveNeptunAuth implements NeptunAuthApi {
   LiveNeptunAuth(this._client) : _portal = EltePortalLogin(_client);
 
@@ -499,62 +498,17 @@ class LiveNeptunAuth implements NeptunAuthApi {
     required int lcid,
   }) async {
     final code = normalizeNeptunCode(userName);
-    // Fresh password attempt: drop MVC cookies. Keep device cookie + JSON
-    // pending across unlock re-login (fork keeps device cookie by username).
+    // Fresh password attempt: drop MVC cookies. Do **not** POST the dead
+    // JSON Authenticate first — timeout there is “Can't reach Neptun”
+    // and never opens Verification. Device cookie is only for a later
+    // JWT upgrade after MVC OTP.
     _portal.clear();
-    final jsonLcid = authenticateLcidForUi(lcid);
-    NeptunException? jsonMiss;
-
-    try {
-      final ticket = await _authenticate(
-        authenticateJsonBody(
-          userName: code,
-          password: password,
-          lcid: jsonLcid,
-        ),
-        userName: code,
-      );
-      if (ticket.step == NeptunAuthStep.authenticated ||
-          ticket.step == NeptunAuthStep.needsOtp) {
-        _authenticateLcid = jsonLcid;
-        return _finishPassword(ticket);
-      }
-      jsonMiss = NeptunUnavailableException.detail();
-    } on NeptunException catch (error) {
-      if (isHardAuthenticateFailure(error)) {
-        rethrow;
-      }
-      jsonMiss = error;
-    }
-
-    try {
-      final ticket = await _portal.submitPassword(
-        userName: code,
-        password: password,
-        lcid: lcid,
-      );
-      _jsonTwoFactorPending = false;
-      _authenticateLcid = null;
-      return ticket;
-    } on NeptunException catch (error) {
-      if (isHardAuthenticateFailure(error)) {
-        rethrow;
-      }
-      throw jsonMiss ?? error;
-    }
-  }
-
-  AuthTicket _finishPassword(AuthTicket ticket) {
-    if (ticket.step == NeptunAuthStep.authenticated) {
-      _jsonTwoFactorPending = false;
-      return ticket;
-    }
-    _jsonTwoFactorPending = true;
-    // Fork has no email dispatch — 2FA is the authenticator `token` field.
-    return const AuthTicket(
-      step: NeptunAuthStep.needsOtp,
-      otpChannel: OtpChannel.authenticator,
-      otpPrefix: '',
+    _jsonTwoFactorPending = false;
+    _authenticateLcid = null;
+    return _portal.submitPassword(
+      userName: code,
+      password: password,
+      lcid: lcid,
     );
   }
 

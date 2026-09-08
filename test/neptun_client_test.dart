@@ -10,6 +10,8 @@ import 'package:karmin/api/neptun_client.dart';
 import 'package:karmin/api/neptun_student_api.dart';
 import 'package:karmin/auth/auth_models.dart';
 
+import 'neptun_auth_test.dart' show eltePortalScript;
+
 class ScriptedAdapter implements HttpClientAdapter {
   ScriptedAdapter(this.onFetch);
 
@@ -168,29 +170,29 @@ void main() {
     );
   });
 
-  test('password + OTP Authenticate use absolute fork URL, bare token, no Bearer',
+  test('password uses MVC Login; OTP upgrade uses absolute fork Authenticate',
       () async {
     final urls = <String>[];
     final tokens = <String>[];
     final authHeaders = <String?>[];
-    final contentTypes = <String?>[];
-    final xhr = <String?>[];
     final adapter = ScriptedAdapter((options) {
-      urls.add(options.uri.toString());
-      authHeaders.add(options.headers['Authorization']?.toString());
-      contentTypes.add(options.headers[Headers.contentTypeHeader]?.toString());
-      xhr.add(options.headers['X-Requested-With']?.toString());
-      final map = asAuthBody(options.data);
-      tokens.add('${map['token'] ?? ''}');
-      expect(map['LCID'], 1038);
-      if ('${map['token'] ?? ''}'.isEmpty) {
-        return jsonBody(202, {
-          'data': {'isTwoFactorRequired': true},
+      final url = options.uri.toString();
+      urls.add(url);
+      if (url.contains('Account/Authenticate')) {
+        authHeaders.add(options.headers['Authorization']?.toString());
+        final map = asAuthBody(options.data);
+        tokens.add('${map['token'] ?? ''}');
+        expect(map['LCID'], 1038);
+        expect(options.headers['X-Requested-With'], isNull);
+        expect(
+          options.headers[Headers.contentTypeHeader],
+          Headers.jsonContentType,
+        );
+        return jsonBody(200, {
+          'data': {'accessToken': 'jwt-otp'},
         });
       }
-      return jsonBody(200, {
-        'data': {'accessToken': 'jwt-otp'},
-      });
+      return eltePortalScript()(options);
     });
     final client = clientWith(adapter)..setAccessToken('stale-jwt');
     final auth = LiveNeptunAuth(client);
@@ -200,7 +202,7 @@ void main() {
       lcid: 1038,
     );
     expect(first.step, NeptunAuthStep.needsOtp);
-    expect(auth.jsonTwoFactorPending, isTrue);
+    expect(auth.jsonTwoFactorPending, isFalse);
 
     final done = await auth.submitOtp(
       userName: 'abc123',
@@ -209,19 +211,19 @@ void main() {
       otp: '654321',
     );
     expect(done.accessToken, 'jwt-otp');
-    expect(urls, hasLength(2));
     expect(
-      urls,
+      urls.any((u) => u.contains('Account/Login') && !u.contains('Login2FA')),
+      isTrue,
+    );
+    expect(
+      urls.where((u) => u.contains('Account/Authenticate')),
       everyElement(
         'https://neptun.elte.hu/Account/api/Account/Authenticate',
       ),
     );
     expect(urls.any((u) => u.contains('/api/api/')), isFalse);
-    expect(tokens, ['', '654321']);
-    // Stale JWT must not ride along on Authenticate.
+    expect(tokens, ['654321']);
     expect(authHeaders, everyElement(isNull));
-    expect(xhr, everyElement(isNull));
-    expect(contentTypes, everyElement(Headers.jsonContentType));
   });
 
   test('HTML maintenance body maps to NeptunMaintenanceException', () {
@@ -258,29 +260,21 @@ void main() {
     expect(unauthorized, 0);
   });
 
-  test('live authenticate 202 2FA stays on JSON authenticator (no MVC)', () async {
+  test('live password 2FA uses MVC Login, not JSON Authenticate', () async {
     var loginPosts = 0;
+    var authenticatePosts = 0;
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
       if (url.contains('Account/Authenticate')) {
-        return jsonBody(202, {
-          'data': {
-            'accessToken': null,
-            'isTwoFactorRequired': true,
-            'isCaptchaRequired': false,
-            'twoFactorType': 'email',
-          },
-        });
+        authenticatePosts += 1;
+        fail('password must not probe JSON Authenticate');
       }
       if (options.method == 'POST' &&
           url.contains('Account/Login') &&
           !url.contains('Login2FA')) {
         loginPosts += 1;
       }
-      if (url.contains('Account/Login')) {
-        fail('fork JSON 2FA must not fall through to MVC');
-      }
-      fail('unexpected ${options.method} $url');
+      return eltePortalScript()(options);
     });
     final client = clientWith(adapter);
     final auth = LiveNeptunAuth(client);
@@ -294,7 +288,8 @@ void main() {
     expect(ticket.otpChannel, OtpChannel.authenticator);
     expect(normalizeOtpPrefix(ticket.otpPrefix), isEmpty);
     expect(client.hasJwt, isFalse);
-    expect(loginPosts, 0);
+    expect(loginPosts, 1);
+    expect(authenticatePosts, 0);
   });
 
   test('resend-via-relogin POSTs /Account/Login, not JSON Authenticate', () async {

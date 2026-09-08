@@ -183,7 +183,7 @@ Session API states (Stage 2 plugs live payloads into the same enum):
 ### 4.1 First session
 
 1. **Disclaimer** (once). Then Login: Neptun code + password. No “remember password” checkbox — storage is mandatory for later unlock, explained in the disclaimer.
-2. Password: one JSON probe `POST https://neptun.elte.hu/Account/api/Account/Authenticate` `{ userName, password, captcha, captchaIdentifier, token, LCID }` (never relative `api/Account/…` under the student `…/Account/api/` base). Live ELTE answers **empty HTTP 400** (controller missing). Fall through to MVC `GET+POST /Account/Login` (antiforgery) then `/Account/Login2FA`. Do **not** retry LCID/headers.
+2. Password: **MVC only** `GET+POST https://neptun.elte.hu/Account/Login` (antiforgery) then `/Account/Login2FA`. Do **not** probe JSON `…/Account/api/Account/Authenticate` first — that controller is missing on ELTE and on iPhone the hang maps to “Can't reach Neptun”. Optional JWT upgrade after MVC OTP may POST Authenticate once.
 3. ELTE answers **HTTP 202** + `isTwoFactorRequired: true` (no `accessToken`). Show **Verification** (2FA). Do not persist credentials yet.
 4. User enters the one-time code. Re-POST the same body plus `token: "<otp>"` (same field the official web client uses).
 5. Success: `accessToken`, `neptunCode`. JWT → RAM. Credentials → Keystore (`neptun_code`, `neptun_password`).

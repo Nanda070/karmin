@@ -198,6 +198,12 @@ bool isDioTransportFailure(DioException error) {
   if (error.response != null) {
     return false;
   }
+  // Dio 5 can wrap ArgumentError (null Content-Type / header) as
+  // [DioExceptionType.unknown] with no response — that is a client bug,
+  // not “Can't reach Neptun.”
+  if (error.error is ArgumentError) {
+    return false;
+  }
   return switch (error.type) {
     DioExceptionType.connectionTimeout ||
     DioExceptionType.sendTimeout ||
@@ -297,6 +303,9 @@ NeptunException mapDioException(
   bool treatingAsOtp = false,
   bool preferApiMessage = false,
 }) {
+  if (error.error is ArgumentError) {
+    return const NeptunApiException('Neptun request failed.');
+  }
   if (isDioTransportFailure(error)) {
     return const NeptunNetworkException();
   }

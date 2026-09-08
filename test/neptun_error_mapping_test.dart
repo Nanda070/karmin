@@ -31,6 +31,17 @@ Response<dynamic> http(int status, [dynamic data]) {
 
 void main() {
   group('mapDioException', () {
+    test('Dio ArgumentError is request failed, not can\'t reach', () {
+      final error = DioException(
+        requestOptions: RequestOptions(path: '/Account/Login'),
+        type: DioExceptionType.unknown,
+        error: ArgumentError('Invalid header'),
+      );
+      expect(isDioTransportFailure(error), isFalse);
+      expect(mapDioException(error), isA<NeptunApiException>());
+      expect(mapDioException(error).message, isNot(contains("Can't reach")));
+    });
+
     test('timeout / DNS / TLS without HTTP is can\'t reach Neptun', () {
       for (final type in [
         DioExceptionType.connectionTimeout,
