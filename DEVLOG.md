@@ -6,6 +6,13 @@
 
 ## 8 сентября 2026 г.
 
+### API / live data
+
+- **Fix «Can't refresh from Neptun» после успешного Authenticator-логина:** `NeptunClient.baseUrl` сменён с мёртвого `ujhallgato/api` на fork-хост `https://neptun.elte.hu/Account/api/` (как Neptun-Mobile-fork). Календарь / сообщения / предметы идут туда же с реальным JWT
+- Placeholder MVC `elte-portal-session` больше не уходит как Bearer и не провоцирует OTP; честный баннер про web-login vs JSON
+- Soft-fail опциональных dashboard GET; HTML/maintenance → понятное сообщение
+- IPA `0.1.0+3`
+
 ### UI
 
 - Тёмная luxury-тема по умолчанию: чернила, navy, carmine; Fraunces + Plus Jakarta Sans
@@ -38,7 +45,7 @@
 - Fallback MVC verify: `RequestTOTP` + `TOTPCode`; email только после явного `GetEmail=true` с `CodePrefix`
 - Пустой HTTP 400 на `ujhallgato` больше не считается «неверным паролем»
 - Authenticator снова включён (раньше был parked ради отладки email)
-- Живой ELTE 2FA на устройстве: новая IPA (`0.1.0+2`); если сайт Neptun на maintenance — проверка подождёт
+- Живой ELTE 2FA на устройстве: IPA после этого фикса — `0.1.0+3`; если сайт Neptun на maintenance — проверка подождёт
 
 ### API
 

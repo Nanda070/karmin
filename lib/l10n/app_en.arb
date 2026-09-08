@@ -123,6 +123,9 @@
   "dataCached": "Showing last saved data.",
   "dataRetry": "Try again",
   "dataOffline": "Can't reach Neptun.",
+  "dataMaintenance": "Neptun is temporarily unavailable (maintenance).",
+  "dataPortalSession": "Signed in via web login — live calendar needs Authenticator JSON login. Sign out and try again.",
+  "dataSessionExpired": "Neptun session expired. Enter a new one-time code.",
   "pinDotsLabel": "{filled} of {max} digits entered",
   "@pinDotsLabel": {
     "placeholders": {

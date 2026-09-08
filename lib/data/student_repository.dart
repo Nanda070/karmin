@@ -249,18 +249,21 @@ class StudentRepository {
 
     try {
       final cached = await readCache();
+      // Calendar is the only hard read. Dashboard chips soft-fail so a missing
+      // GetAverages (fork never calls it) does not wipe an otherwise good week.
       final results = await Future.wait([
         _api.getCalendarEvents(start: weekStart, end: rangeEnd),
-        _api.getDashboardAverages(),
-        _api.getUnreadMessageCount(),
-        _api.getDashboardCreditProgress(),
+        _try(() => _api.getDashboardAverages()),
+        _try(() => _api.getUnreadMessageCount()),
+        _try(() => _api.getDashboardCreditProgress()),
         _try(() => _api.getTakenSubjects()),
         _try(() => _api.getReceivedMessages()),
         _try(() => _api.getExamOffers()),
         _try(() => _api.getUserInfo()),
         _try(() => _api.getTrainingLabel()),
       ]);
-      final credits = results[3] as ({int? completed, int? required});
+      final credits = results[3] as ({int? completed, int? required})? ??
+          (completed: cached?.dashboard.completedCredits, required: cached?.dashboard.requiredCredits);
       final subjects =
           (results[4] as List<TakenSubject>?) ?? cached?.subjects ?? const [];
       final messages =
@@ -271,12 +274,14 @@ class StudentRepository {
           const StudentProfile();
       final training = results[8] as String?;
       final unreadFromList = messages.where((m) => m.unread).length;
-      final unreadApi = results[2] as int;
+      final unreadApi = results[2] as int?;
       final snapshot = StudentSnapshot(
         events: results[0] as List<CalendarEvent>,
         dashboard: DashboardSnapshot(
-          gpa: results[1] as double?,
-          unreadCount: unreadFromList > 0 ? unreadFromList : unreadApi,
+          gpa: results[1] as double? ?? cached?.dashboard.gpa,
+          unreadCount: unreadFromList > 0
+              ? unreadFromList
+              : (unreadApi ?? cached?.dashboard.unreadCount ?? 0),
           completedCredits: credits.completed,
           requiredCredits: credits.required,
         ),

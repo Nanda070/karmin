@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:karmin/api/exceptions.dart';
 import 'package:karmin/app/theme.dart';
 import 'package:karmin/app/widgets/karmin_icons.dart';
 import 'package:karmin/data/student_repository.dart';
@@ -24,13 +25,38 @@ class KarminStatusBanner extends StatelessWidget {
     VoidCallback? onRetry,
   }) {
     return KarminStatusBanner(
-      message: snapshot.fromCache ? l10n.dataCached : l10n.dataError,
+      message: snapshot.fromCache
+          ? l10n.dataCached
+          : _messageForSnapshot(snapshot, l10n),
       kind: snapshot.fromCache
           ? KarminStatusKind.cached
           : KarminStatusKind.error,
       onRetry: onRetry,
       retryLabel: l10n.dataRetry,
     );
+  }
+
+  static String _messageForSnapshot(
+    StudentSnapshot snapshot,
+    AppLocalizations l10n,
+  ) {
+    final raw = snapshot.errorMessage;
+    if (raw == null || raw.isEmpty) {
+      return l10n.dataError;
+    }
+    if (raw == const NeptunMaintenanceException().message) {
+      return l10n.dataMaintenance;
+    }
+    if (raw == const NeptunPortalSessionException().message) {
+      return l10n.dataPortalSession;
+    }
+    if (raw == const NeptunNetworkException().message) {
+      return l10n.dataOffline;
+    }
+    if (raw == const NeptunSessionExpiredException().message) {
+      return l10n.dataSessionExpired;
+    }
+    return l10n.dataError;
   }
 
   final String message;

@@ -120,6 +120,9 @@
   "dataCached": "Az utoljára mentett adatok.",
   "dataRetry": "Újra",
   "dataOffline": "A Neptun nem elérhető.",
+  "dataMaintenance": "A Neptun átmenetileg nem elérhető (karbantartás).",
+  "dataPortalSession": "Webes belépés sikerült — az élő naptárhoz Authenticator JSON belépés kell. Jelentkezz ki, majd újra be.",
+  "dataSessionExpired": "A Neptun munkamenet lejárt. Adj meg egy új egyszeri kódot.",
   "pinDotsLabel": "{filled} / {max} számjegy megadva",
   "@pinDotsLabel": {
     "placeholders": {

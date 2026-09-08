@@ -41,7 +41,7 @@ Unsigned IPA from Actions (after a successful run):
 | Build | Neptun |
 |---|---|
 | `flutter run` **debug** (default) | Labeled **mock** (any non-empty login, any 6-digit OTP). |
-| Debug + `--dart-define=KARMIN_LIVE_AUTH=true` | Live `https://neptun.elte.hu/ujhallgato/api/` |
+| Debug + `--dart-define=KARMIN_LIVE_AUTH=true` | Live `https://neptun.elte.hu/Account/api/` |
 | **Release** (the Actions IPA) | Always live. |
 
 Chrome/web stays on the mock (CORS). iPhone does not. Release IPA = real ELTE account + real OTP. Never log password, OTP, or JWT.
@@ -151,7 +151,7 @@ Windows **не умеет** собирать IPA. Основной путь: Git
 ### Live Neptun
 
 - Debug без флага → помеченный mock.
-- **Release** / IPA из Actions → живой `https://neptun.elte.hu/ujhallgato/api/`.
+- **Release** / IPA из Actions → живой `https://neptun.elte.hu/Account/api/`.
 - Нужны реальный Neptun-код, пароль и одноразовый код. Не логировать секреты.
 
 ### Face ID (`local_auth`)

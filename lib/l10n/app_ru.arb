@@ -120,6 +120,9 @@
   "dataCached": "Показаны последние сохранённые данные.",
   "dataRetry": "Повторить",
   "dataOffline": "Не удаётся связаться с Neptun.",
+  "dataMaintenance": "Neptun временно недоступен (обслуживание).",
+  "dataPortalSession": "Вход через веб-логин — для календаря нужен JSON-вход с Authenticator. Выйдите и войдите снова.",
+  "dataSessionExpired": "Сессия Neptun истекла. Введите новый одноразовый код.",
   "pinDotsLabel": "Введено {filled} из {max} цифр",
   "@pinDotsLabel": {
     "placeholders": {

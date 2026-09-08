@@ -66,7 +66,7 @@ void main() {
             response: http(404, '<!DOCTYPE html><html></html>'),
           ),
         ),
-        isA<NeptunApiException>(),
+        isA<NeptunMaintenanceException>(),
       );
       expect(
         mapDioException(

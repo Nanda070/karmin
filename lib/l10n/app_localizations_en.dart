@@ -344,6 +344,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dataOffline => 'Can\'t reach Neptun.';
 
   @override
+  String get dataMaintenance =>
+      'Neptun is temporarily unavailable (maintenance).';
+
+  @override
+  String get dataPortalSession =>
+      'Signed in via web login — live calendar needs Authenticator JSON login. Sign out and try again.';
+
+  @override
+  String get dataSessionExpired =>
+      'Neptun session expired. Enter a new one-time code.';
+
+  @override
   String pinDotsLabel(int filled, int max) {
     return '$filled of $max digits entered';
   }

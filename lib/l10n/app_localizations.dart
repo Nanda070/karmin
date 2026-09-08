@@ -736,6 +736,24 @@ abstract class AppLocalizations {
   /// **'Can\'t reach Neptun.'**
   String get dataOffline;
 
+  /// No description provided for @dataMaintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'Neptun is temporarily unavailable (maintenance).'**
+  String get dataMaintenance;
+
+  /// No description provided for @dataPortalSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in via web login — live calendar needs Authenticator JSON login. Sign out and try again.'**
+  String get dataPortalSession;
+
+  /// No description provided for @dataSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Neptun session expired. Enter a new one-time code.'**
+  String get dataSessionExpired;
+
   /// No description provided for @pinDotsLabel.
   ///
   /// In en, this message translates to:

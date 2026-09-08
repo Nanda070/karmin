@@ -49,13 +49,12 @@ This is the **single** onboarding document. Other files under `docs/` are deep d
 
 **No BFF in v1.** Passwords never leave the device toward Cheterin. JWT (or the MVC session placeholder after portal login) lives in **process RAM only**. Credentials live in Keystore / Keychain.
 
-**Direct Neptun — two hosts, one intent:**
+**Direct Neptun — fork-aligned JSON host:**
 
-SDA-style JSON student web is documented as:
+`NeptunClient.baseUrl` = `https://neptun.elte.hu/Account/api/`  
+(same as [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork) institute `https://neptun.elte.hu/Account` + `/api/…`).
 
-`https://neptun.elte.hu/ujhallgato/api/`
-
-ELTE’s **public** host does **not** serve that API. `POST …/ujhallgato/api/Account/Authenticate` is an **empty 400** (also GET 404). That empty 400 is **not** “wrong password”.
+The legacy public path `https://neptun.elte.hu/ujhallgato/api/` is a **stub** (GET 404 / empty 400). Karmin no longer uses it for student reads. That empty 400 is **not** “wrong password”.
 
 **What actually logs in (aligned with Neptun-Mobile-fork):**
 
@@ -66,7 +65,7 @@ ELTE’s **public** host does **not** serve that API. `POST …/ujhallgato/api/A
 
 **Why fork JSON first:** Neptun-Mobile-fork never does Login2FA email dispatch; its working 2FA is Authenticate + `token`. Do not invent `RequestEmail` / `Provider=Email`.
 
-`LiveNeptunAuth` tries fork Absolute Authenticate first (8s timeouts), then `ujhallgato` relative, then `EltePortalLogin`. JSON `/Account/api/…` keeps the app User-Agent (not Safari MVC headers). Captcha / lockout / real auth errors are **not** swallowed into that fallback.
+`LiveNeptunAuth` tries fork Absolute Authenticate first (8s timeouts), then relative `Account/Authenticate` on the same `Account/api` base, then `EltePortalLogin`. JSON `/Account/api/…` keeps the app User-Agent (not Safari MVC headers). Captcha / lockout / real auth errors are **not** swallowed into that fallback.
 
 User-Agent (JSON client): `Karmin/0.1.0 (Flutter; ELTE student client)`. MVC form posts clear `X-Requested-With` and send `application/x-www-form-urlencoded`.
 
@@ -136,23 +135,24 @@ Lifecycle: pause/hidden records a timestamp; resume always `lockLocally()` if a 
 
 ### Dio (`NeptunClient`)
 
-- Base URL: `https://neptun.elte.hu/ujhallgato/api/`
+- Base URL: `https://neptun.elte.hu/Account/api/` (fork institute + `/api/`)
 - Connect 15s, receive 30s (JSON Authenticate overrides to 8s).
 - `validateStatus`: 2xx only on the default client; auth/MVC use `< 500` and parse bodies.
 - **Do not** default `Content-Type: application/json`. Dio 5 GET `/Account/Login` with a null content-type header throws `ArgumentError`; login used to map that crash to “Can't reach Neptun.” JSON POSTs still get `application/json` from Map bodies. `applyEltePortalBrowserHeaders` strips Content-Type on portal GETs.
-- **onRequest:** if RAM token set, `Authorization: Bearer <token>`.
-- **onError:** HTTP 401 and path does not contain `Account/Authenticate` → `clearSession()` + `onUnauthorized`. No retry interceptor.
-- `getData` / `postData` unwrap `{ data: … }` envelopes.
+- **onRequest:** if **real** JWT (`hasRealJwt`), `Authorization: Bearer <token>`. Never send MVC placeholder `elte-portal-session` as Bearer.
+- **onError:** HTTP 401 + real JWT + path does not contain `Account/Authenticate` → `clearSession()` + `onUnauthorized`. No retry interceptor.
+- `getData` / `postData` require `hasRealJwt`; unwrap `{ data: … }` envelopes. Portal-only session → `NeptunPortalSessionException` (honest empty banner, no OTP storm).
 - `lcid`: UI `hu` → 1038; otherwise 1033. Russian UI has **no** Neptun `lcid` — keep 1033.
 
 Typed exceptions live in `lib/api/exceptions.dart`. `mapDioException` / `isDioTransportFailure`:
 
 - **Can't reach Neptun** (`NeptunNetworkException`) = **no HTTP response** (timeout, DNS, TLS, connection reset). Never for an `ArgumentError` or any ELTE status.
+- HTML / maintenance page → `NeptunMaintenanceException`.
 - HTTP from ELTE → credentials (`NeptunAuthException`), captcha, OTP (`NeptunOtpException`), lockout, or **Neptun request failed** (`NeptunApiException`). Empty 400 on JSON Authenticate is still `NeptunUnavailableException`, not wrong password.
 
 Do not log request bodies.
 
-MVC success currently sets RAM token to the placeholder `elte-portal-session` (cookie session, not a JSON JWT). Portal cookies stay inside `EltePortalLogin`, not on subsequent JSON GETs.
+MVC success sets RAM token to `NeptunClient.portalSessionToken` (`elte-portal-session`) — cookie session, **not** a JSON JWT. Student GETs need a real Authenticate `accessToken`. Portal cookies stay inside `EltePortalLogin`.
 
 ---
 
@@ -196,11 +196,13 @@ Student JSON paths (best-effort Óbuda/`neptun-api` names — **unproven** on li
 | Mark-read | `POST Messages/{id}/Posts/Processed` `{ postIds }` |
 | Profile | `GET UserInfo`, `GET MyTrainings` |
 
-### Known gap: calendar JSON host vs MVC login
+### Student JSON after Authenticator login
 
-Login that **works** on ELTE is MVC (`/Account/Login` + `/Account/Login2FA` + cookies). Calendar / study / inbox **still** call `NeptunClient` at `https://neptun.elte.hu/ujhallgato/api/…`, which that public host does not serve (empty 400 / 404). The MVC cookie jar is not forwarded onto those JSON calls; the Bearer value after portal login is a placeholder, not a captured SDA JWT.
+Fork calendar / messages / subjects all call `{institute}/api/…` with `Authorization: Bearer <accessToken>` where institute is `https://neptun.elte.hu/Account`. Karmin uses the same base. After a successful JSON Authenticate (real JWT), Today / Calendar / Study / Inbox refresh against that host.
 
-So: **email 2FA can succeed while live student JSON still fails.** Debug/mock is the honest working data path until a real JSON host or cookie/JWT bridge exists. Do not claim live calendar keys or exam signup without a device + real account.
+**MVC-only login** still cannot drive student JSON (cookie jar ≠ Bearer JWT). Banner: portal-session copy, not vague “Can't refresh.” Debug/mock remains the labeled offline fixture path.
+
+Refresh soft-fails optional dashboard chips (`GetAverages`, credits, unread) so a missing optional path does not wipe a good calendar week.
 
 ---
 

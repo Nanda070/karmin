@@ -43,6 +43,22 @@ final class NeptunUnavailableException extends NeptunException {
   ]);
 }
 
+/// HTML / maintenance page instead of JSON student data.
+final class NeptunMaintenanceException extends NeptunException {
+  const NeptunMaintenanceException([
+    super.message =
+        'Neptun is temporarily unavailable (maintenance or web page).',
+  ]);
+}
+
+/// Signed in via MVC cookies only — student JSON needs a real Authenticate JWT.
+final class NeptunPortalSessionException extends NeptunException {
+  const NeptunPortalSessionException([
+    super.message =
+        'Web login succeeded, but live calendar needs a JSON Neptun session. Sign out and sign in again with Authenticator.',
+  ]);
+}
+
 /// Wrong or expired one-time code.
 final class NeptunOtpException extends NeptunException {
   const NeptunOtpException([

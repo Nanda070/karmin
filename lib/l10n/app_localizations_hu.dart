@@ -346,6 +346,18 @@ class AppLocalizationsHu extends AppLocalizations {
   String get dataOffline => 'A Neptun nem elérhető.';
 
   @override
+  String get dataMaintenance =>
+      'A Neptun átmenetileg nem elérhető (karbantartás).';
+
+  @override
+  String get dataPortalSession =>
+      'Webes belépés sikerült — az élő naptárhoz Authenticator JSON belépés kell. Jelentkezz ki, majd újra be.';
+
+  @override
+  String get dataSessionExpired =>
+      'A Neptun munkamenet lejárt. Adj meg egy új egyszeri kódot.';
+
+  @override
   String pinDotsLabel(int filled, int max) {
     return '$filled / $max számjegy megadva';
   }

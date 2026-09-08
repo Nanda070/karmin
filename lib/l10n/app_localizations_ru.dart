@@ -342,6 +342,17 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dataOffline => 'Не удаётся связаться с Neptun.';
 
   @override
+  String get dataMaintenance => 'Neptun временно недоступен (обслуживание).';
+
+  @override
+  String get dataPortalSession =>
+      'Вход через веб-логин — для календаря нужен JSON-вход с Authenticator. Выйдите и войдите снова.';
+
+  @override
+  String get dataSessionExpired =>
+      'Сессия Neptun истекла. Введите новый одноразовый код.';
+
+  @override
   String pinDotsLabel(int filled, int max) {
     return 'Введено $filled из $max цифр';
   }

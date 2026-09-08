@@ -3,11 +3,15 @@ import 'package:dio/dio.dart';
 import 'package:karmin/api/dtos/json_util.dart';
 import 'package:karmin/api/exceptions.dart';
 
-/// Thin Dio client for `https://neptun.elte.hu/ujhallgato/api/`.
+/// Thin Dio client for ELTE's fork-aligned JSON API.
+///
+/// Base matches [zoligamer/Neptun-Mobile-fork] institute URL
+/// `https://neptun.elte.hu/Account` + `/api/…` — **not** the dead public
+/// `ujhallgato/api` stub (404 / empty 400).
 ///
 /// JWT is process memory only — never persisted.
-/// On 401 the interceptor drops the JWT and notifies the session. It does
-/// **not** retry the original request (OTP must succeed first).
+/// On 401 the interceptor drops a **real** JWT and notifies the session. It
+/// does **not** retry the original request (OTP must succeed first).
 class NeptunClient {
   NeptunClient({Dio? dio})
       : _dio = dio ??
@@ -33,16 +37,19 @@ class NeptunClient {
       InterceptorsWrapper(
         onRequest: (options, handler) {
           applyEltePortalBrowserHeaders(options);
-          final token = _accessToken;
-          if (token != null && token.isNotEmpty) {
-            options.headers['Authorization'] = 'Bearer $token';
+          // Never send the MVC placeholder as Bearer — it 401s every GET and
+          // falsely triggers the OTP unlock loop.
+          if (hasRealJwt) {
+            options.headers['Authorization'] = 'Bearer $_accessToken';
           }
           handler.next(options);
         },
         onError: (error, handler) {
           final path = error.requestOptions.path;
           final isAuth = path.contains('Account/Authenticate');
-          if (error.response?.statusCode == 401 && !isAuth) {
+          if (error.response?.statusCode == 401 &&
+              !isAuth &&
+              hasRealJwt) {
             clearSession();
             onUnauthorized?.call();
           }
@@ -52,7 +59,16 @@ class NeptunClient {
     );
   }
 
-  static const String baseUrl = 'https://neptun.elte.hu/ujhallgato/api/';
+  /// Same host as fork Authenticate / calendar / messages.
+  static const String baseUrl = 'https://neptun.elte.hu/Account/api/';
+
+  /// Legacy SDA path — public ELTE does not serve student JSON here.
+  static const String legacyUjhallgatoBaseUrl =
+      'https://neptun.elte.hu/ujhallgato/api/';
+
+  /// MVC cookie login placeholder — not a real Bearer JWT.
+  static const String portalSessionToken = 'elte-portal-session';
+
   static const String userAgent =
       'Karmin/0.1.0 (Flutter; ELTE student client)';
 
@@ -73,7 +89,12 @@ class NeptunClient {
 
   String? get accessToken => _accessToken;
 
+  /// Any non-empty RAM token (includes MVC [portalSessionToken]).
   bool get hasJwt => _accessToken != null && _accessToken!.isNotEmpty;
+
+  /// Real JSON Authenticate JWT suitable for `Authorization: Bearer`.
+  bool get hasRealJwt =>
+      hasJwt && _accessToken != portalSessionToken;
 
   void setAccessToken(String? token) {
     _accessToken = token;
@@ -88,6 +109,9 @@ class NeptunClient {
     String path, {
     Map<String, dynamic>? query,
   }) async {
+    if (!hasRealJwt) {
+      throw const NeptunPortalSessionException();
+    }
     try {
       final response = await _dio.get<dynamic>(
         path,
@@ -104,6 +128,9 @@ class NeptunClient {
     String path, {
     Map<String, dynamic>? data,
   }) async {
+    if (!hasRealJwt) {
+      throw const NeptunPortalSessionException();
+    }
     try {
       final response = await _dio.post<dynamic>(path, data: data);
       return unwrap(response.data);
@@ -152,8 +179,7 @@ bool isDioTransportFailure(DioException error) {
   };
 }
 
-/// MVC login is `https://neptun.elte.hu/Account/Login`, not `/ujhallgato/api/`
-/// and not JSON `/Account/api/…` (fork Authenticate).
+/// MVC login is `https://neptun.elte.hu/Account/Login`, not JSON `/Account/api/…`.
 bool isEltePortalUri(Uri uri) {
   if (uri.host != 'neptun.elte.hu') {
     return false;
@@ -167,6 +193,19 @@ bool isEltePortalUri(Uri uri) {
     return false;
   }
   return true;
+}
+
+/// True when ELTE returned an HTML shell (maintenance / login page) instead of JSON.
+bool looksLikeHtmlPayload(dynamic data) {
+  if (data is! String) {
+    return false;
+  }
+  final lower = data.toLowerCase();
+  return lower.contains('<html') ||
+      lower.contains('<!doctype') ||
+      lower.contains('maintenance') ||
+      lower.contains('karbantartás') ||
+      lower.contains('karbantartas');
 }
 
 /// Safari-like GET/POST for the ASP.NET form. Call after Dio composes options
@@ -194,6 +233,10 @@ NeptunException mapDioException(
   }
 
   final status = error.response?.statusCode;
+  final data = error.response?.data;
+  if (looksLikeHtmlPayload(data)) {
+    return const NeptunMaintenanceException();
+  }
   if (status == 401) {
     return const NeptunSessionExpiredException();
   }
@@ -201,7 +244,7 @@ NeptunException mapDioException(
     return const NeptunForbiddenException();
   }
   if (preferApiMessage) {
-    final extracted = extractNeptunMessage(error.response?.data);
+    final extracted = extractNeptunMessage(data);
     if (extracted != null) {
       return NeptunApiException(extracted, statusCode: status);
     }
@@ -214,7 +257,13 @@ NeptunException mapDioException(
   if (status == 429) {
     return const NeptunLockoutException();
   }
-  final extracted = extractNeptunMessage(error.response?.data);
+  if (status == 404 || status == 405) {
+    return NeptunApiException(
+      'Neptun student API path missing.',
+      statusCode: status,
+    );
+  }
+  final extracted = extractNeptunMessage(data);
   if (extracted != null) {
     return NeptunApiException(extracted, statusCode: status);
   }

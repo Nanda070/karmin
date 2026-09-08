@@ -65,6 +65,31 @@ void main() {
     expect(find.text('Try again'), findsOneWidget);
   });
 
+  testWidgets('maintenance error uses clear copy', (tester) async {
+    final snapshot = StudentSnapshot.empty(
+      errorMessage:
+          'Neptun is temporarily unavailable (maintenance or web page).',
+    );
+
+    await tester.pumpWidget(
+      _harness(
+        child: Builder(
+          builder: (context) {
+            final l10n = AppLocalizations.of(context);
+            return KarminStatusBanner.fromSnapshot(
+              snapshot: snapshot,
+              l10n: l10n,
+            );
+          },
+        ),
+      ),
+    );
+    expect(
+      find.text('Neptun is temporarily unavailable (maintenance).'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('empty and banner render on light cream theme', (tester) async {
     await tester.pumpWidget(
       _harness(

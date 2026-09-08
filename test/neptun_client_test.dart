@@ -77,11 +77,82 @@ void main() {
     final adapter = ScriptedAdapter(
       (options) => jsonBody(403, {'message': 'no'}),
     );
-    final client = clientWith(adapter);
+    final client = clientWith(adapter)..setAccessToken('ram-jwt');
     await expectLater(
       client.getData('Dashboard/GetAverages'),
       throwsA(isA<NeptunForbiddenException>()),
     );
+  });
+
+  test('portal session placeholder is not sent as Bearer', () async {
+    String? authHeader;
+    final adapter = ScriptedAdapter((options) {
+      authHeader = options.headers['Authorization']?.toString();
+      return jsonBody(200, {
+        'data': [],
+      });
+    });
+    final client = clientWith(adapter)
+      ..setAccessToken(NeptunClient.portalSessionToken);
+    expect(client.hasJwt, isTrue);
+    expect(client.hasRealJwt, isFalse);
+    await expectLater(
+      client.getData('Calendar/GetCalendarEvents'),
+      throwsA(isA<NeptunPortalSessionException>()),
+    );
+    expect(authHeader, isNull);
+    expect(adapter.calls, 0);
+  });
+
+  test('real JWT attaches Authorization and uses Account/api base', () async {
+    String? authHeader;
+    late Uri called;
+    final adapter = ScriptedAdapter((options) {
+      authHeader = options.headers['Authorization']?.toString();
+      called = options.uri;
+      return jsonBody(200, {
+        'data': [],
+      });
+    });
+    final client = clientWith(adapter)..setAccessToken('live-jwt');
+    await client.getData('Calendar/GetCalendarEvents');
+    expect(authHeader, 'Bearer live-jwt');
+    expect(called.toString(), contains('/Account/api/Calendar/GetCalendarEvents'));
+    expect(NeptunClient.baseUrl, 'https://neptun.elte.hu/Account/api/');
+  });
+
+  test('HTML maintenance body maps to NeptunMaintenanceException', () {
+    final error = DioException(
+      requestOptions: RequestOptions(
+        path: 'Calendar/GetCalendarEvents',
+        baseUrl: NeptunClient.baseUrl,
+      ),
+      type: DioExceptionType.badResponse,
+      response: Response(
+        requestOptions: RequestOptions(path: 'Calendar/GetCalendarEvents'),
+        statusCode: 503,
+        data: '<!DOCTYPE html><html><body>Maintenance</body></html>',
+      ),
+    );
+    expect(mapDioException(error), isA<NeptunMaintenanceException>());
+  });
+
+  test('portal placeholder 401 does not clear session or notify', () async {
+    var unauthorized = 0;
+    final adapter = ScriptedAdapter(
+      (options) => jsonBody(401, {'message': 'unauthorized'}),
+    );
+    final client = clientWith(adapter)
+      ..setAccessToken(NeptunClient.portalSessionToken)
+      ..onUnauthorized = () => unauthorized += 1;
+
+    // Guard throws before HTTP — no 401 path.
+    await expectLater(
+      client.getData('Calendar/GetCalendarEvents'),
+      throwsA(isA<NeptunPortalSessionException>()),
+    );
+    expect(client.hasJwt, isTrue);
+    expect(unauthorized, 0);
   });
 
   test('live authenticate 202 2FA stays on JSON authenticator (no MVC)', () async {
@@ -217,7 +288,7 @@ void main() {
         ],
       });
     });
-    final api = LiveNeptunStudentApi(clientWith(adapter));
+    final api = LiveNeptunStudentApi(clientWith(adapter)..setAccessToken('jwt'));
     final events = await api.getCalendarEvents(
       start: DateTime(2026, 9, 8),
       end: DateTime(2026, 9, 14),
@@ -234,7 +305,7 @@ void main() {
         'notification': {'message': 'Exam is full'},
       });
     });
-    final api = LiveNeptunStudentApi(clientWith(adapter));
+    final api = LiveNeptunStudentApi(clientWith(adapter)..setAccessToken('jwt'));
     await expectLater(
       api.signUpForExam('ex-1'),
       throwsA(

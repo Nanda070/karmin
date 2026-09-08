@@ -2,6 +2,7 @@
 
 ## Unreleased — Stage 4 harden (polish)
 
+- Fix live student refresh after Authenticator login: `NeptunClient.baseUrl` → `https://neptun.elte.hu/Account/api/` (fork host); stop calling dead `ujhallgato/api`. Real JWT only for Bearer; portal placeholder never triggers OTP. Soft-fail optional dashboard GETs; map HTML/maintenance clearly
 - Fix JSON 2FA pending state: keep `_jsonTwoFactorPending` across unlock / 401 re-login until JWT, MVC takeover, or `NeptunAuthApi.reset()` (called from `signOut`); do not clear the flag at the start of every `submitPassword`
 - Fix Authenticator OTP reject (6 causes): clear stale email prefix on TOTP sessions; relative Authenticate errors fall through to MVC portal; empty digits reject early; OTP length limit always 8; always refresh Login2FA before verify POST; broaden TOTP HTML detection (authcode / verificationcode / authenticator). Bare 6-digit `token` only (no email `732-` compose); MVC password no longer auto-`GetEmail` (fork-aligned). Primary still `POST /Account/api/Account/Authenticate` per [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork)
 - Attribution: owner / founder **Nanda**, company **Cheterin Group**; contact Discord `nandak070`, Telegram `nanda070`, mail `turkapahf@gmail.com` (README, LICENSE, legal docs)

@@ -488,7 +488,7 @@ class EltePortalLogin {
       _hasSession = true;
       return const AuthTicket(
         step: NeptunAuthStep.authenticated,
-        accessToken: 'elte-portal-session',
+        accessToken: NeptunClient.portalSessionToken,
       );
     }
 

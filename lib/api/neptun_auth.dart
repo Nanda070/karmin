@@ -388,10 +388,11 @@ class LiveNeptunAuth implements NeptunAuthApi {
     } on NeptunAuthException {
       rethrow;
     } on NeptunException {
-      // Fall through to ujhallgato stub / MVC.
+      // Fall through to relative Account/api / MVC.
     }
 
-    // 2) Legacy Dio base (`ujhallgato/api`) — usually empty 400 on public ELTE.
+    // 2) Relative JSON on the same Account/api base (same as fork after
+    //    institute URL is set). Usually redundant with step 1.
     try {
       final ticket = await _authenticateRelative(
         authenticateJsonBody(

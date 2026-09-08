@@ -38,7 +38,7 @@ Stage 0 exit criteria met: English Today matching the locked dark visual contrac
 
 ## 1. Product definition
 
-Karmin is a Flutter app by **Nanda** / **Cheterin Group** for ELTE students. It signs into the official Neptun student API (`https://neptun.elte.hu/ujhallgato/api/`) with the student’s own Neptun code and password, then shows Today, calendar, grades, exams, and inbox in a dark, minimal UI.
+Karmin is a Flutter app by **Nanda** / **Cheterin Group** for ELTE students. It signs into the official Neptun student API (`https://neptun.elte.hu/Account/api/`, fork-aligned) with the student’s own Neptun code and password, then shows Today, calendar, grades, exams, and inbox in a dark, minimal UI.
 
 It is **not** an ELTE product, **not** a SDA Informatika product, and **not** a replacement for the legal relationship between the student and the university. Nanda / Cheterin Group have **no** trademark permission or endorsement from ELTE, Neptun, or SDA.
 
@@ -738,6 +738,6 @@ License decided: **MIT** under Nanda / Cheterin Group.
 ## 18. References (code, not legal)
 
 - Local reference client: `C:\Users\adnan\Documents\Coding\neptun-api` (`NeptunAPI`, `docs/request_forms.md` for later)  
-- ELTE API base: `https://neptun.elte.hu/ujhallgato/api/`  
+- ELTE API base: `https://neptun.elte.hu/Account/api/`  
 - Figma: https://www.figma.com/design/Iuxf0sbisHaOwxn6Vkcgdg  
 - Owner: Nanda / Cheterin Group — [cheterin.online](https://cheterin.online) (Discord `nandak070` · Telegram `nanda070` · Mail `turkapahf@gmail.com`) 

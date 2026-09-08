@@ -116,6 +116,15 @@ class LiveNeptunStudentApi implements NeptunStudentApi {
   @override
   Future<String?> getTrainingLabel() async {
     try {
+      final raw = await _client.getData('ContextUserProfile/MyTrainings');
+      final label = parseTrainingLabel(raw);
+      if (label != null) {
+        return label;
+      }
+    } on NeptunException {
+      // Fall through to shorter path.
+    }
+    try {
       final raw = await _client.getData('MyTrainings');
       return parseTrainingLabel(raw);
     } on NeptunForbiddenException {
