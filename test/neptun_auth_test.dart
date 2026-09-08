@@ -233,24 +233,37 @@ void main() {
       );
     });
 
-    test('empty HTTP 400 is unavailable, not invalidCredentials', () {
+    test('empty HTTP 400 is unavailable with HTTP status, not invalidCredentials',
+        () {
       expect(
         () => parseAuthenticateResponse(statusCode: 400, data: {}),
-        throwsA(isA<NeptunUnavailableException>()),
+        throwsA(
+          isA<NeptunUnavailableException>().having(
+            (e) => e.message,
+            'message',
+            contains('HTTP 400'),
+          ),
+        ),
       );
     });
 
-    test('HTML 404 is maintenance, not opaque OTP', () {
+    test('HTML 404 is maintenance with status, not opaque OTP', () {
       expect(
         () => parseAuthenticateResponse(
           statusCode: 404,
           data: '<!DOCTYPE html><html><body>Not found</body></html>',
         ),
-        throwsA(isA<NeptunMaintenanceException>()),
+        throwsA(
+          isA<NeptunMaintenanceException>().having(
+            (e) => e.message,
+            'message',
+            contains('HTTP 404'),
+          ),
+        ),
       );
     });
 
-    test('real bad password JSON 400 is invalidCredentials', () {
+    test('real bad password JSON 400 includes HTTP status', () {
       expect(
         () => parseAuthenticateResponse(
           statusCode: 400,
@@ -262,7 +275,13 @@ void main() {
             ],
           },
         ),
-        throwsA(isA<NeptunAuthException>()),
+        throwsA(
+          isA<NeptunAuthException>().having(
+            (e) => e.message,
+            'message',
+            contains('HTTP 400'),
+          ),
+        ),
       );
     });
 
@@ -319,6 +338,11 @@ void main() {
         ),
       );
     });
+  });
+
+  test('password LCID try-order is 1038 then UI then 1033', () {
+    expect(authenticateLcidsToTry(1033), [1038, 1033]);
+    expect(authenticateLcidsToTry(1038), [1038, 1033]);
   });
 
   test('authenticate JSON body matches fork key order + empty captcha/token', () {
@@ -396,10 +420,102 @@ void main() {
     expect(ticket.otpChannel, OtpChannel.authenticator);
     expect(loginPosts, 0);
     expect(auth.jsonTwoFactorPending, isTrue);
-    // Live always forces fork LCID 1038 even if UI passed 1033.
+    // First password POST still uses fork LCID 1038 (then 1033 on miss).
     final map = adapter.bodies.single as Map;
     expect(map['LCID'], 1038);
     expect(map['token'], '');
+  });
+
+  test('password LCID retries 1038 then 1033 until 2FA', () async {
+    final lcids = <int>[];
+    final adapter = ScriptedAdapter((options) {
+      final url = options.uri.toString();
+      if (url.contains('Account/Login')) {
+        fail('LCID retry must not hit MVC');
+      }
+      if (!url.contains('Account/Authenticate')) {
+        fail('unexpected $url');
+      }
+      final data = options.data;
+      final map = data is Map
+          ? data.map((k, v) => MapEntry('$k', v))
+          : <String, dynamic>{};
+      final lcid = map['LCID'];
+      lcids.add(lcid is int ? lcid : int.parse('$lcid'));
+      expect(map['token'], '');
+      if (lcid == 1038) {
+        return jsonBody(400, {});
+      }
+      return jsonBody(202, {'isTwoFactorRequired': true});
+    });
+    final auth = LiveNeptunAuth(clientWith(adapter));
+    final ticket = await auth.submitPassword(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+    );
+    expect(ticket.step, NeptunAuthStep.needsOtp);
+    expect(auth.jsonTwoFactorPending, isTrue);
+    expect(auth.lastAuthenticateLcid, 1033);
+    expect(lcids, [1038, 1033]);
+  });
+
+  test('richer Authenticate headers retry after LCID miss, then OTP same URL',
+      () async {
+    final urls = <String>[];
+    final tokens = <String>[];
+    final accepts = <String?>[];
+    final userAgents = <String?>[];
+    final adapter = ScriptedAdapter((options) {
+      final url = options.uri.toString();
+      urls.add(url);
+      if (url.contains('Account/Login')) {
+        fail('header retry must not hit MVC');
+      }
+      accepts.add(options.headers['Accept']?.toString());
+      userAgents.add(options.headers['User-Agent']?.toString());
+      final data = options.data;
+      final map = data is Map
+          ? data.map((k, v) => MapEntry('$k', v))
+          : <String, dynamic>{};
+      tokens.add('${map['token'] ?? ''}');
+      if ('${map['token'] ?? ''}'.isNotEmpty) {
+        expect(options.headers['Accept'], isNotNull);
+        return jsonBody(200, {
+          'data': {'accessToken': 'jwt-rich'},
+        });
+      }
+      if (options.headers['Accept'] == null) {
+        return jsonBody(400, {});
+      }
+      return jsonBody(202, {'isTwoFactorRequired': true});
+    });
+    final auth = LiveNeptunAuth(clientWith(adapter));
+    final first = await auth.submitPassword(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+    );
+    expect(first.step, NeptunAuthStep.needsOtp);
+    expect(auth.usingRichAuthenticateHeaders, isTrue);
+    expect(auth.jsonTwoFactorPending, isTrue);
+
+    final done = await auth.submitOtp(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+      otp: '654321',
+    );
+    expect(done.accessToken, 'jwt-rich');
+    expect(
+      urls,
+      everyElement(
+        'https://neptun.elte.hu/Account/api/Account/Authenticate',
+      ),
+    );
+    expect(tokens.last, '654321');
+    expect(accepts.last, isNotNull);
+    expect(userAgents.last, contains('Safari'));
   });
 
   test('JSON 202 without envelope stays on authenticator path', () async {
@@ -419,7 +535,8 @@ void main() {
     expect(ticket.otpChannel, OtpChannel.authenticator);
   });
 
-  test('JSON API miss does not fall back to MVC (Authenticate-only ELTE)', () async {
+  test('JSON API miss does not fall back to MVC and includes HTTP status',
+      () async {
     final adapter = ScriptedAdapter(eltePortalScript());
     await expectLater(
       LiveNeptunAuth(clientWith(adapter)).submitPassword(
@@ -427,11 +544,21 @@ void main() {
         password: 'secret',
         lcid: 1033,
       ),
-      throwsA(isA<NeptunUnavailableException>()),
+      throwsA(
+        isA<NeptunUnavailableException>().having(
+          (e) => e.message,
+          'message',
+          contains('HTTP 400'),
+        ),
+      ),
     );
     expect(
       adapter.paths.any((path) => path.contains('Account/Login')),
       isFalse,
+    );
+    expect(
+      adapter.paths.every((path) => path.contains('Account/Authenticate')),
+      isTrue,
     );
   });
 

@@ -44,7 +44,7 @@ class NeptunClient {
           // Accept, Origin, Referer, X-Requested-With, or custom User-Agent.
           // Extra headers / stale JWT made Neptun reject valid OTP codes.
           if (authCall) {
-            stripAuthenticateHeaders(options);
+            applyAuthenticateRequestHeaders(options);
           } else if (hasRealJwt) {
             // Never send the MVC placeholder as Bearer — it 401s every GET and
             // falsely triggers the OTP unlock loop.
@@ -255,16 +255,36 @@ void applyEltePortalBrowserHeaders(RequestOptions options) {
   }
 }
 
-/// Match [zoligamer/Neptun-Mobile-fork] `_APIRequest.postRequestRaw`: only
-/// `Content-Type: application/json` (+ optional Cookie set by the caller).
-void stripAuthenticateHeaders(RequestOptions options) {
+/// Extra key on Authenticate [RequestOptions]: `'fork'` (default) or `'rich'`.
+const String authenticateHeaderProfileExtra = 'karminAuthenticateProfile';
+
+/// Fork-minimal Authenticate headers, or a slightly richer Safari/XHR set
+/// used only when the first password POST is not 2FA / JWT.
+void applyAuthenticateRequestHeaders(RequestOptions options) {
+  // Always strip Bearer on Authenticate — stale JWT 401s the OTP step.
   options.headers.remove('Authorization');
+  options.headers[Headers.contentTypeHeader] = Headers.jsonContentType;
+
+  if (options.extra[authenticateHeaderProfileExtra] == 'rich') {
+    options.headers['Accept'] = 'application/json, text/plain, */*';
+    options.headers['User-Agent'] = NeptunClient.portalUserAgent;
+    options.headers['X-Requested-With'] = 'XMLHttpRequest';
+    options.headers['Origin'] = 'https://neptun.elte.hu';
+    options.headers['Referer'] = 'https://neptun.elte.hu/Account/Login';
+    return;
+  }
+
   options.headers.remove('Accept');
   options.headers.remove('Origin');
   options.headers.remove('Referer');
   options.headers.remove('X-Requested-With');
   options.headers.remove('User-Agent');
-  options.headers[Headers.contentTypeHeader] = Headers.jsonContentType;
+}
+
+/// Match [zoligamer/Neptun-Mobile-fork] `_APIRequest.postRequestRaw`: only
+/// `Content-Type: application/json` (+ optional Cookie set by the caller).
+void stripAuthenticateHeaders(RequestOptions options) {
+  applyAuthenticateRequestHeaders(options);
 }
 
 /// Typed mapping for Dio failures. Do not pass request bodies into logs.
@@ -281,7 +301,7 @@ NeptunException mapDioException(
   final status = error.response?.statusCode;
   final data = error.response?.data;
   if (looksLikeHtmlPayload(data)) {
-    return const NeptunMaintenanceException();
+    return NeptunMaintenanceException.detail(statusCode: status);
   }
   if (status == 401) {
     return const NeptunSessionExpiredException();

@@ -1,3 +1,25 @@
+/// User-facing status line. Never pass password or OTP digits in [neptunMessage].
+String formatNeptunStatusMessage({
+  required String fallback,
+  int? statusCode,
+  String? neptunMessage,
+}) {
+  final raw = neptunMessage?.trim();
+  final detail = (raw == null || raw.isEmpty)
+      ? null
+      : (raw.length > 120 ? '${raw.substring(0, 120)}…' : raw);
+  if (statusCode != null && detail != null) {
+    return '$fallback (HTTP $statusCode): $detail';
+  }
+  if (statusCode != null) {
+    return '$fallback (HTTP $statusCode)';
+  }
+  if (detail != null) {
+    return '$fallback: $detail';
+  }
+  return fallback;
+}
+
 /// Typed failures for Neptun HTTP / auth flows (Stage 1+).
 sealed class NeptunException implements Exception {
   const NeptunException(this.message);
@@ -13,6 +35,19 @@ final class NeptunAuthException extends NeptunException {
   const NeptunAuthException([
     super.message = 'Neptun rejected these credentials.',
   ]);
+
+  factory NeptunAuthException.reject({
+    int? statusCode,
+    String? neptunMessage,
+  }) {
+    return NeptunAuthException(
+      formatNeptunStatusMessage(
+        fallback: 'Neptun rejected these credentials',
+        statusCode: statusCode,
+        neptunMessage: neptunMessage,
+      ),
+    );
+  }
 }
 
 /// DNS / timeout / no connectivity.
@@ -36,11 +71,25 @@ final class NeptunLockoutException extends NeptunException {
 }
 
 /// JSON student API missing/stub — not invalid credentials, not a transport failure.
+/// Prefer [NeptunUnavailableException.detail] so the UI shows HTTP status.
 final class NeptunUnavailableException extends NeptunException {
   const NeptunUnavailableException([
     super.message =
         'ELTE student login returned an error. Try again, or sign in on the website.',
   ]);
+
+  factory NeptunUnavailableException.detail({
+    int? statusCode,
+    String? neptunMessage,
+  }) {
+    return NeptunUnavailableException(
+      formatNeptunStatusMessage(
+        fallback: 'ELTE student login returned an error',
+        statusCode: statusCode,
+        neptunMessage: neptunMessage,
+      ),
+    );
+  }
 }
 
 /// HTML / maintenance page instead of JSON student data.
@@ -49,6 +98,15 @@ final class NeptunMaintenanceException extends NeptunException {
     super.message =
         'Neptun is temporarily unavailable (maintenance or web page).',
   ]);
+
+  factory NeptunMaintenanceException.detail({int? statusCode}) {
+    if (statusCode == null) {
+      return const NeptunMaintenanceException();
+    }
+    return NeptunMaintenanceException(
+      'Neptun is temporarily unavailable (maintenance or web page, HTTP $statusCode).',
+    );
+  }
 }
 
 /// Signed in via MVC cookies only — student JSON needs a real Authenticate JWT.
@@ -74,24 +132,17 @@ final class NeptunOtpException extends NeptunException {
     int? statusCode,
     String? neptunMessage,
   }) {
-    final raw = neptunMessage?.trim();
-    final detail = (raw == null || raw.isEmpty)
-        ? null
-        : (raw.length > 120 ? '${raw.substring(0, 120)}…' : raw);
-    if (statusCode != null && detail != null) {
-      return NeptunOtpException(
-        'Neptun rejected this code (HTTP $statusCode): $detail',
-      );
+    if (statusCode == null &&
+        (neptunMessage == null || neptunMessage.trim().isEmpty)) {
+      return const NeptunOtpException();
     }
-    if (statusCode != null) {
-      return NeptunOtpException(
-        'Neptun rejected this code (HTTP $statusCode)',
-      );
-    }
-    if (detail != null) {
-      return NeptunOtpException('Neptun rejected this code: $detail');
-    }
-    return const NeptunOtpException();
+    return NeptunOtpException(
+      formatNeptunStatusMessage(
+        fallback: 'Neptun rejected this code',
+        statusCode: statusCode,
+        neptunMessage: neptunMessage,
+      ),
+    );
   }
 }
 

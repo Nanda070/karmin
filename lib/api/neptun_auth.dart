@@ -166,7 +166,7 @@ AuthTicket parseAuthenticateResponse({
   }
 
   if (looksLikeHtmlPayload(data)) {
-    throw const NeptunMaintenanceException();
+    throw NeptunMaintenanceException.detail(statusCode: statusCode);
   }
 
   final body = asJsonMap(data);
@@ -220,25 +220,41 @@ AuthTicket parseAuthenticateResponse({
     );
   }
 
+  final snippet = extractNeptunMessage(body) ?? extractNeptunMessage(data);
+
   if (looksLikeMissingAuthApi(statusCode, data)) {
-    throw const NeptunUnavailableException();
+    throw NeptunUnavailableException.detail(
+      statusCode: statusCode,
+      neptunMessage: snippet,
+    );
   }
 
   if (statusCode == 400 || statusCode == 401) {
-    throw const NeptunAuthException();
+    throw NeptunAuthException.reject(
+      statusCode: statusCode,
+      neptunMessage: snippet,
+    );
   }
   if (statusCode == 403) {
     throw const NeptunForbiddenException();
   }
   if (statusCode != null && statusCode >= 500) {
     throw NeptunApiException(
-      'Neptun request failed.',
+      formatNeptunStatusMessage(
+        fallback: 'Neptun request failed',
+        statusCode: statusCode,
+        neptunMessage: snippet,
+      ),
       statusCode: statusCode,
     );
   }
 
   throw NeptunApiException(
-    'Unexpected authenticate payload.',
+    formatNeptunStatusMessage(
+      fallback: 'Unexpected authenticate payload',
+      statusCode: statusCode,
+      neptunMessage: snippet,
+    ),
     statusCode: statusCode,
   );
 }
@@ -258,8 +274,33 @@ bool looksLikeTwoFactorMessage(Map<String, dynamic> body, dynamic raw) {
       lower.contains('authenticator');
 }
 
-/// Fork ELTE always sends `LCID: 1038` on Authenticate (password + token).
+/// Fork ELTE sends `LCID: 1038` first. English UI (1033) is retried if 1038
+/// is not 2FA / JWT. Do not hardcode 1038 alone — that is what +5 broke.
 const int forkAuthenticateLcid = 1038;
+
+/// Password LCID order: fork 1038, then the UI value, then 1033.
+List<int> authenticateLcidsToTry(int uiLcid) {
+  final out = <int>[];
+  void add(int value) {
+    if (!out.contains(value)) {
+      out.add(value);
+    }
+  }
+
+  add(forkAuthenticateLcid);
+  add(uiLcid);
+  add(1033);
+  return out;
+}
+
+/// Bad password / captcha / lockout / network — do not retry LCID or headers.
+bool isHardAuthenticateFailure(NeptunException error) {
+  return error is NeptunAuthException ||
+      error is NeptunCaptchaException ||
+      error is NeptunLockoutException ||
+      error is NeptunNetworkException ||
+      error is NeptunForbiddenException;
+}
 
 /// Body shape from zoligamer/Neptun-Mobile-fork `InstitutesRequest._tryModernLogin`
 /// / `submitTwoFactorCode` — key order preserved for JSON encode.
@@ -356,11 +397,15 @@ class DebugNeptunAuth implements NeptunAuthApi {
   void reset() {}
 }
 
-/// Live login aligned 1:1 with [zoligamer/Neptun-Mobile-fork] for ELTE:
+/// Live login aligned with [zoligamer/Neptun-Mobile-fork] for ELTE:
 /// `POST {institute}/api/Account/Authenticate` password then same URL + `token`.
 ///
 /// **No MVC fallback** on password/OTP — mixing channels left OTP without a
 /// JSON pending session. Optional email resend still uses [EltePortalLogin].
+///
+/// Password tries LCID 1038 then 1033 (English UI) until 202 / 2FA / JWT, then
+/// one richer-header retry if still not 2FA. OTP reuses the LCID + header
+/// profile that reached Verification.
 class LiveNeptunAuth implements NeptunAuthApi {
   LiveNeptunAuth(this._client) : _portal = EltePortalLogin(_client);
 
@@ -373,6 +418,12 @@ class LiveNeptunAuth implements NeptunAuthApi {
   /// Fork `devicecookie-…` value from Authenticate Set-Cookie (RAM only).
   String? _deviceCookieValue;
 
+  /// LCID that last reached 2FA / JWT. OTP must reuse it.
+  int? _authenticateLcid;
+
+  /// True when the successful password POST used Safari/XHR headers.
+  var _richAuthenticateHeaders = false;
+
   /// Fork ELTE: `{instituteBase}/api/Account/Authenticate`.
   static const String forkAuthenticateUrl = NeptunClient.authenticateUrl;
 
@@ -382,6 +433,12 @@ class LiveNeptunAuth implements NeptunAuthApi {
   @visibleForTesting
   String? get deviceCookieValue => _deviceCookieValue;
 
+  @visibleForTesting
+  int? get lastAuthenticateLcid => _authenticateLcid;
+
+  @visibleForTesting
+  bool get usingRichAuthenticateHeaders => _richAuthenticateHeaders;
+
   /// Alias for [reset].
   void clear() => reset();
 
@@ -389,6 +446,8 @@ class LiveNeptunAuth implements NeptunAuthApi {
   void reset() {
     _jsonTwoFactorPending = false;
     _deviceCookieValue = null;
+    _authenticateLcid = null;
+    _richAuthenticateHeaders = false;
     _portal.clear();
   }
 
@@ -403,29 +462,67 @@ class LiveNeptunAuth implements NeptunAuthApi {
     // pending across unlock re-login (fork keeps device cookie by username).
     _portal.clear();
 
-    final ticket = await _authenticate(
-      authenticateJsonBody(
-        userName: code,
-        password: password,
-        // Fork hardcodes 1038 on Authenticate regardless of UI language.
-        lcid: forkAuthenticateLcid,
-      ),
-      userName: code,
-    );
+    NeptunException? lastRetryable;
+
+    Future<AuthTicket?> attempt(
+      int tryLcid, {
+      required bool richHeaders,
+    }) async {
+      try {
+        final ticket = await _authenticate(
+          authenticateJsonBody(
+            userName: code,
+            password: password,
+            lcid: tryLcid,
+          ),
+          userName: code,
+          richHeaders: richHeaders,
+        );
+        if (ticket.step == NeptunAuthStep.authenticated ||
+            ticket.step == NeptunAuthStep.needsOtp) {
+          _authenticateLcid = tryLcid;
+          _richAuthenticateHeaders = richHeaders;
+          return ticket;
+        }
+        lastRetryable = NeptunUnavailableException.detail();
+        return null;
+      } on NeptunException catch (error) {
+        if (isHardAuthenticateFailure(error)) {
+          rethrow;
+        }
+        lastRetryable = error;
+        return null;
+      }
+    }
+
+    for (final tryLcid in authenticateLcidsToTry(lcid)) {
+      final ticket = await attempt(tryLcid, richHeaders: false);
+      if (ticket != null) {
+        return _finishPassword(ticket);
+      }
+    }
+
+    final richLcid = lcid == forkAuthenticateLcid ? 1033 : lcid;
+    final richTicket = await attempt(richLcid, richHeaders: true);
+    if (richTicket != null) {
+      return _finishPassword(richTicket);
+    }
+
+    throw lastRetryable ?? NeptunUnavailableException.detail();
+  }
+
+  AuthTicket _finishPassword(AuthTicket ticket) {
     if (ticket.step == NeptunAuthStep.authenticated) {
       _jsonTwoFactorPending = false;
       return ticket;
     }
-    if (ticket.step == NeptunAuthStep.needsOtp) {
-      _jsonTwoFactorPending = true;
-      // Fork has no email dispatch — 2FA is the authenticator `token` field.
-      return const AuthTicket(
-        step: NeptunAuthStep.needsOtp,
-        otpChannel: OtpChannel.authenticator,
-        otpPrefix: '',
-      );
-    }
-    throw const NeptunUnavailableException();
+    _jsonTwoFactorPending = true;
+    // Fork has no email dispatch — 2FA is the authenticator `token` field.
+    return const AuthTicket(
+      step: NeptunAuthStep.needsOtp,
+      otpChannel: OtpChannel.authenticator,
+      otpPrefix: '',
+    );
   }
 
   @override
@@ -441,17 +538,20 @@ class LiveNeptunAuth implements NeptunAuthApi {
       throw NeptunOtpException.reject(neptunMessage: 'empty code');
     }
     final code = normalizeNeptunCode(userName);
+    final otpLcid = _authenticateLcid ??
+        (lcid == 1033 || lcid == 1038 ? lcid : forkAuthenticateLcid);
 
-    // Same channel as password: fork Authenticate only (no MVC mix).
+    // Same channel as password: Authenticate only (no MVC mix).
     final ticket = await _authenticate(
       authenticateJsonBody(
         userName: code,
         password: password,
-        lcid: forkAuthenticateLcid,
+        lcid: otpLcid,
         otp: digits,
       ),
       userName: code,
       forOtpSubmit: true,
+      richHeaders: _richAuthenticateHeaders,
     );
     if (ticket.step == NeptunAuthStep.authenticated) {
       _jsonTwoFactorPending = false;
@@ -479,6 +579,7 @@ class LiveNeptunAuth implements NeptunAuthApi {
     Map<String, dynamic> payload, {
     required String userName,
     bool forOtpSubmit = false,
+    bool richHeaders = false,
   }) async {
     final uri = Uri.parse(forkAuthenticateUrl);
     final cookie = forkDeviceCookieHeader(
@@ -493,6 +594,9 @@ class LiveNeptunAuth implements NeptunAuthApi {
           headers: {
             Headers.contentTypeHeader: Headers.jsonContentType,
             'Cookie': ?cookie,
+          },
+          extra: {
+            authenticateHeaderProfileExtra: richHeaders ? 'rich' : 'fork',
           },
           validateStatus: (status) => status != null && status < 500,
           sendTimeout: const Duration(seconds: 8),

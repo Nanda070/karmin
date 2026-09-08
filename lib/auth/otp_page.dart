@@ -162,6 +162,9 @@ class _OtpPageState extends ConsumerState<OtpPage> {
     if (error == const NeptunUnavailableException().message) {
       return l10n.loginErrorUnavailable;
     }
+    if (error.startsWith('ELTE student login returned an error')) {
+      return error;
+    }
     if (error == const NeptunMaintenanceException().message) {
       return error;
     }

@@ -2,6 +2,7 @@
 
 ## Unreleased — Stage 4 harden (polish)
 
+- Restore Verification after `0.1.0+5`: password+OTP stay on one Authenticate URL; LCID **1038 then 1033** until 202/2FA/JWT (no hardcoded 1038-only); fork-minimal headers first, then one Safari/XHR retry if still not 2FA. Login/OTP errors show `HTTP xxx` + short Neptun text (never the opaque “sign on the website” without status). Student GETs stay on `Account/api` + real JWT. Build `0.1.0+6`
 - Fix Authenticator OTP (fork deep compare): ELTE live password+OTP **only** via absolute Authenticate; body matches fork (`token:""` then digits, `LCID:1038`); headers = Content-Type only (+ `devicecookie`); strip Accept/Origin/Referer/XHR/UA/Bearer. No MVC mix on that path. OTP failures show `Neptun rejected this code (HTTP …)` (+ Neptun text); HTML/maintenance not remapped to opaque OTP. Build `0.1.0+5`
 - Fix Authenticator OTP after `Account/api` baseUrl: Authenticate always uses absolute fork URL `{institute}/api/Account/Authenticate` via `postUri` (never relative under `…/Account/api/` — that risks `/api/api/…`). Student reads stay on `…/Account/api/`
 - Fix live student refresh after Authenticator login: `NeptunClient.baseUrl` → `https://neptun.elte.hu/Account/api/` (fork host); stop calling dead `ujhallgato/api`. Real JWT only for Bearer; portal placeholder never triggers OTP. Soft-fail optional dashboard GETs; map HTML/maintenance clearly

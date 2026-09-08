@@ -58,15 +58,15 @@ The legacy public path `https://neptun.elte.hu/ujhallgato/api/` is a **stub** (G
 
 **What actually logs in (aligned with Neptun-Mobile-fork):**
 
-- Primary (ELTE live): `POST https://neptun.elte.hu/Account/api/Account/Authenticate` only — same URL for password and OTP. Body keys (fork order): `userName`, `password`, `captcha:""`, `captchaIdentifier:""`, `token` (`""` then bare 6 digits), `LCID: 1038` (fork hardcodes 1038). See [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork) `lib/API/api_coms.dart` `_tryModernLogin` / `submitTwoFactorCode`.
-- Headers on Authenticate: **only** `Content-Type: application/json` (+ optional fork `Cookie: devicecookie-<base64(UPPER user)>=…`). No Bearer, Accept, Origin, Referer, X-Requested-With, or Karmin User-Agent.
+- Primary (ELTE live): `POST https://neptun.elte.hu/Account/api/Account/Authenticate` only — same URL for password and OTP. Body keys (fork order): `userName`, `password`, `captcha:""`, `captchaIdentifier:""`, `token` (`""` then bare 6 digits), `LCID`. Password tries **1038 then 1033** until HTTP 202 / 2FA / JWT (`0.1.0+5` hardcoded 1038-only and blocked Verification on English UI). OTP reuses the LCID that reached 2FA. See [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork) `lib/API/api_coms.dart` `_tryModernLogin` / `submitTwoFactorCode`.
+- Headers on Authenticate: first POST matches fork — **only** `Content-Type: application/json` (+ optional fork `Cookie: devicecookie-<base64(UPPER user)>=…`), always strip Bearer. If that password POST is not 2FA/JWT, one retry with Safari/XHR Accept + Origin + Referer. OTP reuses the header profile that worked.
 - On `isTwoFactorRequired` → Verification with **Microsoft Authenticator**. Confirm re-POSTs Authenticate with `token=<bare 6 digits>`. **Never** compose email `732-` onto authenticator codes. **No email send on this path.**
 - **No MVC fallback** on password/OTP for ELTE live (mixing channels left OTP without a JSON session). Optional mail only via **Send code again** (`EltePortalLogin` `GetEmail=true`).
 - Email confirm (only with a prefix): `RequestEmailCode` + `EmailCode` + `CodePrefix`.
 
 **Why fork JSON only:** Neptun-Mobile-fork never does Login2FA for modern institutes; its working 2FA is Authenticate + `token` + device cookie. Do not invent `RequestEmail` / `Provider=Email`.
 
-`LiveNeptunAuth` POSTs Authenticate only via absolute `NeptunClient.authenticateUrl` (`dio.postUri`, 8s timeouts) so the student `baseUrl` (`…/Account/api/`) cannot double `/api/`. Captures fork `devicecookie` from Set-Cookie and resends on the next Authenticate. OTP failures show `Neptun rejected this code (HTTP …)` plus short Neptun text — never collapse HTML/maintenance into the opaque OTP string.
+`LiveNeptunAuth` POSTs Authenticate only via absolute `NeptunClient.authenticateUrl` (`dio.postUri`, 8s timeouts) so the student `baseUrl` (`…/Account/api/`) cannot double `/api/`. Captures fork `devicecookie` from Set-Cookie and resends on the next Authenticate. Password/OTP failures show `HTTP <status>` plus short Neptun text — never collapse HTML/maintenance into the opaque “sign on the website” string. Empty 400 on Authenticate is still not “wrong password”.
 
 User-Agent (student JSON GETs): `Karmin/0.1.0 (Flutter; ELTE student client)`. Authenticate strips it. MVC form posts (email resend only) clear `X-Requested-With` and send Safari-like headers.
 
@@ -143,13 +143,13 @@ Lifecycle: pause/hidden records a timestamp; resume always `lockLocally()` if a 
 - **onRequest:** if **real** JWT (`hasRealJwt`), `Authorization: Bearer <token>`. Never send MVC placeholder `elte-portal-session` as Bearer.
 - **onError:** HTTP 401 + real JWT + path does not contain `Account/Authenticate` → `clearSession()` + `onUnauthorized`. No retry interceptor.
 - `getData` / `postData` require `hasRealJwt`; unwrap `{ data: … }` envelopes. Portal-only session → `NeptunPortalSessionException` (honest empty banner, no OTP storm).
-- `lcid`: UI `hu` → 1038; otherwise 1033. Russian UI has **no** Neptun `lcid` — keep 1033.
+- `lcid`: UI `hu` → 1038; otherwise 1033. Russian UI has **no** Neptun `lcid` — keep 1033. Live password Authenticate tries **1038 then 1033** until 2FA/JWT.
 
 Typed exceptions live in `lib/api/exceptions.dart`. `mapDioException` / `isDioTransportFailure`:
 
 - **Can't reach Neptun** (`NeptunNetworkException`) = **no HTTP response** (timeout, DNS, TLS, connection reset). Never for an `ArgumentError` or any ELTE status.
 - HTML / maintenance page → `NeptunMaintenanceException`.
-- HTTP from ELTE → credentials (`NeptunAuthException`), captcha, OTP (`NeptunOtpException`), lockout, or **Neptun request failed** (`NeptunApiException`). Empty 400 on JSON Authenticate is still `NeptunUnavailableException`, not wrong password.
+- HTTP from ELTE → credentials (`NeptunAuthException`), captcha, OTP (`NeptunOtpException`), lockout, or **Neptun request failed** (`NeptunApiException`). Empty 400 on JSON Authenticate is still `NeptunUnavailableException` **with HTTP status**, not wrong password and not the opaque website string.
 
 Do not log request bodies.
 

@@ -52,6 +52,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (error == const NeptunAuthException().message) {
       return l10n.loginErrorBadCredentials;
     }
+    if (error.startsWith('Neptun rejected these credentials')) {
+      return error;
+    }
     if (error == const NeptunNetworkException().message) {
       return l10n.loginErrorNetwork;
     }
@@ -63,6 +66,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
     if (error == const NeptunUnavailableException().message) {
       return l10n.loginErrorUnavailable;
+    }
+    if (error.startsWith('ELTE student login returned an error')) {
+      return error;
     }
     if (error == const NeptunEmailCodeException().message) {
       return l10n.otpErrorNoMail;
@@ -76,11 +82,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final palette = KarminPalette.of(context);
     final auth = ref.watch(authControllerProvider);
     final error = _errorText(l10n, auth.errorMessage);
-    final offerWebsite = auth.errorMessage ==
-            const NeptunCaptchaException().message ||
-        auth.errorMessage == const NeptunUnavailableException().message ||
-        auth.errorMessage ==
-            const NeptunApiException('Neptun request failed.').message;
+    final offerWebsite =
+        auth.errorMessage == const NeptunCaptchaException().message;
 
     return SecureAuthScaffold(
       body: Center(

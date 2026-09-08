@@ -143,7 +143,7 @@ void main() {
       ),
     );
 
-    final auth = LiveNeptunAuth(clientWith(adapter));
+    final auth = EltePortalLogin(clientWith(adapter));
     final ticket = await auth.submitPassword(
       userName: 'abc123',
       password: 'secret',
@@ -153,12 +153,7 @@ void main() {
     expect(ticket.otpChannel, OtpChannel.authenticator);
     expect(normalizeOtpPrefix(ticket.otpPrefix), isEmpty);
 
-    final done = await auth.submitOtp(
-      userName: 'abc123',
-      password: 'secret',
-      lcid: 1033,
-      otp: '123456',
-    );
+    final done = await auth.submitOtp(otp: '123456');
     expect(done.step, NeptunAuthStep.authenticated);
     expect(lastPost, isNotNull);
     expect(lastPost!['Phase'], 'RequestTOTP');
@@ -197,18 +192,13 @@ void main() {
       ),
     );
 
-    final auth = LiveNeptunAuth(clientWith(adapter));
+    final auth = EltePortalLogin(clientWith(adapter));
     await auth.submitPassword(
       userName: 'abc123',
       password: 'secret',
       lcid: 1033,
     );
-    final done = await auth.submitOtp(
-      userName: 'abc123',
-      password: 'secret',
-      lcid: 1033,
-      otp: '654321',
-    );
+    final done = await auth.submitOtp(otp: '654321');
     expect(done.step, NeptunAuthStep.authenticated);
     expect(lastPost!['Phase'], 'RequestTOTP');
     expect(lastPost!['TOTPCode'], '654321');
@@ -236,29 +226,25 @@ void main() {
       ),
     );
 
-    final auth = LiveNeptunAuth(clientWith(adapter));
+    final auth = EltePortalLogin(clientWith(adapter));
     await auth.submitPassword(
       userName: 'abc123',
       password: 'secret',
       lcid: 1033,
     );
     final getsAfterPassword = login2faGets;
-    await auth.submitOtp(
-      userName: 'abc123',
-      password: 'secret',
-      lcid: 1033,
-      otp: '123456',
-    );
+    await auth.submitOtp(otp: '123456');
     expect(login2faGets, greaterThan(getsAfterPassword));
     expect(login2faPosts, 1);
   });
 
   test('empty OTP digits throw NeptunOtpException immediately', () async {
-    final auth = LiveNeptunAuth(clientWith(ScriptedAdapter(eltePortalScript())));
-    await auth.submitPassword(
-      userName: 'abc123',
-      password: 'secret',
-      lcid: 1033,
+    final auth = LiveNeptunAuth(
+      clientWith(
+        ScriptedAdapter((options) {
+          fail('empty OTP must not hit the network');
+        }),
+      ),
     );
     expect(
       () => auth.submitOtp(
@@ -277,7 +263,7 @@ void main() {
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
       if (url.contains('Account/Authenticate')) {
-        return jsonBody(400, {});
+        return jsonBody(202, {'isTwoFactorRequired': true});
       }
       if (options.method == 'GET' && isLogin2FaUrl(url)) {
         return htmlBody(200, login2faHtml);
@@ -324,7 +310,7 @@ void main() {
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
       if (url.contains('Account/Authenticate')) {
-        return jsonBody(400, {});
+        return jsonBody(202, {'isTwoFactorRequired': true});
       }
       if (options.method == 'GET' && isLogin2FaUrl(url)) {
         return htmlBody(200, _totpForm);
@@ -341,7 +327,7 @@ void main() {
       fail('unexpected ${options.method} $url');
     });
 
-    final ticket = await LiveNeptunAuth(clientWith(adapter)).submitPassword(
+    final ticket = await EltePortalLogin(clientWith(adapter)).submitPassword(
       userName: 'abc123',
       password: 'secret',
       lcid: 1033,
@@ -379,7 +365,7 @@ void main() {
         });
       }
       if (url.contains('Account/Authenticate')) {
-        return jsonBody(400, {});
+        return jsonBody(202, {'isTwoFactorRequired': true});
       }
       fail('unexpected ${options.method} $url');
     });

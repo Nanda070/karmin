@@ -6,6 +6,17 @@
 
 ## 8 сентября 2026 г.
 
+### Auth / Verification restore (`0.1.0+6`)
+
+- **`0.1.0+5` сломал вход на Verification:** только Authenticate + всегда `LCID:1038` + обрезка заголовков → opaque «ELTE student login returned an error… sign on the website» вместо 2FA
+- Пароль и OTP по-прежнему **один** канал: absolute `POST …/Account/api/Account/Authenticate` (`token:""` затем 6 цифр), те же cookies / `devicecookie`. Без MVC mix
+- LCID: сначала 1038 (fork), затем 1033, пока нет 202 / 2FA / JWT. OTP повторяет тот LCID, что дошёл до Verification
+- Заголовки: сначала fork (`Content-Type` + Cookie, без Bearer). Если password POST не 2FA/JWT — один retry с Safari/XHR Accept/Origin/Referer
+- Ошибки логина/OTP: `HTTP xxx` + короткий текст Neptun. HTML/maintenance, плохой пароль, плохой OTP и сеть — разные исключения
+- Student GET: `https://neptun.elte.hu/Account/api/` + настоящий JWT Bearer. Не `ujhallgato`, не placeholder `elte-portal-session`
+- Сохранены прежние фиксы: `_jsonTwoFactorPending` до JWT/`reset()`, без email-префикса на authenticator `token`, `postUri` без `/api/api/`, Authorization снимается только на Authenticate
+- IPA `0.1.0+6`
+
 ### Auth / 2FA (fork 1:1)
 
 - **Deep compare** с [zoligamer/Neptun-Mobile-fork](https://github.com/zoligamer/Neptun-Mobile-fork) `api_coms.dart` `_tryModernLogin` / `submitTwoFactorCode`

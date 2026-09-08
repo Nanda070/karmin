@@ -114,7 +114,7 @@ void main() {
       ),
     );
 
-    final ticket = await LiveNeptunAuth(NeptunClient(dio: dio)).submitPassword(
+    final ticket = await EltePortalLogin(NeptunClient(dio: dio)).submitPassword(
       userName: 'abc123',
       password: 'secret',
       lcid: 1033,
