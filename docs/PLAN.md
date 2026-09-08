@@ -17,13 +17,13 @@ Last updated: 2026-09-08
 | Item | Status |
 |---|---|
 | **Stage 0 — Foundation** | **Done** |
+| **UI visual system** | **Done** — Figma + Flutter widgets are the source of truth (not a future polish pass) |
 | Web platform (`web/`) | Added alongside iOS/Android (dev/preview; v1 ship target remains mobile) |
-| UI polish | **Done** — premium dark theme (ink / navy / carmine), shared widgets (`KarminScaffold`, cards, list rows, chips, segmented control, bottom nav) |
 | Platforms | Android, iOS, web scaffold |
 | Live Neptun auth | **Not started** |
 | **Next** | **Stage 1 — Auth** |
 
-Stage 0 exit criteria met: English Today placeholder, dark theme, gear → Settings, l10n EN/HU/RU, `NeptunClient` skeleton, secure storage + PIN helpers, doc stubs, MIT license under Cheterin.
+Stage 0 exit criteria met: English Today matching the locked dark visual contract, gear → Settings, l10n EN/HU/RU, `NeptunClient` skeleton, secure storage + PIN helpers, doc stubs, MIT license under Cheterin. Luxury UI redesign shipped in Figma (7 screens + Components) and Flutter (`flutter analyze` clean; tests pass).
 
 ---
 
@@ -38,7 +38,7 @@ It is **not** an ELTE product, **not** a SDA Informatika product, and **not** a 
 - One first login, then Face ID / 6-digit PIN.
 - Today and calendar feel instant (local cache, then refresh).
 - Exam signup with an explicit double confirm.
-- UI matches the Figma file (Karmin, English).
+- UI follows the locked Figma + Flutter visual system (Karmin, English).
 
 ### 1.2 Non-goals (v1 and “never” unless the product contract changes)
 
@@ -135,10 +135,10 @@ lib/
 | Biometrics | `local_auth` | biometricOnly first, then PIN UI we own |
 | Cache | `isar` + `isar_flutter_libs` | Stage 2; Hive only if Isar codegen blocks |
 | i18n | `flutter_localizations` + `intl` + gen-l10n | EN is `template-arb-file` |
-| Fonts | `google_fonts` (Inter) | Theme locked in Stage 0 |
+| Fonts | `google_fonts` | **Fraunces** (titles) + **Plus Jakarta Sans** (body). Locked. |
 | Notifications | `flutter_local_notifications` + `timezone` | Stage 2+ |
 | Secure flag | `flutter_windowmanager` or platform channel | FLAG_SECURE on Login + Unlock |
-| Icons | custom / Lucide subset as SVG | No Material rainbow icons on tabs |
+| Icons | `KarminIcons` (Material rounded/outlined) | `lucide_icons` is **not** used — it breaks on this SDK |
 
 Do not add Firebase, Sentry-with-PII, analytics SDKs, or crash reporters that upload request bodies in v1.
 
@@ -348,30 +348,84 @@ Settings always keep the same links.
 
 ---
 
-## 8. UX and visual
+## 8. UX and visual (locked)
 
-- Figma is source: https://www.figma.com/design/Iuxf0sbisHaOwxn6Vkcgdg
-- Brand string: **Karmin** (ASCII, no accent)
-- Owner brand: Cheterin / cheterin.online
-- Dark only. Background: ink → navy (login: ink → navy → carmine)
+Figma https://www.figma.com/design/Iuxf0sbisHaOwxn6Vkcgdg plus the Flutter widgets under `lib/app/` are the **source of truth**. The luxury dark redesign is **done**. Later stages bind real Neptun data; they do not reopen palette, type, or chrome.
+
+Brand string: **Karmin** (ASCII, no accent). Owner: Cheterin / cheterin.online.
+
+### 8.1 Design language
+
+| Token | Value |
+|---|---|
+| Ink | `#07080C` |
+| Surface | `#10141C` |
+| Navy (fields, chips) | `#152036` |
+| Hairline | `#2A3A5C` |
+| Steel | `#4A6A8A` |
+| Muted | `#8B93A7` |
+| Text | `#E8EAED` |
+| Carmine | `#9B1B30` |
+| Carmine bright | `#DB4257` |
+| Titles | Fraunces via `google_fonts` |
+| Body / UI | Plus Jakarta Sans via `google_fonts` |
+| Radius | 8 / 12 / 16 / pill 18 |
+| Spacing | 8pt scale; page inset 20 |
+
+Atmosphere: ink → navy page gradient. Cards (`KarminCard`): hairline borders, quiet surface gradients, optional carmine/steel accent bar. Primary CTA (`KarminPrimaryButton`): carmine gradient. Dark only — light theme remains cut for v1 (§1.2).
+
+**Bottom nav** (`KarminBottomNav`): icon + label, carmine active pill, muted inactive, outline-style icons. Language from community file `QYkMt6nybGd2y1gl9WUK1X` / node `96:1987`.
+
+**Auth chrome (Figma):** centered K mark, icon-led inputs (user / lock / eye), gradient Sign in, quiet microcopy. Language from `sCVzmZRqSouvVDRTO8vIDb` / node `2:2`. Flutter Login / PIN / Disclaimer screens ship in Stage 1.
+
+**Schedule / event cards:** date chips, accent bars, time / location / person metadata with icons. Language from `BZfoM4pLXPnCYW3Gjkk0gV` / node `4:0`.
+
+**Icons:** `KarminIcons` — Material rounded/outlined. Do not add `lucide_icons` (SDK incompatibility). Do not put rainbow icons on tabs.
+
+### 8.2 Visual contract (Figma)
+
+| Screen | Contents |
+|---|---|
+| 01 Login | K mark, user/lock/eye fields, gradient Sign in |
+| 02 PIN | Lock badge, filled dots, polished keypad |
+| 03 Today | Hero + chips + quick actions + schedule + icon nav |
+| 04 Calendar | Week/list, date chips, class/exam cards with pin/user icons |
+| 05 Study | GPA/credits, subject rows, Sign up CTA |
+| 06 Inbox | Avatars, unread badges, timestamps |
+| 07 Settings | Profile card, leading icons per row, Sign out |
+| Components | Shared icon set |
+
+Flutter **Today / Calendar / Study / Inbox / Settings** already follow that contract with **demo copy**. Data binding is Stages 2–3. Login and PIN exist in Figma only until Stage 1.
+
+### 8.3 App structure
+
 - Bottom tabs: Today | Calendar | Study | Inbox
-- Settings: gear on Today (and Profile card)
-- Shared widgets under `lib/app/widgets/` (Stage 0 polish done)
+- Settings: gear on Today (and profile card)
+- Shared widgets: `KarminScaffold`, `KarminCard`, `KarminPrimaryButton`, `KarminBottomNav`, `KarminIcons`, chips, segmented control, list rows
 - i18n: EN default; HU/RU files exist; Settings language overrides OS
 
 Do not invent extra tabs. Do not add a floating compose button.
+
+### 8.4 Remaining UI (not a redesign)
+
+- **Stage 1:** implement Login, Disclaimer, Set PIN, Unlock against Figma 01/02 (behavior + FLAG_SECURE).
+- **Stage 4:** empty / error / offline banners; TalkBack/VoiceOver labels and carmine contrast (§7.10).
+- Web stays a preview scaffold; v1 ship target is mobile.
+- No light theme, no Lucide migration, no extra motion system (nav already animates the active pill).
 
 ---
 
 ## 9. Features by screen (v1)
 
+Visual chrome for tabs + Settings is built (§8). Login / Unlock Flutter screens are Stage 1. Copy below is product behavior, not a new layout brief.
+
 ### 9.1 Login
 
-Neptun code, password, Sign in, Keystore one-liner. Disclaimer already accepted.
+Neptun code, password, Sign in, Keystore one-liner. Disclaimer already accepted. Match Figma 01.
 
 ### 9.2 Unlock
 
-Karmin wordmark, 6 PIN dots, keypad, Face ID. Sign out link.
+Karmin wordmark, 6 PIN dots, keypad, Face ID. Sign out link. Match Figma 02.
 
 ### 9.3 Today
 
@@ -433,8 +487,12 @@ DTOs: explicit fields we render. Unknown JSON keys ignored. Calendar **must** in
 
 Completed:
 
-- Theme from Figma (colors, radius 12/16, Inter) + premium shared widgets
-- `go_router` + 4-tab shell (placeholder pages)
+- Luxury dark visual system in Figma **and** Flutter (source of truth; see §8)
+- Theme tokens: ink / surface / hairline / carmine; Fraunces + Plus Jakarta Sans; radius 8/12/16
+- Shared widgets: `KarminScaffold`, `KarminCard` (gradients + accent bars), `KarminPrimaryButton`, `KarminBottomNav` (icon + carmine pill), `KarminIcons`, chips, segmented control, list rows
+- Figma screens 01–07 + Components icon set rebuilt to the community-ref language
+- Flutter Today / Calendar / Study / Inbox / Settings match that contract with demo data
+- `go_router` + 4-tab shell
 - l10n EN/HU/RU stubs, default EN
 - `NeptunClient` empty + exceptions
 - Secure storage + PIN hash helpers + `local_auth` probe
@@ -442,13 +500,14 @@ Completed:
 - LICENSE (MIT, Cheterin), PLAN, PRIVACY, DISCLAIMER, legal NOTICE
 - Web platform scaffold for UI preview
 - `.gitignore` secrets / keystores
+- `flutter analyze` clean; tests pass
 
-**Exit (met):** `flutter run` shows English Today placeholder, dark theme, gear opens Settings.
+**Exit (met):** `flutter run` shows English Today in the locked dark UI, gear opens Settings.
 
 ### Stage 1 — Auth (5–7 days) — **NEXT / GATE**
 
 - Live `Authenticate` against ELTE.
-- Login, Disclaimer, Set PIN, Unlock, lifecycle lock, Sign out.
+- Login, Disclaimer, Set PIN, Unlock, lifecycle lock, Sign out — implement against Figma 01/02 using existing shared widgets.
 - 401 interceptor.
 - FLAG_SECURE on those routes.
 - Captcha error path.
@@ -508,7 +567,7 @@ All live under `docs/` unless noted. Stage 0 stubs exist; freeze text in Stage 4
 | `LICENSE` | Everyone | MIT © Cheterin / cheterin.online |
 | In-app screens | Users | Disclaimer, Privacy, open-source licenses page (`showLicensePage`) |
 
-Figma remains UI spec; do not duplicate pixel specs in Markdown except tokens.
+Figma + `lib/app/theme.dart` / `lib/app/widgets/` are the UI spec. Tokens live in §8; do not reopen them in later stages.
 
 ### 12.1 In-app copy (English source)
 
@@ -579,9 +638,9 @@ License decided: **MIT** under Cheterin.
 
 ## 17. Immediate next actions
 
-1. **Stage 1 Auth** against a live ELTE login (Disclaimer → Login → PIN → Unlock → lifecycle lock).  
+1. **Stage 1 Auth** against a live ELTE login (Disclaimer → Login → PIN → Unlock → lifecycle lock). Build those Flutter screens to Figma 01/02; do not redesign chrome.  
 2. Fill `docs/legal/SOURCES.md` after personally opening ELTE Neptun terms.  
-3. Keep Figma as the visual contract; English + Karmin + gear → Settings.  
+3. Treat Figma + Flutter widgets as the locked visual contract; English + Karmin + gear → Settings.  
 4. If ELTE or SDA asks to stop distribution — stop, note in CHANGELOG, contact via cheterin.online.
 
 ---
