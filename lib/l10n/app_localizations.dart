@@ -640,6 +640,12 @@ abstract class AppLocalizations {
   /// **'Enter the one-time code from your email or authenticator app.'**
   String get otpSubtitleUnknown;
 
+  /// No description provided for @otpPrefixHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code after the dash; the prefix is filled by Neptun.'**
+  String get otpPrefixHint;
+
   /// No description provided for @otpCodeHint.
   ///
   /// In en, this message translates to:

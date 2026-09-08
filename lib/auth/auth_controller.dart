@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ignore_for_file: prefer_initializing_formals
 
+import 'package:karmin/api/elte_portal_login.dart';
 import 'package:karmin/api/exceptions.dart';
 import 'package:karmin/api/neptun_auth.dart';
 import 'package:karmin/api/neptun_client.dart';
@@ -165,7 +166,7 @@ class AuthController extends StateNotifier<AuthState> {
         userName: resolvedUser,
         password: resolvedPassword,
         lcid: lcid,
-        otp: otp,
+        otp: composeLogin2FaCode(prefix: state.otpPrefix, tail: otp),
       );
       if (ticket.step == NeptunAuthStep.needsOtp) {
         state = state.copyWith(
@@ -224,6 +225,7 @@ class AuthController extends StateNotifier<AuthState> {
           busy: false,
           neptunStep: NeptunAuthStep.needsOtp,
           otpChannel: ticket.otpChannel,
+          otpPrefix: ticket.otpPrefix,
           otpResendAvailableAt: _now().add(otpResendCooldown),
           otpResendNonce: state.otpResendNonce + 1,
           clearError: true,
@@ -395,6 +397,7 @@ class AuthController extends StateNotifier<AuthState> {
       bioEnabled: false,
       clearNeptunCode: true,
       otpChannel: OtpChannel.unknown,
+      clearOtpPrefix: true,
       pinAttempts: 0,
       clearPinLock: true,
       clearOtpResend: true,
@@ -437,6 +440,7 @@ class AuthController extends StateNotifier<AuthState> {
         busy: false,
         neptunStep: NeptunAuthStep.needsOtp,
         otpChannel: ticket.otpChannel,
+        otpPrefix: ticket.otpPrefix,
         clearError: true,
       );
       return;
@@ -461,6 +465,7 @@ class AuthController extends StateNotifier<AuthState> {
       unlocked: true,
       neptunStep: NeptunAuthStep.authenticated,
       neptunCode: ticket.neptunCode ?? userName,
+      clearOtpPrefix: true,
       clearError: true,
     );
   }

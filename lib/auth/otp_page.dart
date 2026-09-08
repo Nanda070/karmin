@@ -78,6 +78,57 @@ class _OtpPageState extends ConsumerState<OtpPage> {
     };
   }
 
+  Widget _codeField(
+    AppLocalizations l10n,
+    KarminPalette palette,
+    String prefix,
+  ) {
+    final tail = AuthTextField(
+      controller: _otp,
+      hint: l10n.otpCodeHint,
+      semanticsLabel: l10n.otpCodeHint,
+      icon: KarminIcons.key,
+      keyboardType: TextInputType.number,
+      textInputAction: TextInputAction.done,
+      onSubmitted: (_) => _submit(),
+      autofillHints: const [AutofillHints.oneTimeCode],
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(prefix.isEmpty ? 6 : 8),
+      ],
+    );
+    if (prefix.isEmpty) {
+      return tail;
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Semantics(
+          label: prefix,
+          readOnly: true,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              color: palette.fieldHi,
+              borderRadius: KarminRadii.mdBorder,
+              border: Border.all(color: palette.hairline),
+            ),
+            child: Text(
+              prefix,
+              style: KarminTypography.body(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: palette.muted,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(child: tail),
+      ],
+    );
+  }
+
   String? _errorText(AppLocalizations l10n, String? error) {
     if (error == null) {
       return null;
@@ -169,20 +220,19 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                     color: palette.muted,
                   ),
                 ),
+                if (auth.otpChannel != OtpChannel.authenticator) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n.otpPrefixHint,
+                    textAlign: TextAlign.center,
+                    style: KarminTypography.body(
+                      fontSize: 12,
+                      color: palette.muted,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
-                AuthTextField(
-                  controller: _otp,
-                  hint: l10n.otpCodeHint,
-                  semanticsLabel: l10n.otpCodeHint,
-                  icon: KarminIcons.key,
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _submit(),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(6),
-                  ],
-                ),
+                _codeField(l10n, palette, auth.otpPrefix),
                 if (error != null) ...[
                   const SizedBox(height: 12),
                   KarminInlineError(error),

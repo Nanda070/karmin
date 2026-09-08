@@ -289,6 +289,10 @@ class AppLocalizationsRu extends AppLocalizations {
       'Введите одноразовый код из письма или приложения-аутентификатора.';
 
   @override
+  String get otpPrefixHint =>
+      'Введите код после дефиса; префикс подставляет Neptun.';
+
+  @override
   String get otpCodeHint => 'Одноразовый код';
 
   @override

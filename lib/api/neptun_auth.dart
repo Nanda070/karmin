@@ -189,6 +189,7 @@ AuthTicket parseAuthenticateResponse({
     return AuthTicket(
       step: NeptunAuthStep.needsOtp,
       otpChannel: otpChannelFromPayload(payload),
+      otpPrefix: otpPrefixFromPayload(payload),
     );
   }
 
@@ -249,7 +250,7 @@ Map<String, dynamic> authenticateJsonBody({
   return body;
 }
 
-/// Debug / web preview: any non-empty credentials, then any 6-digit OTP.
+/// Debug / web preview: any non-empty credentials, then a 6–16 digit OTP.
 class DebugNeptunAuth implements NeptunAuthApi {
   @override
   Future<AuthTicket> submitPassword({
@@ -273,8 +274,8 @@ class DebugNeptunAuth implements NeptunAuthApi {
     required int lcid,
     required String otp,
   }) async {
-    final code = otp.trim();
-    if (!RegExp(r'^\d{6}$').hasMatch(code)) {
+    final digits = otp.replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 6 || digits.length > 16) {
       throw const NeptunOtpException();
     }
     return AuthTicket(

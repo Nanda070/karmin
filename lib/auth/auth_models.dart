@@ -19,12 +19,16 @@ class AuthTicket {
     this.accessToken,
     this.neptunCode,
     this.otpChannel = OtpChannel.unknown,
+    this.otpPrefix = '',
   });
 
   final NeptunAuthStep step;
   final String? accessToken;
   final String? neptunCode;
   final OtpChannel otpChannel;
+
+  /// Server-issued email OTP prefix as shown on Login2FA (`732-`). Empty for TOTP.
+  final String otpPrefix;
 
   bool get hasJwt =>
       step == NeptunAuthStep.authenticated &&
@@ -45,6 +49,7 @@ class AuthState {
     required this.bioAvailable,
     this.neptunCode,
     this.otpChannel = OtpChannel.unknown,
+    this.otpPrefix = '',
     this.busy = false,
     this.errorMessage,
     this.pinLockedUntil,
@@ -97,6 +102,9 @@ class AuthState {
   final bool bioAvailable;
   final String? neptunCode;
   final OtpChannel otpChannel;
+
+  /// Read-only Login2FA prefix (`732-`). User types only the tail.
+  final String otpPrefix;
   final bool busy;
   final String? errorMessage;
   final DateTime? pinLockedUntil;
@@ -138,6 +146,8 @@ class AuthState {
     String? neptunCode,
     bool clearNeptunCode = false,
     OtpChannel? otpChannel,
+    String? otpPrefix,
+    bool clearOtpPrefix = false,
     bool? busy,
     String? errorMessage,
     bool clearError = false,
@@ -160,6 +170,7 @@ class AuthState {
       bioAvailable: bioAvailable ?? this.bioAvailable,
       neptunCode: clearNeptunCode ? null : (neptunCode ?? this.neptunCode),
       otpChannel: otpChannel ?? this.otpChannel,
+      otpPrefix: clearOtpPrefix ? '' : (otpPrefix ?? this.otpPrefix),
       busy: busy ?? this.busy,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       pinLockedUntil:

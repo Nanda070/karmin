@@ -18,6 +18,7 @@ class EltePortalLogin {
   final NeptunClient _client;
   final Map<String, String> _cookies = {};
   Map<String, String> _otpFields = {};
+  String _otpPrefix = '';
   var _hasSession = false;
 
   bool get hasSession => _hasSession;
@@ -25,6 +26,7 @@ class EltePortalLogin {
   void clear() {
     _cookies.clear();
     _otpFields = {};
+    _otpPrefix = '';
     _hasSession = false;
   }
 
@@ -42,15 +44,25 @@ class EltePortalLogin {
 
     final response = await _post(loginPath, fields, referer: '$origin$loginPath');
     final ticket = _ticketFromPortalResponse(response);
-    if (ticket.step == NeptunAuthStep.needsOtp && _otpFields.isEmpty) {
+    if (ticket.step != NeptunAuthStep.needsOtp) {
+      return ticket;
+    }
+    var otpHtml = '';
+    if (_otpFields.isEmpty || _otpPrefix.isEmpty) {
       try {
-        final html = await _get(otpPath);
-        _otpFields = extractNamedInputs(html);
+        otpHtml = await _get(otpPath);
+        _captureOtpForm(otpHtml);
       } on NeptunException {
         // OTP submit will GET Login2FA again with the session cookie.
       }
     }
-    return ticket;
+    return AuthTicket(
+      step: NeptunAuthStep.needsOtp,
+      otpChannel: otpHtml.isNotEmpty
+          ? otpChannelFromHtml(otpHtml, otpPath)
+          : ticket.otpChannel,
+      otpPrefix: _otpPrefix,
+    );
   }
 
   Future<AuthTicket> submitOtp({
@@ -59,21 +71,14 @@ class EltePortalLogin {
     var fields = Map<String, String>.from(_otpFields);
     if (fields.isEmpty) {
       final html = await _get(otpPath);
-      fields = extractNamedInputs(html);
+      _captureOtpForm(html);
+      fields = Map<String, String>.from(_otpFields);
     }
-    final code = otp.trim();
-    for (final key in const [
-      'TOTPCode',
-      'Code',
-      'EmailCode',
-      'OneTimeCode',
-      'token',
-      'Token',
-    ]) {
-      if (fields.containsKey(key) || key == 'TOTPCode') {
-        fields[key] = code;
-      }
-    }
+    fields = fillLogin2FaOtpFields(
+      fields: fields,
+      prefix: _otpPrefix,
+      tail: otp,
+    );
 
     final response = await _post(otpPath, fields, referer: '$origin$otpPath');
     final ticket = _ticketFromPortalResponse(response, treatingAsOtp: true);
@@ -177,18 +182,12 @@ class EltePortalLogin {
     }
 
     if (_isOtpChallenge(status, location, html)) {
-      _otpFields = extractNamedInputs(html);
+      _captureOtpForm(html);
       _hasSession = true;
-      if (html.trim().isEmpty && location.contains('Login2FA')) {
-        // 302 to 2FA — fetch the form so OTP can be posted.
-        return AuthTicket(
-          step: NeptunAuthStep.needsOtp,
-          otpChannel: otpChannelFromHtml(html, location),
-        );
-      }
       return AuthTicket(
         step: NeptunAuthStep.needsOtp,
         otpChannel: otpChannelFromHtml(html, location),
+        otpPrefix: _otpPrefix,
       );
     }
 
@@ -215,6 +214,7 @@ class EltePortalLogin {
       return AuthTicket(
         step: NeptunAuthStep.needsOtp,
         otpChannel: otpChannelFromHtml(html, location),
+        otpPrefix: _otpPrefix,
       );
     }
 
@@ -253,6 +253,20 @@ class EltePortalLogin {
       return data;
     }
     return data?.toString() ?? '';
+  }
+
+  void _captureOtpForm(String html) {
+    if (html.trim().isEmpty) {
+      return;
+    }
+    final fields = extractNamedInputs(html);
+    if (fields.isNotEmpty) {
+      _otpFields = fields;
+    }
+    final prefix = parseLogin2FaPrefix(html);
+    if (prefix != null && prefix.isNotEmpty) {
+      _otpPrefix = prefix;
+    }
   }
 }
 
@@ -301,6 +315,9 @@ bool htmlLooksLikeOtp(String html) {
       lower.contains("name='phase'") ||
       lower.contains('two-factor') ||
       lower.contains('two factor') ||
+      lower.contains('e-mail code') ||
+      lower.contains('email code') ||
+      lower.contains('e-mail kód') ||
       lower.contains('kétlépcsős') ||
       lower.contains('ketlepcsos') ||
       lower.contains('egyszeri') ||
@@ -346,4 +363,186 @@ String? _attr(String attrs, String name) {
     caseSensitive: false,
   ).firstMatch(attrs);
   return single?.group(1);
+}
+
+const _otpPrefixFieldNames = {
+  'prefix',
+  'codeprefix',
+  'tokenprefix',
+  'emailprefix',
+  'otpprefix',
+  'totpprefix',
+  'emailcodeprefix',
+  'twofactorprefix',
+  'codestart',
+  'tokenstart',
+};
+
+const _otpCodeFieldNames = {
+  'totpcode',
+  'code',
+  'emailcode',
+  'onetimecode',
+  'token',
+  'twofactorcode',
+  'otp',
+  'otpcode',
+};
+
+final _otpPrefixOnly = RegExp(r'^\d{2,4}-?$');
+final _otpStandalonePrefix = RegExp(r'(?<![\d])(\d{3}-)(?!\d)');
+
+bool isOtpPrefixFieldName(String name) =>
+    _otpPrefixFieldNames.contains(name.toLowerCase());
+
+bool isOtpCodeFieldName(String name) {
+  final lower = name.toLowerCase();
+  return _otpCodeFieldNames.contains(lower) && !isOtpPrefixFieldName(name);
+}
+
+/// `732-` from `732`, `732-`, or ` 732 - `. Empty when the value is not a prefix.
+String? asOtpPrefix(String? raw) {
+  if (raw == null) {
+    return null;
+  }
+  final trimmed = raw.trim().replaceAll(' ', '');
+  if (!_otpPrefixOnly.hasMatch(trimmed)) {
+    return null;
+  }
+  return '${trimmed.replaceAll(RegExp(r'\D'), '')}-';
+}
+
+String normalizeOtpPrefix(String raw) => asOtpPrefix(raw) ?? '';
+
+/// Digits the user typed. Strips a leading copy of [prefix] if they pasted the
+/// full email code.
+String normalizeOtpTail(String raw, {String prefix = ''}) {
+  var digits = raw.replaceAll(RegExp(r'\D'), '');
+  final prefixDigits = prefix.replaceAll(RegExp(r'\D'), '');
+  if (prefixDigits.isNotEmpty &&
+      digits.startsWith(prefixDigits) &&
+      digits.length > prefixDigits.length) {
+    digits = digits.substring(prefixDigits.length);
+  }
+  return digits;
+}
+
+/// Official email OTP is prefix + hyphen + tail (`732-893600`). Authenticator
+/// codes have no prefix and stay 6 digits.
+String composeLogin2FaCode({
+  required String prefix,
+  required String tail,
+}) {
+  final normalizedPrefix = normalizeOtpPrefix(prefix);
+  final normalizedTail = normalizeOtpTail(tail, prefix: normalizedPrefix);
+  if (normalizedPrefix.isEmpty) {
+    return normalizedTail;
+  }
+  return '$normalizedPrefix$normalizedTail';
+}
+
+/// Reads the grey-box prefix Neptun already filled on Login2FA.
+String? parseLogin2FaPrefix(String html) {
+  final fields = extractNamedInputs(html);
+  for (final entry in fields.entries) {
+    if (isOtpPrefixFieldName(entry.key)) {
+      final prefix = asOtpPrefix(entry.value);
+      if (prefix != null) {
+        return prefix;
+      }
+    }
+  }
+  for (final key in const ['TOTPCode', 'Code', 'EmailCode', 'Token', 'token']) {
+    final prefix = asOtpPrefix(fields[key]);
+    if (prefix != null) {
+      return prefix;
+    }
+  }
+
+  final input = RegExp(r'<input\b([^>]*)>', caseSensitive: false);
+  for (final match in input.allMatches(html)) {
+    final attrs = match.group(1) ?? '';
+    final lower = attrs.toLowerCase();
+    if (!lower.contains('disabled') && !lower.contains('readonly')) {
+      continue;
+    }
+    final prefix = asOtpPrefix(_attr(attrs, 'value'));
+    if (prefix != null) {
+      return prefix;
+    }
+  }
+
+  final tag = RegExp(
+    r'<(span|div|strong|label|p)\b([^>]*)>([^<]{1,12})</\1>',
+    caseSensitive: false,
+  );
+  for (final match in tag.allMatches(html)) {
+    final prefix = asOtpPrefix((match.group(3) ?? '').trim());
+    if (prefix != null) {
+      return prefix;
+    }
+  }
+
+  return _otpStandalonePrefix.firstMatch(html)?.group(1);
+}
+
+/// JSON Authenticate bodies sometimes echo the same prefix.
+String otpPrefixFromPayload(Map<String, dynamic> data) {
+  for (final key in data.keys) {
+    if (!isOtpPrefixFieldName(key) &&
+        key.toLowerCase() != 'otpprefix' &&
+        key.toLowerCase() != 'emailcodeprefix') {
+      continue;
+    }
+    final prefix = asOtpPrefix(data[key]?.toString());
+    if (prefix != null) {
+      return prefix;
+    }
+  }
+  return '';
+}
+
+/// Builds the Login2FA POST map. Named prefix field → keep prefix, send tail
+/// in the code input. Display-only prefix (span) → concatenate into TOTPCode
+/// the way official JS does.
+Map<String, String> fillLogin2FaOtpFields({
+  required Map<String, String> fields,
+  required String prefix,
+  required String tail,
+}) {
+  final next = Map<String, String>.from(fields);
+  final normalizedPrefix = normalizeOtpPrefix(prefix);
+  final normalizedTail = normalizeOtpTail(tail, prefix: normalizedPrefix);
+  final composed = composeLogin2FaCode(
+    prefix: normalizedPrefix,
+    tail: normalizedTail,
+  );
+
+  String? prefixField;
+  for (final key in next.keys) {
+    if (isOtpPrefixFieldName(key)) {
+      prefixField = key;
+      break;
+    }
+  }
+  if (prefixField != null) {
+    next[prefixField] = normalizedPrefix;
+  }
+
+  final codeValue =
+      prefixField != null && normalizedPrefix.isNotEmpty
+          ? normalizedTail
+          : composed;
+
+  var wroteCode = false;
+  for (final key in next.keys.toList()) {
+    if (isOtpCodeFieldName(key)) {
+      next[key] = codeValue;
+      wroteCode = true;
+    }
+  }
+  if (!wroteCode) {
+    next['TOTPCode'] = codeValue;
+  }
+  return next;
 }

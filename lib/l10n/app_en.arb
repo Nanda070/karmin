@@ -100,6 +100,7 @@
   "otpSubtitleEmail": "Enter the one-time code from your email.",
   "otpSubtitleAuthenticator": "Enter the one-time code from your authenticator app.",
   "otpSubtitleUnknown": "Enter the one-time code from your email or authenticator app.",
+  "otpPrefixHint": "Enter the code after the dash; the prefix is filled by Neptun.",
   "otpCodeHint": "One-time code",
   "otpConfirm": "Confirm",
   "otpResend": "Send code again",
