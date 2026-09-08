@@ -30,7 +30,11 @@ PIN plaintext is never stored. JWT is never persisted. TOTP secrets and email OT
 
 ## Reporting
 
-If you find a vulnerability in Karmin, contact the maintainer privately (do not file a public issue with secrets). Email TBD.
+If you find a vulnerability in Karmin, contact the maintainer privately (do not file a public issue with secrets).
+
+**Owner, Developer, Founder:** Nanda  
+**Company:** Cheterin Group ([cheterin.online](https://cheterin.online))  
+**Mail:** `turkapahf@gmail.com` · **Discord:** `nandak070` · **Telegram:** `nanda070`
 
 Do not log `Authorization`, `password`, OTP `token`, or JWTs.
 

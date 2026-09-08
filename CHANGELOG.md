@@ -2,6 +2,7 @@
 
 ## Unreleased — Stage 4 harden (polish)
 
+- Attribution: owner / founder **Nanda**, company **Cheterin Group**; contact Discord `nandak070`, Telegram `nanda070`, mail `turkapahf@gmail.com` (README, LICENSE, legal docs)
 - Shared empty / error / last-cached widgets on Today, Calendar, Study, Inbox, Auth (`KarminStatusBanner`, `KarminEmptyState`)
 - Accessibility: Semantics on tabs, PIN keypad, OTP, password visibility; 48pt icon tap targets; contrast-aware carmine text
 - Full light theme pass: `KarminPalette` — cream paper `#F4EFE6`, not Material white. Settings System / Dark / Light restyles all screens. Dark remains default
@@ -43,5 +44,5 @@
 - Secure storage, PIN hash helpers, `local_auth` probe wrappers
 - Android `allowBackup=false`; iOS Keychain first-unlock-this-device
 - Web platform scaffold for UI preview
-- Docs: bilingual README, MIT © Cheterin, PLAN status (Stage 0 done → Stage 1 Auth), disclaimer / privacy / NOTICE
-- Owner: Cheterin / cheterin.online — unofficial ELTE Neptun client
+- Docs: bilingual README, MIT © Nanda / Cheterin Group, PLAN status (Stage 0 done → Stage 1 Auth), disclaimer / privacy / NOTICE
+- Owner: Nanda / Cheterin Group — unofficial ELTE Neptun client

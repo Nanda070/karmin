@@ -1,6 +1,9 @@
 # Third-party notices
 
-Karmin (© 2026 Cheterin / cheterin.online) depends on open-source software.
+Karmin (© 2026 Nanda / Cheterin Group) depends on open-source software.
+
+**Owner, Developer, Founder:** Nanda · Discord `nandak070` · Telegram `nanda070` · Mail `turkapahf@gmail.com`  
+**Company:** Cheterin Group · [cheterin.online](https://cheterin.online)
 
 ## Flutter / Dart SDK
 
@@ -30,4 +33,4 @@ Exact SPDX text and transitive packages can change with `pub get`. Prefer `showL
 
 ## Trademarks
 
-“Neptun”, “ELTE”, and related marks belong to their respective owners. Karmin and Cheterin claim **no** affiliation or trademark license from those parties. See [DISCLAIMER.md](../DISCLAIMER.md).
+“Neptun”, “ELTE”, and related marks belong to their respective owners. Karmin, Nanda, and Cheterin Group claim **no** affiliation or trademark license from those parties. See [DISCLAIMER.md](../DISCLAIMER.md).

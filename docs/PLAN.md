@@ -1,7 +1,9 @@
 # Karmin — full implementation plan
 
 **Product:** unofficial mobile client for ELTE Neptun  
-**Owner:** [Cheterin](https://cheterin.online) / cheterin.online  
+**Owner, Developer, Founder:** Nanda  
+**Company:** [Cheterin Group](https://cheterin.online)  
+**Contact:** Discord `nandak070` · Telegram `nanda070` · Mail `turkapahf@gmail.com` 
 **Brand:** Karmin  
 **Repo:** `C:\Users\adnan\Documents\Coding\karmin`  
 **Figma:** https://www.figma.com/design/Iuxf0sbisHaOwxn6Vkcgdg  
@@ -28,7 +30,7 @@ Last updated: 2026-09-08
 | Light theme | **Shipped in Flutter** — Settings System / Dark / Light restyles all 7 screens + shell via `KarminPalette`. Cream paper `#F4EFE6`, not Material white. Figma light frames still pending. |
 | **Next** | Prove Stage 1–3 on a real iPhone (`KARMIN_LIVE_AUTH` / release IPA). Free install: [IOS_SIDELLOAD.md](IOS_SIDELLOAD.md). Android: [ANDROID_BUILD.md](ANDROID_BUILD.md) (Windows APK / emulator). |
 
-Stage 0 exit criteria met: English Today matching the locked dark visual contract, gear → Settings, l10n EN/HU/RU, `NeptunClient` skeleton, secure storage + PIN helpers, doc stubs, MIT license under Cheterin. Luxury UI redesign shipped in Figma (7 screens + Components) and Flutter (`flutter analyze` clean; tests pass).
+Stage 0 exit criteria met: English Today matching the locked dark visual contract, gear → Settings, l10n EN/HU/RU, `NeptunClient` skeleton, secure storage + PIN helpers, doc stubs, MIT license under Nanda / Cheterin Group. Luxury UI redesign shipped in Figma (7 screens + Components) and Flutter (`flutter analyze` clean; tests pass).
 
 **Locked (2026-09-08):** every fresh Neptun authentication requires an interactive one-time code (email **or** authenticator). Stored password never completes login alone. Dark remains default; light is a complementary Karmin cream theme (Stage 4 Flutter pass shipped; Figma light frames pending).
 
@@ -36,9 +38,9 @@ Stage 0 exit criteria met: English Today matching the locked dark visual contrac
 
 ## 1. Product definition
 
-Karmin is a Flutter app by **Cheterin** for ELTE students. It signs into the official Neptun student API (`https://neptun.elte.hu/ujhallgato/api/`) with the student’s own Neptun code and password, then shows Today, calendar, grades, exams, and inbox in a dark, minimal UI.
+Karmin is a Flutter app by **Nanda** / **Cheterin Group** for ELTE students. It signs into the official Neptun student API (`https://neptun.elte.hu/ujhallgato/api/`) with the student’s own Neptun code and password, then shows Today, calendar, grades, exams, and inbox in a dark, minimal UI.
 
-It is **not** an ELTE product, **not** a SDA Informatika product, and **not** a replacement for the legal relationship between the student and the university. Cheterin has **no** trademark permission or endorsement from ELTE, Neptun, or SDA.
+It is **not** an ELTE product, **not** a SDA Informatika product, and **not** a replacement for the legal relationship between the student and the university. Nanda / Cheterin Group have **no** trademark permission or endorsement from ELTE, Neptun, or SDA.
 
 ### 1.1 Goals
 
@@ -83,7 +85,7 @@ Web is UI preview only. **iOS on a physical iPhone is the primary test target** 
 | Karmin app | Runs on the phone. Processes data **only** to show it to that student. |
 | ELTE Neptun | Source of truth. JWT issuer. Academic and personal data host. |
 | OS (iOS/Android) | Keystore/Keychain, biometrics, local notifications |
-| Cheterin | Builds and maintains the client. Does **not** receive passwords in v1 (no server). |
+| Nanda / Cheterin Group | Builds and maintains the client. Does **not** receive passwords in v1 (no server). |
 | neptun-api (Python) | Reference of URL paths. Not shipped. Not called at runtime. |
 
 ---
@@ -265,7 +267,7 @@ PIN: 6 digits, `sha256(pin + app-specific salt from Keystore random 16 bytes)`. 
 
 ## 6. Data map (GDPR / Hungarian InfoAct)
 
-Karmin in v1 has **no servers**. Processing is on-device. If you only use it yourself, you are processing your own student data. **If you give the app to other students**, you still need a privacy notice because the app processes their Neptun data locally. Cheterin is not (in v1) a cloud controller, but **designs** the processing.
+Karmin in v1 has **no servers**. Processing is on-device. If you only use it yourself, you are processing your own student data. **If you give the app to other students**, you still need a privacy notice because the app processes their Neptun data locally. Nanda / Cheterin Group are not (in v1) a cloud controller, but **design** the processing.
 
 ### 6.1 Categories we will store locally
 
@@ -292,7 +294,7 @@ Karmin in v1 has **no servers**. Processing is on-device. If you only use it you
 ### 6.3 Lawful basis (working assumption, not advice)
 
 - **Own use:** processing necessary for the student to access a service they already use.
-- **Distribution to classmates:** still no sale of data. Legal basis typically the student’s use of the app to access **their** Neptun account (contract/legitimate interest of the user). Do **not** claim ELTE appointed Cheterin as processor.
+- **Distribution to classmates:** still no sale of data. Legal basis typically the student’s use of the app to access **their** Neptun account (contract/legitimate interest of the user). Do **not** claim ELTE appointed Nanda / Cheterin Group as processor.
 - Do not upload Neptun data to ChatGPT, Crashlytics, or iCloud Keychain sync unless the user opts in (v1: **disable iCloud Keychain sync** for the password item if the plugin allows `synchronizable: false`).
 
 ### 6.4 Rights
@@ -319,7 +321,7 @@ Neptun is hosted for a Hungarian university. The phone may be physically abroad;
 
 In-app, README, Privacy, TestFlight notes:
 
-> Karmin is an unofficial product by Cheterin. It is not affiliated with, endorsed by, or supported by Eötvös Loránd University or the operator of Neptun.
+> Karmin is an unofficial product by Nanda / Cheterin Group. It is not affiliated with, endorsed by, or supported by Eötvös Loránd University or the operator of Neptun.
 
 Do not use ELTE coat of arms or Neptun wordmark as the **app icon**. “Neptun” may appear in text as the name of the system we connect to (nominative / referential use). Do not title the store listing “Official ELTE Neptun”. Do **not** invent or claim trademark permission from ELTE.
 
@@ -331,7 +333,7 @@ Typical university and vendor terms prohibit:
 - Automated access / “unauthorized clients”
 - Overloading the service
 
-Karmin **does** automate API calls the official Angular web already makes. Residual risk: ELTE or SDA may disable the account or IP, or demand the app stop. **Mitigation:** low request rate, identifiable UA, sideload-only, stop-if-asked contact via [cheterin.online](https://cheterin.online).
+Karmin **does** automate API calls the official Angular web already makes. Residual risk: ELTE or SDA may disable the account or IP, or demand the app stop. **Mitigation:** low request rate, identifiable UA, sideload-only, stop-if-asked contact via Discord `nandak070`, Telegram `nanda070`, or turkapahf@gmail.com.
 
 **Action before any group beta:** read current ELTE IT / Neptun student terms (Neptun login page, ELTE SZMSZ / IT regulations). Record the date and URL in `docs/legal/SOURCES.md`. If terms forbid third-party clients, do not run a public beta.
 
@@ -356,7 +358,7 @@ If you install APKs on others’ phones: inform them it is unofficial, data stay
 
 ### 7.7 Open source
 
-- LICENSE: MIT, copyright **Cheterin** / cheterin.online (2026).
+- LICENSE: MIT, copyright **Nanda** / Cheterin Group (2026).
 - Third-party notices: `docs/legal/NOTICE.md`; Flutter/Dart licenses also via in-app `showLicensePage`.
 - Do **not** publish live API dumps with personal grades.
 
@@ -376,7 +378,7 @@ v1 should not block TalkBack/VoiceOver: labels on tabs, PIN keypad, Sign in. Con
 
 Screen **Disclaimer** (blocking, once):
 
-1. Unofficial; not ELTE; by Cheterin.
+1. Unofficial; not ELTE; by Nanda / Cheterin Group.
 2. Password stored in OS Keystore to enable PIN.
 3. We do not operate a server; Neptun’s privacy policy still applies to data Neptun holds.
 4. Link to in-app Privacy + to official Neptun.
@@ -390,7 +392,7 @@ Settings always keep the same links.
 
 Figma https://www.figma.com/design/Iuxf0sbisHaOwxn6Vkcgdg plus the Flutter widgets under `lib/app/` are the **source of truth**. The luxury dark redesign is **done**. Later stages bind real Neptun data; they do not reopen palette, type, or chrome.
 
-Brand string: **Karmin** (ASCII, no accent). Owner: Cheterin / cheterin.online.
+Brand string: **Karmin** (ASCII, no accent). Owner: Nanda / Cheterin Group (cheterin.online).
 
 ### 8.1 Design language
 
@@ -553,7 +555,7 @@ Completed:
 - `NeptunClient` empty + exceptions
 - Secure storage + PIN hash helpers + `local_auth` probe
 - `android:allowBackup="false"`; iOS Keychain accessibility
-- LICENSE (MIT, Cheterin), PLAN, PRIVACY, DISCLAIMER, legal NOTICE
+- LICENSE (MIT, Nanda / Cheterin Group), PLAN, PRIVACY, DISCLAIMER, legal NOTICE
 - Web platform scaffold for UI preview
 - `.gitignore` secrets / keystores
 - `flutter analyze` clean; tests pass
@@ -634,7 +636,7 @@ All live under `docs/` unless noted. Stage 0 stubs exist; freeze text in Stage 4
 
 | File | Audience | Contents |
 |---|---|---|
-| `README.md` | Devs / testers | Bilingual EN/RU; unofficial banner; Cheterin ownership; how to run |
+| `README.md` | Devs / testers | Bilingual EN/RU; unofficial banner; Nanda / Cheterin Group ownership; how to run |
 | `docs/PLAN.md` | This file | Source of product truth |
 | `docs/ARCHITECTURE.md` | Devs | Layers, interceptor, cache invalidation |
 | `docs/SECURITY.md` | Devs | Threat model, keystore keys, how to report a vuln |
@@ -648,7 +650,7 @@ All live under `docs/` unless noted. Stage 0 stubs exist; freeze text in Stage 4
 | `docs/ANDROID_BUILD.md` | Devs | Windows debug APK + optional emulator (no Android phone) |
 | `docs/RELEASE.md` | Team | Sideload, optional TestFlight later, versioning `0.1.0+1` |
 | `CHANGELOG.md` | Testers | Human changes |
-| `LICENSE` | Everyone | MIT © Cheterin / cheterin.online |
+| `LICENSE` | Everyone | MIT © Nanda / Cheterin Group |
 | In-app screens | Users | Disclaimer, Privacy, open-source licenses page (`showLicensePage`) |
 
 Figma + `lib/app/theme.dart` / `lib/app/widgets/` are the UI spec. Tokens live in §8; do not reopen them in later stages.
@@ -689,7 +691,7 @@ Manual smoke (Stage 4):
 - **iOS is the primary tester path** (bundle `online.cheterin.karmin`). Free Personal Team or unsigned GHA IPA — [IOS_SIDELLOAD.md](IOS_SIDELLOAD.md). Re-sign every 7 days on a free Apple ID.
 - Android on Windows is emulator / CI. Signing: personal keystore **not in git**. `android/key.properties` gitignored.
 - Distribution: invite-only sideload. TestFlight only if a paid Apple program is added later. Track testers in a private note, not in the repo.
-- Support: GitHub issues and [cheterin.online](https://cheterin.online). No in-app chat.
+- Support: GitHub issues, [cheterin.online](https://cheterin.online), Discord `nandak070`, Telegram `nanda070`, or `turkapahf@gmail.com`. No in-app chat.
 - Incident: if ELTE complains or accounts lock — yank the build, document in CHANGELOG, pause Stage 3 writes.
 - No auto-update server. Testers install a new IPA / APK.
 
@@ -719,7 +721,7 @@ Manual smoke (Stage 4):
 4. Display name from API vs “Student” + code.  
 5. Notification exact times (15 min / 24 h) — confirm in Settings later.
 
-License decided: **MIT** under Cheterin.
+License decided: **MIT** under Nanda / Cheterin Group.
 
 ---
 
@@ -728,7 +730,7 @@ License decided: **MIT** under Cheterin.
 1. **Stage 1–3 live on iPhone** (`KARMIN_LIVE_AUTH=true` or release IPA): confirm calendar/study/inbox JSON keys; prove 2FA + resend-via-relogin; capture `SignUpForExam` body. Free install: [IOS_SIDELLOAD.md](IOS_SIDELLOAD.md). Push `.github/workflows/ios.yml` so Actions can build an unsigned IPA (this Windows checkout cannot).  
 2. Fill `docs/legal/SOURCES.md` after personally opening ELTE Neptun terms.  
 3. Figma light frames (when write access exists). Android on Windows: [ANDROID_BUILD.md](ANDROID_BUILD.md) (debug APK / optional emulator).  
-4. If ELTE or SDA asks to stop distribution — stop, note in CHANGELOG, contact via cheterin.online.
+4. If ELTE or SDA asks to stop distribution — stop, note in CHANGELOG, contact via Discord `nandak070`, Telegram `nanda070`, or turkapahf@gmail.com.
 
 ---
 
@@ -737,4 +739,4 @@ License decided: **MIT** under Cheterin.
 - Local reference client: `C:\Users\adnan\Documents\Coding\neptun-api` (`NeptunAPI`, `docs/request_forms.md` for later)  
 - ELTE API base: `https://neptun.elte.hu/ujhallgato/api/`  
 - Figma: https://www.figma.com/design/Iuxf0sbisHaOwxn6Vkcgdg  
-- Owner: https://cheterin.online  
+- Owner: Nanda / Cheterin Group — [cheterin.online](https://cheterin.online) (Discord `nandak070` · Telegram `nanda070` · Mail `turkapahf@gmail.com`) 

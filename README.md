@@ -1,13 +1,21 @@
 # Karmin
 
-**Unofficial ELTE Neptun mobile client** — built by [Cheterin](https://cheterin.online).
+**Unofficial ELTE Neptun mobile client** — built by **Nanda** / **Cheterin Group**.
 
 Dark, minimal Flutter app for students who want Today, calendar, grades, exams, and inbox without living in the Neptun web UI. English UI by default.
 
 > **Not affiliated with ELTE, Neptun, or SDA Informatika.**  
-> Karmin is an independent Cheterin project. It is not endorsed, sponsored, or supported by Eötvös Loránd University or the operators of Neptun. Use at your own risk. Prefer the official web client when university rules require it.
+> Karmin is an independent Cheterin Group project. It is not endorsed, sponsored, or supported by Eötvös Loránd University or the operators of Neptun. Use at your own risk. Prefer the official web client when university rules require it.
 
-© Cheterin · [cheterin.online](https://cheterin.online)
+**Owner, Developer, Founder:** Nanda  
+- Discord: `nandak070`  
+- Telegram: `nanda070`  
+- Mail: `turkapahf@gmail.com`  
+
+**Company:** Cheterin Group  
+- Site: [https://cheterin.online](https://cheterin.online)
+
+© 2026 Nanda / Cheterin Group · [cheterin.online](https://cheterin.online)
 
 ---
 
@@ -15,7 +23,7 @@ Dark, minimal Flutter app for students who want Today, calendar, grades, exams, 
 
 ### What it is
 
-Karmin signs into the official ELTE Neptun student API with **your** Neptun code, password, and a **one-time code** (email or authenticator — required on every fresh login). Credentials stay on-device (OS Keystore / Keychain) so Face ID or a 6-digit PIN can unlock the **local** vault. PIN does not skip Neptun 2FA. There is **no Cheterin backend** in v1 — academic data stays on the phone.
+Karmin signs into the official ELTE Neptun student API with **your** Neptun code, password, and a **one-time code** (email or authenticator — required on every fresh login). Credentials stay on-device (OS Keystore / Keychain) so Face ID or a 6-digit PIN can unlock the **local** vault. PIN does not skip Neptun 2FA. There is **no Cheterin Group backend** in v1 — academic data stays on the phone.
 
 ### Features (v1 scope)
 
@@ -68,7 +76,7 @@ Live ELTE on a device: `flutter run --dart-define=KARMIN_LIVE_AUTH=true` (or ins
 
 ### License & legal
 
-- Software: [MIT](LICENSE) — Copyright © 2026 Cheterin / cheterin.online — provided **AS IS**
+- Software: [MIT](LICENSE) — Copyright © 2026 Nanda / Cheterin Group — provided **AS IS**
 - Product disclaimer: [docs/DISCLAIMER.md](docs/DISCLAIMER.md)
 - Privacy: [docs/PRIVACY.md](docs/PRIVACY.md)
 - ELTE API base (referential): `https://neptun.elte.hu/ujhallgato/api/`
@@ -77,7 +85,11 @@ If ELTE or SDA asks that distribution stop, we stop and record it in the changel
 
 ### Contact
 
-- Website: [https://cheterin.online](https://cheterin.online)
+- **Owner, Developer, Founder:** Nanda
+  - Discord: `nandak070`
+  - Telegram: `nanda070`
+  - Mail: `turkapahf@gmail.com`
+- **Company:** Cheterin Group — [https://cheterin.online](https://cheterin.online)
 - Issues: use this repository’s issue tracker
 
 ---
@@ -86,12 +98,20 @@ If ELTE or SDA asks that distribution stop, we stop and record it in the changel
 
 ### Что это
 
-**Karmin** — неофициальный мобильный клиент ELTE Neptun от [Cheterin](https://cheterin.online). Тёмный минималистичный Flutter-клиент: Today, календарь, оценки, экзамены и входящие. Язык интерфейса по умолчанию — английский (есть заготовки HU/RU).
+**Karmin** — неофициальный мобильный клиент ELTE Neptun от **Nanda** / [Cheterin Group](https://cheterin.online). Тёмный минималистичный Flutter-клиент: Today, календарь, оценки, экзамены и входящие. Язык интерфейса по умолчанию — английский (есть заготовки HU/RU).
 
 > **Не связан с ELTE, Neptun или SDA Informatika.**  
-> Karmin — независимый проект Cheterin. Университет и операторы Neptun его не поддерживают и не одобряют. Используйте на свой риск. При сомнениях пользуйтесь официальным веб-клиентом.
+> Karmin — независимый проект Cheterin Group. Университет и операторы Neptun его не поддерживают и не одобряют. Используйте на свой риск. При сомнениях пользуйтесь официальным веб-клиентом.
 
-© Cheterin · [cheterin.online](https://cheterin.online)
+**Владелец, разработчик, основатель:** Nanda  
+- Discord: `nandak070`  
+- Telegram: `nanda070`  
+- Почта: `turkapahf@gmail.com`  
+
+**Компания:** Cheterin Group  
+- Сайт: [https://cheterin.online](https://cheterin.online)
+
+© 2026 Nanda / Cheterin Group · [cheterin.online](https://cheterin.online)
 
 ### Возможности (объём v1)
 
@@ -123,7 +143,7 @@ flutter run
 
 ### Лицензия и правовые тексты
 
-- Код: [MIT](LICENSE) — © 2026 Cheterin / cheterin.online — **как есть**
+- Код: [MIT](LICENSE) — © 2026 Nanda / Cheterin Group — **как есть**
 - Дисклеймер: [docs/DISCLAIMER.md](docs/DISCLAIMER.md)
 - Конфиденциальность: [docs/PRIVACY.md](docs/PRIVACY.md)
 - Сторонние пакеты: [docs/legal/NOTICE.md](docs/legal/NOTICE.md)
@@ -132,5 +152,9 @@ flutter run
 
 ### Контакты
 
-- Сайт: [https://cheterin.online](https://cheterin.online)
+- **Владелец, разработчик, основатель:** Nanda
+  - Discord: `nandak070`
+  - Telegram: `nanda070`
+  - Почта: `turkapahf@gmail.com`
+- **Компания:** Cheterin Group — [https://cheterin.online](https://cheterin.online)
 - Вопросы: issues в этом репозитории

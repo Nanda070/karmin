@@ -1,6 +1,9 @@
 # Legal sources (stub)
 
-Maintained by **Cheterin** ([cheterin.online](https://cheterin.online)) for Karmin.
+Maintained by **Nanda** / **Cheterin Group** for Karmin.
+
+**Owner, Developer, Founder:** Nanda · Discord `nandak070` · Telegram `nanda070` · Mail `turkapahf@gmail.com`  
+**Company:** Cheterin Group · Site: [https://cheterin.online](https://cheterin.online)
 
 Record dates and URLs of ELTE / Neptun / IT terms **you personally open** before any group beta. Do not invent entries. Do not invent trademark permissions.
 

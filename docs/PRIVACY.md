@@ -1,6 +1,6 @@
 # Privacy
 
-**Publisher:** Cheterin ([cheterin.online](https://cheterin.online))  
+**Publisher:** Nanda / Cheterin Group  
 **Product:** Karmin — unofficial ELTE Neptun client
 
 **Short notice (English source):**
@@ -12,7 +12,7 @@ Karmin stores your Neptun password in the secure hardware-backed store of this p
 | Topic | v1 |
 |---|---|
 | Server | None — processing is on-device only |
-| Operator | Cheterin designs the client; does not receive your Neptun data in v1 |
+| Operator | Nanda / Cheterin Group design the client; they do not receive your Neptun data in v1 |
 | Credentials | OS Keystore / Keychain until Sign out |
 | Academic data | Local cache (Stage 2+); wiped on Sign out / uninstall |
 | Analytics / ads | Not used |
@@ -20,7 +20,13 @@ Karmin stores your Neptun password in the secure hardware-backed store of this p
 
 Karmin is unofficial and not affiliated with ELTE or Neptun. Neptun’s own privacy policy still applies to data Neptun holds.
 
-Contact: [https://cheterin.online](https://cheterin.online)
+## Contact
+
+- **Owner, Developer, Founder:** Nanda
+  - Discord: `nandak070`
+  - Telegram: `nanda070`
+  - Mail: `turkapahf@gmail.com`
+- **Company:** Cheterin Group
+  - Site: [https://cheterin.online](https://cheterin.online)
 
 Full checklist: [PLAN.md](PLAN.md) §6. This is not legal advice. Wording frozen for Stage 4 polish; counsel still reviews before any group beta.
-

@@ -1,5 +1,8 @@
+# Author: Nanda / Cheterin Group
 name: karmin
-description: "Karmin — unofficial ELTE Neptun mobile client"
+description: "Karmin — unofficial ELTE Neptun mobile client by Nanda / Cheterin Group"
+homepage: https://cheterin.online
+repository: https://github.com/Nanda070/karmin
 publish_to: 'none'
 version: 0.1.0+1
 
