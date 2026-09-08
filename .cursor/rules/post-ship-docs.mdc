@@ -1,0 +1,20 @@
+---
+description: After every successful ship, sync docs and commit+push to origin/main.
+alwaysApply: true
+---
+
+# Post-ship docs + git
+
+After a **successful** update (intended behavior works; do not document failed attempts), before stopping:
+
+1. **Keep these current** in the same change, or immediately after:
+   - `DEV.md`, `DEVLOG.md` (dev blog)
+   - `docs/PLAN.md`, `CHANGELOG.md`, `README.md`
+   - `docs/API.md`, `docs/ARCHITECTURE.md`, `docs/SECURITY.md` if touched
+   - `docs/IOS_SIDELLOAD.md` / `docs/ANDROID_BUILD.md` if install/build changed
+2. **DEVLOG.md:** heading `8 сентября 2026 г.` (today’s date, that style). New day = new heading; same day = append. Short dash bullets (`- …`).
+3. **Commit and push** docs **with** the feature (or right after) to `origin/main`. Do not leave docs stale. No `--amend`, `--force`, `--no-verify`.
+4. **Do not stage** secrets, auth material, IPA/APK, or `dist/`.
+5. **Attribution (do not rewrite):** Nanda = Owner/Developer/Founder (Discord `nandak070`, Telegram `nanda070`, mail `turkapahf@gmail.com`); company Cheterin Group, https://cheterin.online
+
+If `DEV.md` / `DEVLOG.md` are dirty from another agent, do not clobber them.
