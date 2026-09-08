@@ -40,9 +40,9 @@ class NeptunClient {
           applyEltePortalBrowserHeaders(options);
           final authCall = isAuthenticateUri(options.uri) ||
               options.path.contains('Account/Authenticate');
-          // Fork Authenticate (`http.Request`): Content-Type only — no Bearer,
-          // Accept, Origin, Referer, X-Requested-With, or custom User-Agent.
-          // Extra headers / stale JWT made Neptun reject valid OTP codes.
+          // Authenticate: never send Bearer (stale JWT 401s OTP). Header
+          // profile is `rich` (Safari/XHR, first password POST) or `fork`
+          // (Content-Type + dart:io UA). Extra headers / stale JWT 401 OTP.
           if (authCall) {
             applyAuthenticateRequestHeaders(options);
           } else if (hasRealJwt) {
@@ -258,8 +258,11 @@ void applyEltePortalBrowserHeaders(RequestOptions options) {
 /// Extra key on Authenticate [RequestOptions]: `'fork'` (default) or `'rich'`.
 const String authenticateHeaderProfileExtra = 'karminAuthenticateProfile';
 
-/// Fork-minimal Authenticate headers, or a slightly richer Safari/XHR set
-/// used only when the first password POST is not 2FA / JWT.
+/// dart:io `http.Request` always sends a User-Agent. Stripping it ( +5 / +6
+/// "fork" profile) is not fork-accurate and some fronts answer HTTP 400.
+const String forkAuthenticateUserAgent = 'Dart/3.5 (dart:io)';
+
+/// Fork-minimal Authenticate headers, or Safari/XHR (first password POST).
 void applyAuthenticateRequestHeaders(RequestOptions options) {
   // Always strip Bearer on Authenticate — stale JWT 401s the OTP step.
   options.headers.remove('Authorization');
@@ -278,7 +281,7 @@ void applyAuthenticateRequestHeaders(RequestOptions options) {
   options.headers.remove('Origin');
   options.headers.remove('Referer');
   options.headers.remove('X-Requested-With');
-  options.headers.remove('User-Agent');
+  options.headers['User-Agent'] = forkAuthenticateUserAgent;
 }
 
 /// Match [zoligamer/Neptun-Mobile-fork] `_APIRequest.postRequestRaw`: only

@@ -112,6 +112,19 @@ bool isLogin2FaUrl(String url) => url.contains('Account/Login2FA');
 bool isPasswordLoginUrl(String url) =>
     url.contains('Account/Login') && !isLogin2FaUrl(url);
 
+Map<String, dynamic> asAuthBody(dynamic data) {
+  if (data is String && data.isNotEmpty) {
+    final decoded = jsonDecode(data);
+    if (decoded is Map) {
+      return decoded.map((key, value) => MapEntry('$key', value));
+    }
+  }
+  if (data is Map) {
+    return data.map((key, value) => MapEntry('$key', value));
+  }
+  return {};
+}
+
 Map<String, String> _postedFields(Object? data) {
   if (data is String) {
     return Uri.splitQueryString(data);
@@ -340,9 +353,43 @@ void main() {
     });
   });
 
-  test('password LCID try-order is 1038 then UI then 1033', () {
-    expect(authenticateLcidsToTry(1033), [1038, 1033]);
-    expect(authenticateLcidsToTry(1038), [1038, 1033]);
+  test('password attempts are 1033+rich first, never 1038-first', () {
+    expect(
+      authenticatePasswordAttempts(1033),
+      [
+        (lcid: 1033, richHeaders: true),
+        (lcid: 1038, richHeaders: false),
+      ],
+    );
+    expect(
+      authenticatePasswordAttempts(1038).first,
+      (lcid: 1033, richHeaders: true),
+    );
+    expect(authenticatePasswordAttempts(1038).first.lcid, isNot(1038));
+  });
+
+  test('generic ASP.NET 400 is unavailable, not bad password', () {
+    expect(
+      looksLikeInvalidCredentialsMessage('The request is invalid.'),
+      isFalse,
+    );
+    expect(
+      looksLikeInvalidCredentialsMessage('Invalid user name or password.'),
+      isTrue,
+    );
+    expect(
+      () => parseAuthenticateResponse(
+        statusCode: 400,
+        data: {'message': 'The request is invalid.'},
+      ),
+      throwsA(
+        isA<NeptunUnavailableException>().having(
+          (e) => e.message,
+          'message',
+          contains('HTTP 400'),
+        ),
+      ),
+    );
   });
 
   test('authenticate JSON body matches fork key order + empty captcha/token', () {
@@ -420,14 +467,18 @@ void main() {
     expect(ticket.otpChannel, OtpChannel.authenticator);
     expect(loginPosts, 0);
     expect(auth.jsonTwoFactorPending, isTrue);
-    // First password POST still uses fork LCID 1038 (then 1033 on miss).
-    final map = adapter.bodies.single as Map;
-    expect(map['LCID'], 1038);
+    expect(auth.lastAuthenticateLcid, 1033);
+    expect(auth.usingRichAuthenticateHeaders, isTrue);
+    final map = asAuthBody(adapter.bodies.single);
+    expect(map['LCID'], 1033);
     expect(map['token'], '');
+    expect(adapter.headers.single['Accept'], isNotNull);
+    expect(adapter.headers.single['User-Agent']?.toString(), contains('Safari'));
   });
 
-  test('password LCID retries 1038 then 1033 until 2FA', () async {
+  test('generic 400 on 1033+rich retries fork 1038, then 2FA stops', () async {
     final lcids = <int>[];
+    final richFlags = <bool>[];
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
       if (url.contains('Account/Login')) {
@@ -436,15 +487,13 @@ void main() {
       if (!url.contains('Account/Authenticate')) {
         fail('unexpected $url');
       }
-      final data = options.data;
-      final map = data is Map
-          ? data.map((k, v) => MapEntry('$k', v))
-          : <String, dynamic>{};
+      final map = asAuthBody(options.data);
       final lcid = map['LCID'];
       lcids.add(lcid is int ? lcid : int.parse('$lcid'));
+      richFlags.add(options.headers['Accept'] != null);
       expect(map['token'], '');
-      if (lcid == 1038) {
-        return jsonBody(400, {});
+      if (lcid == 1033) {
+        return jsonBody(400, {'message': 'The request is invalid.'});
       }
       return jsonBody(202, {'isTwoFactorRequired': true});
     });
@@ -456,12 +505,55 @@ void main() {
     );
     expect(ticket.step, NeptunAuthStep.needsOtp);
     expect(auth.jsonTwoFactorPending, isTrue);
-    expect(auth.lastAuthenticateLcid, 1033);
-    expect(lcids, [1038, 1033]);
+    expect(auth.lastAuthenticateLcid, 1038);
+    expect(auth.usingRichAuthenticateHeaders, isFalse);
+    expect(lcids, [1033, 1038]);
+    expect(richFlags, [true, false]);
   });
 
-  test('richer Authenticate headers retry after LCID miss, then OTP same URL',
-      () async {
+  test('2FA on first 1033+rich POST does not send a second request', () async {
+    final adapter = ScriptedAdapter((options) {
+      final map = asAuthBody(options.data);
+      expect(map['LCID'], 1033);
+      expect(options.headers['Accept'], isNotNull);
+      expect(options.headers['User-Agent']?.toString(), contains('Safari'));
+      return jsonBody(202, {'isTwoFactorRequired': true});
+    });
+    final auth = LiveNeptunAuth(clientWith(adapter));
+    final ticket = await auth.submitPassword(
+      userName: 'abc123',
+      password: 'secret',
+      lcid: 1033,
+    );
+    expect(ticket.step, NeptunAuthStep.needsOtp);
+    expect(adapter.calls, 1);
+    expect(auth.lastAuthenticateLcid, 1033);
+    expect(auth.usingRichAuthenticateHeaders, isTrue);
+  });
+
+  test('explicit bad-password 400 does not retry another LCID', () async {
+    final adapter = ScriptedAdapter((options) {
+      return jsonBody(400, {
+        'modelStateErrors': [
+          {
+            'errors': ['Invalid user name or password.'],
+          },
+        ],
+      });
+    });
+    final auth = LiveNeptunAuth(clientWith(adapter));
+    await expectLater(
+      auth.submitPassword(
+        userName: 'abc123',
+        password: 'wrong',
+        lcid: 1033,
+      ),
+      throwsA(isA<NeptunAuthException>()),
+    );
+    expect(adapter.calls, 1);
+  });
+
+  test('richer Authenticate headers on first POST, then OTP same URL', () async {
     final urls = <String>[];
     final tokens = <String>[];
     final accepts = <String?>[];
@@ -474,19 +566,13 @@ void main() {
       }
       accepts.add(options.headers['Accept']?.toString());
       userAgents.add(options.headers['User-Agent']?.toString());
-      final data = options.data;
-      final map = data is Map
-          ? data.map((k, v) => MapEntry('$k', v))
-          : <String, dynamic>{};
+      final map = asAuthBody(options.data);
       tokens.add('${map['token'] ?? ''}');
       if ('${map['token'] ?? ''}'.isNotEmpty) {
         expect(options.headers['Accept'], isNotNull);
         return jsonBody(200, {
           'data': {'accessToken': 'jwt-rich'},
         });
-      }
-      if (options.headers['Accept'] == null) {
-        return jsonBody(400, {});
       }
       return jsonBody(202, {'isTwoFactorRequired': true});
     });
@@ -499,6 +585,7 @@ void main() {
     expect(first.step, NeptunAuthStep.needsOtp);
     expect(auth.usingRichAuthenticateHeaders, isTrue);
     expect(auth.jsonTwoFactorPending, isTrue);
+    expect(adapter.calls, 1);
 
     final done = await auth.submitOtp(
       userName: 'abc123',
@@ -514,7 +601,7 @@ void main() {
       ),
     );
     expect(tokens.last, '654321');
-    expect(accepts.last, isNotNull);
+    expect(accepts, everyElement(isNotNull));
     expect(userAgents.last, contains('Safari'));
   });
 
@@ -596,10 +683,7 @@ void main() {
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
       if (options.method == 'POST' && url.contains('Account/Authenticate')) {
-        final data = options.data;
-        final map = data is Map
-            ? data.map((k, v) => MapEntry('$k', v))
-            : <String, dynamic>{};
+        final map = asAuthBody(options.data);
         final token = '${map['token'] ?? ''}';
         if (token.isNotEmpty) {
           otpTokenPosts += 1;
@@ -656,10 +740,7 @@ void main() {
     final adapter = ScriptedAdapter((options) {
       final url = options.uri.toString();
       if (options.method == 'POST' && url.contains('Account/Authenticate')) {
-        final data = options.data;
-        final map = data is Map
-            ? data.map((k, v) => MapEntry('$k', v))
-            : <String, dynamic>{};
+        final map = asAuthBody(options.data);
         if ('${map['token'] ?? ''}'.isNotEmpty) {
           expect(options.headers['Cookie'], 'devicecookie-$b64=dev1');
           return jsonBody(200, {
@@ -723,18 +804,19 @@ void main() {
     expect(auth.jsonTwoFactorPending, isFalse);
   });
 
-  test('Authenticate strips fork-foreign headers', () async {
+  test('Authenticate first POST is rich headers and never sends Bearer', () async {
     final adapter = ScriptedAdapter((options) {
       expect(options.headers['Authorization'], isNull);
-      expect(options.headers['X-Requested-With'], isNull);
-      expect(options.headers['Origin'], isNull);
-      expect(options.headers['Referer'], isNull);
-      expect(options.headers['Accept'], isNull);
-      expect(options.headers['User-Agent'], isNull);
+      expect(options.headers['X-Requested-With'], 'XMLHttpRequest');
+      expect(options.headers['Origin'], 'https://neptun.elte.hu');
+      expect(options.headers['Referer'], 'https://neptun.elte.hu/Account/Login');
+      expect(options.headers['Accept'], isNotNull);
+      expect(options.headers['User-Agent']?.toString(), contains('Safari'));
       expect(
         options.headers[Headers.contentTypeHeader],
         Headers.jsonContentType,
       );
+      expect(asAuthBody(options.data)['LCID'], 1033);
       return jsonBody(202, {'isTwoFactorRequired': true});
     });
     final client = clientWith(adapter)..setAccessToken('stale-jwt');
@@ -747,10 +829,7 @@ void main() {
 
   test('OTP failure surfaces HTTP status to caller', () async {
     final adapter = ScriptedAdapter((options) {
-      final data = options.data;
-      final map = data is Map
-          ? data.map((k, v) => MapEntry('$k', v))
-          : <String, dynamic>{};
+      final map = asAuthBody(options.data);
       if ('${map['token'] ?? ''}'.isEmpty) {
         return jsonBody(202, {'isTwoFactorRequired': true});
       }

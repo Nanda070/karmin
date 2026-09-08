@@ -32,6 +32,19 @@ class ScriptedAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+Map<String, dynamic> asAuthBody(dynamic data) {
+  if (data is String && data.isNotEmpty) {
+    final decoded = jsonDecode(data);
+    if (decoded is Map) {
+      return decoded.map((key, value) => MapEntry('$key', value));
+    }
+  }
+  if (data is Map) {
+    return data.map((key, value) => MapEntry('$key', value));
+  }
+  return {};
+}
+
 ResponseBody jsonBody(int status, Map<String, dynamic> body) {
   return ResponseBody.fromString(
     jsonEncode(body),
@@ -167,12 +180,9 @@ void main() {
       authHeaders.add(options.headers['Authorization']?.toString());
       contentTypes.add(options.headers[Headers.contentTypeHeader]?.toString());
       xhr.add(options.headers['X-Requested-With']?.toString());
-      final data = options.data;
-      final map = data is Map
-          ? data.map((k, v) => MapEntry('$k', v))
-          : <String, dynamic>{};
+      final map = asAuthBody(options.data);
       tokens.add('${map['token'] ?? ''}');
-      expect(map['LCID'], 1038);
+      expect(map['LCID'], 1033);
       if ('${map['token'] ?? ''}'.isEmpty) {
         return jsonBody(202, {
           'data': {'isTwoFactorRequired': true},
@@ -208,9 +218,9 @@ void main() {
     );
     expect(urls.any((u) => u.contains('/api/api/')), isFalse);
     expect(tokens, ['', '654321']);
-    // Stale JWT must not ride along on Authenticate; fork = Content-Type only.
+    // Stale JWT must not ride along on Authenticate.
     expect(authHeaders, everyElement(isNull));
-    expect(xhr, everyElement(isNull));
+    expect(xhr, everyElement('XMLHttpRequest'));
     expect(contentTypes, everyElement(Headers.jsonContentType));
   });
 

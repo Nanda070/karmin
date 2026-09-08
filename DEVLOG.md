@@ -6,6 +6,14 @@
 
 ## 8 сентября 2026 г.
 
+### Auth / password HTTP 400 (`0.1.0+7`)
+
+- **`0.1.0+6` ломал парольный шаг:** первый POST был `LCID:1038` + обрезка UA/Accept → ELTE отвечал HTTP 400; generic 400 считался fatal и не доходил до 1033 / Safari
+- Первый password POST снова **1033 + Safari/XHR** (как до +5, когда доходили до Verification). Fork 1038 только после retryable 400. 2FA/JWT сразу стоп — без второго запроса
+- Generic ASP.NET 400 («The request is invalid») ≠ неверный пароль. Явный «Invalid user name or password» — без retry
+- Тело = `jsonEncode` как у fork (`Content-Type: application/json` без charset). Fork-профиль держит dart:io User-Agent, не пустой UA
+- IPA `0.1.0+7`
+
 ### Auth / Verification restore (`0.1.0+6`)
 
 - **`0.1.0+5` сломал вход на Verification:** только Authenticate + всегда `LCID:1038` + обрезка заголовков → opaque «ELTE student login returned an error… sign on the website» вместо 2FA

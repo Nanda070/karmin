@@ -4,13 +4,13 @@
 
 Base (student reads): `https://neptun.elte.hu/Account/api/` (fork institute `…/Account` + `/api/`). Authenticate is **always** absolute `https://neptun.elte.hu/Account/api/Account/Authenticate` (`postUri` — never `baseUrl + api/Account/…`). Legacy `ujhallgato/api` unused for student reads. Live login: fork JSON Authenticate for **both** password and OTP (no MVC mix). Optional email resend still uses MVC Login2FA.
 
-Authenticate headers: first password POST matches fork — **only** `Content-Type: application/json` (+ fork `devicecookie` when present); always strip `Authorization`. If that POST is not 2FA/JWT, one retry with Safari/XHR Accept + Origin + Referer. Student GETs keep User-Agent `Karmin/0.1.0` + `X-Requested-With`.
+Authenticate headers: first password POST is Safari/XHR (Accept + Origin + Referer + `X-Requested-With`) + `Content-Type: application/json` (+ fork `devicecookie` when present); always strip `Authorization`. Fork 1038 fallback keeps a dart:io User-Agent (never empty). Student GETs keep User-Agent `Karmin/0.1.0` + `X-Requested-With`.
 
 JWT: RAM only. **Real** Authenticate `accessToken` → `Authorization: Bearer` on student GETs only. MVC placeholder `elte-portal-session` is **not** sent as Bearer and blocks student GETs with an honest portal-session error. 401 on a non-auth path drops a real JWT and does **not** retry until OTP succeeds. HTML/maintenance bodies → `NeptunMaintenanceException` (with HTTP status). Login/OTP reject → `HTTP <status>` + short Neptun text (never the opaque “sign on the website” string without status).
 
 | Dart method | Path | Stage | Write? | Notes |
 |---|---|---|---|---|
-| `submitPassword` | JSON `POST /Account/api/Account/Authenticate` `{ userName, password, captcha:"", captchaIdentifier:"", token:"", LCID }` | 1 | yes | Tries LCID **1038 then 1033** until HTTP 202 / 2FA / JWT. Sets JSON 2FA pending + device cookie. Empty 400 is **not** invalid credentials and includes HTTP status. **No** MVC fallback on ELTE live. |
+| `submitPassword` | JSON `POST /Account/api/Account/Authenticate` `{ userName, password, captcha:"", captchaIdentifier:"", token:"", LCID }` | 1 | yes | First POST **LCID 1033 + Safari/XHR**. Fork 1038 only after a retryable 400. Generic 400 is **not** invalid credentials and includes HTTP status. **No** MVC fallback on ELTE live. |
 | `submitOtp` | same Authenticate URL with `token=<bare 6 digits>` + device cookie | 1 | yes | Same channel as password; reuses the LCID/headers that reached Verification. Never compose email prefix. Failures include HTTP status in the message. |
 | `reset` | clears JSON 2FA pending + device cookie + portal cookies | — | — | Called from `AuthController.signOut`. |
 | `resendEmailCode` | **`POST /Account/Login2FA` + `GetEmail=true`** (or Login + GetEmail) | 1–2 | yes | Optional email path only. Visible error if no prefix. |

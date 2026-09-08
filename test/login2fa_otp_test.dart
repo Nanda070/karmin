@@ -343,13 +343,10 @@ void main() {
       final url = options.uri.toString();
       if (options.method == 'POST' &&
           url.contains('/Account/api/Account/Authenticate')) {
-        final data = options.data;
-        final map = data is Map
-            ? data.map((k, v) => MapEntry('$k', v))
-            : <String, dynamic>{};
+        final map = asAuthBody(options.data);
         final token = '${map['token'] ?? ''}';
         expect(map.containsKey('lcid'), isFalse);
-        expect(map['LCID'], 1038);
+        expect(map['LCID'], 1033);
         if (token.isEmpty) {
           return jsonBody(202, {
             'data': {

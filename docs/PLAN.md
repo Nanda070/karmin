@@ -183,7 +183,7 @@ Session API states (Stage 2 plugs live payloads into the same enum):
 ### 4.1 First session
 
 1. **Disclaimer** (once). Then Login: Neptun code + password. No “remember password” checkbox — storage is mandatory for later unlock, explained in the disclaimer.
-2. Absolute `POST https://neptun.elte.hu/Account/api/Account/Authenticate` `{ userName, password, captcha, captchaIdentifier, token, LCID }` (fork institute + `/api/…`; never relative `api/Account/…` under the student `…/Account/api/` base).
+2. Absolute `POST https://neptun.elte.hu/Account/api/Account/Authenticate` `{ userName, password, captcha, captchaIdentifier, token, LCID }` (fork institute + `/api/…`; never relative `api/Account/…` under the student `…/Account/api/` base). First password POST uses **LCID 1033 + Safari/XHR**; fork 1038 is only a fallback after a retryable 400.
 3. ELTE answers **HTTP 202** + `isTwoFactorRequired: true` (no `accessToken`). Show **Verification** (2FA). Do not persist credentials yet.
 4. User enters the one-time code. Re-POST the same body plus `token: "<otp>"` (same field the official web client uses).
 5. Success: `accessToken`, `neptunCode`. JWT → RAM. Credentials → Keystore (`neptun_code`, `neptun_password`).

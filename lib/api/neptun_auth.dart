@@ -230,7 +230,15 @@ AuthTicket parseAuthenticateResponse({
   }
 
   if (statusCode == 400 || statusCode == 401) {
-    throw NeptunAuthException.reject(
+    if (looksLikeInvalidCredentialsMessage(snippet)) {
+      throw NeptunAuthException.reject(
+        statusCode: statusCode,
+        neptunMessage: snippet,
+      );
+    }
+    // Generic ASP.NET 400 (wrong LCID / headers / charset) is not a
+    // bad password — password probe may retry another combo.
+    throw NeptunUnavailableException.detail(
       statusCode: statusCode,
       neptunMessage: snippet,
     );
@@ -274,26 +282,64 @@ bool looksLikeTwoFactorMessage(Map<String, dynamic> body, dynamic raw) {
       lower.contains('authenticator');
 }
 
-/// Fork ELTE sends `LCID: 1038` first. English UI (1033) is retried if 1038
-/// is not 2FA / JWT. Do not hardcode 1038 alone — that is what +5 broke.
+/// Fork ELTE body uses `LCID: 1038`. English Karmin UI is 1033. +6 sent
+/// 1038 first with stripped headers; ELTE answered HTTP 400 and login died
+/// before Verification. First password POST is 1033 + browser headers.
 const int forkAuthenticateLcid = 1038;
 
-/// Password LCID order: fork 1038, then the UI value, then 1033.
-List<int> authenticateLcidsToTry(int uiLcid) {
-  final out = <int>[];
-  void add(int value) {
-    if (!out.contains(value)) {
-      out.add(value);
+/// English / default Neptun LCID. This is what reached HTTP 202 / 2FA
+/// before +5 forced 1038-only.
+const int englishAuthenticateLcid = 1033;
+
+/// One password probe: LCID + header profile. First entry must be the
+/// combo that previously reached Verification (1033 + rich).
+typedef AuthenticatePasswordAttempt = ({int lcid, bool richHeaders});
+
+/// Password POST order. Always 1033 + Safari/XHR first. Fork 1038 is
+/// only a fallback after a retryable 400 — never first, and never after
+/// 2FA / JWT / a real bad-password body.
+List<AuthenticatePasswordAttempt> authenticatePasswordAttempts(int uiLcid) {
+  final out = <AuthenticatePasswordAttempt>[];
+  void add(int lcid, bool richHeaders) {
+    if (out.any((a) => a.lcid == lcid && a.richHeaders == richHeaders)) {
+      return;
     }
+    out.add((lcid: lcid, richHeaders: richHeaders));
   }
 
-  add(forkAuthenticateLcid);
-  add(uiLcid);
-  add(1033);
+  add(englishAuthenticateLcid, true);
+  if (uiLcid == 1033 || uiLcid == 1038) {
+    add(uiLcid, true);
+  }
+  add(forkAuthenticateLcid, false);
   return out;
 }
 
+/// Explicit wrong-password text from Neptun — not a generic ASP.NET 400.
+bool looksLikeInvalidCredentialsMessage(String? neptunMessage) {
+  if (neptunMessage == null) {
+    return false;
+  }
+  final lower = neptunMessage.toLowerCase();
+  if (lower.isEmpty) {
+    return false;
+  }
+  return lower.contains('invalid user') ||
+      lower.contains('user name or password') ||
+      lower.contains('username or password') ||
+      lower.contains('wrong password') ||
+      lower.contains('incorrect password') ||
+      lower.contains('incorrect user') ||
+      lower.contains('hibás azonos') ||
+      lower.contains('hibas azonos') ||
+      lower.contains('hibás jelszó') ||
+      lower.contains('hibas jelszo') ||
+      lower.contains('rossz jelszó') ||
+      lower.contains('rossz jelszo');
+}
+
 /// Bad password / captcha / lockout / network — do not retry LCID or headers.
+/// Generic HTTP 400 ([NeptunUnavailableException]) is retryable.
 bool isHardAuthenticateFailure(NeptunException error) {
   return error is NeptunAuthException ||
       error is NeptunCaptchaException ||
@@ -403,9 +449,9 @@ class DebugNeptunAuth implements NeptunAuthApi {
 /// **No MVC fallback** on password/OTP — mixing channels left OTP without a
 /// JSON pending session. Optional email resend still uses [EltePortalLogin].
 ///
-/// Password tries LCID 1038 then 1033 (English UI) until 202 / 2FA / JWT, then
-/// one richer-header retry if still not 2FA. OTP reuses the LCID + header
-/// profile that reached Verification.
+/// Password first POST is LCID 1033 + Safari/XHR (reached Verification
+/// before +5). Fork 1038 + dart:io-like headers only after a retryable 400.
+/// OTP reuses the LCID + header profile that reached Verification.
 class LiveNeptunAuth implements NeptunAuthApi {
   LiveNeptunAuth(this._client) : _portal = EltePortalLogin(_client);
 
@@ -464,24 +510,21 @@ class LiveNeptunAuth implements NeptunAuthApi {
 
     NeptunException? lastRetryable;
 
-    Future<AuthTicket?> attempt(
-      int tryLcid, {
-      required bool richHeaders,
-    }) async {
+    Future<AuthTicket?> attempt(AuthenticatePasswordAttempt probe) async {
       try {
         final ticket = await _authenticate(
           authenticateJsonBody(
             userName: code,
             password: password,
-            lcid: tryLcid,
+            lcid: probe.lcid,
           ),
           userName: code,
-          richHeaders: richHeaders,
+          richHeaders: probe.richHeaders,
         );
         if (ticket.step == NeptunAuthStep.authenticated ||
             ticket.step == NeptunAuthStep.needsOtp) {
-          _authenticateLcid = tryLcid;
-          _richAuthenticateHeaders = richHeaders;
+          _authenticateLcid = probe.lcid;
+          _richAuthenticateHeaders = probe.richHeaders;
           return ticket;
         }
         lastRetryable = NeptunUnavailableException.detail();
@@ -495,17 +538,11 @@ class LiveNeptunAuth implements NeptunAuthApi {
       }
     }
 
-    for (final tryLcid in authenticateLcidsToTry(lcid)) {
-      final ticket = await attempt(tryLcid, richHeaders: false);
+    for (final probe in authenticatePasswordAttempts(lcid)) {
+      final ticket = await attempt(probe);
       if (ticket != null) {
         return _finishPassword(ticket);
       }
-    }
-
-    final richLcid = lcid == forkAuthenticateLcid ? 1033 : lcid;
-    final richTicket = await attempt(richLcid, richHeaders: true);
-    if (richTicket != null) {
-      return _finishPassword(richTicket);
     }
 
     throw lastRetryable ?? NeptunUnavailableException.detail();
@@ -539,7 +576,10 @@ class LiveNeptunAuth implements NeptunAuthApi {
     }
     final code = normalizeNeptunCode(userName);
     final otpLcid = _authenticateLcid ??
-        (lcid == 1033 || lcid == 1038 ? lcid : forkAuthenticateLcid);
+        (lcid == 1033 || lcid == 1038 ? lcid : englishAuthenticateLcid);
+    final otpRich = _authenticateLcid != null
+        ? _richAuthenticateHeaders
+        : true;
 
     // Same channel as password: Authenticate only (no MVC mix).
     final ticket = await _authenticate(
@@ -551,7 +591,7 @@ class LiveNeptunAuth implements NeptunAuthApi {
       ),
       userName: code,
       forOtpSubmit: true,
-      richHeaders: _richAuthenticateHeaders,
+      richHeaders: otpRich,
     );
     if (ticket.step == NeptunAuthStep.authenticated) {
       _jsonTwoFactorPending = false;
@@ -586,11 +626,15 @@ class LiveNeptunAuth implements NeptunAuthApi {
       userName: userName,
       cookieValue: _deviceCookieValue,
     );
+    // Fork `jsonEncode`s the map itself (`Content-Type: application/json`,
+    // no charset). A Dio Map body often becomes `application/json; charset=utf-8`.
+    final encoded = jsonEncode(payload);
     try {
       final response = await _client.dio.postUri<dynamic>(
         uri,
-        data: payload,
+        data: encoded,
         options: Options(
+          contentType: Headers.jsonContentType,
           headers: {
             Headers.contentTypeHeader: Headers.jsonContentType,
             'Cookie': ?cookie,
